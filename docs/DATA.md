@@ -103,3 +103,27 @@ Earliest activity in the whole corpus: publictestwiki sandbox edits from **2026-
 | jqp.vercel.app | dse 05-28 13:31 | wiki4d, probier, fractal all 06-18 |
 | r.jina.ai | dse 06-01 | probier 06-16, fractal 06-17 |
 | api.counterapi.dev (heartbeat beacons) | dse 06-16 22:03 | — |
+
+---
+
+# Third batch: coverage tables (`site-coverage.csv`, `coverage-gaps.csv`)
+
+These are not transcript data. They are the collectors' own **inventory of which surfaces were captured and how completely**. Both files share 14 columns: site, host, canonical_url, category, prior_status, compilation_status, selected_distinct_texts, discord_urls, fresh_responses_saved, fresh_read_failures_or_redirects, specific_prior_gap_remains, limitations (JSON list), prior_evidence (JSON list of the investigators' internal paths), scope.
+
+- `site-coverage.csv`: **143 surfaces**: pastebins 37, wikis 30, shorteners 23, relays 23, documents 13, hosting 9, and 8 "new Discord posting surfaces" (sites people named on Discord).
+- `coverage-gaps.csv`: **110 of those 143** rows, an exact subset. It is the 58 rows flagged `specific_prior_gap_remains` plus 52 rows whose compilation found no agent text or left authorship/body unresolved. Every relay (jqp.vercel.app, md.succ.ai, markdown.new, allorigins, r.jina.ai, counterapi …) and every shortener except vanderbi.lt/uoft.me/goto.unm.edu falls here.
+
+What it tells us:
+
+- **Only the dse wiki is close to complete** (`covered_prior_subset`, 9,059 selected texts). Probier, fractal and dorfwiki are also "covered subsets". Wiki4D, Milk's Wiki and the Samoan dictionary have **body gaps**: old revision bodies may be unrecoverable.
+- **12 more wikiservice.at farms** (buecher, culios, esf, fdw, kfu, lions, lotr, nausner, sinn, prowiki, support, wikiservice) are `remote_inventory_only_gap`: listed, never searched. Their `selected_distinct_texts = 427` is the same number on every row (also on the En/De/Es dictionaries), so it is a shared inventory count, **not** a per-site text count. Don't sum that column.
+- **Relays and shorteners were deliberately not visited** ("No shortened destination, administrative API, active counter, proxy payload or tunnel was visited"). That is why `links.jsonl` has `followed = false` everywhere and why there is no read data.
+- **Discord was a channel.** 492 Discord-linked URLs point into these surfaces, but no Discord messages are in anything we have.
+- Every row's scope is "selected artifacts … whole-site completeness not established", and the limitations stress that keyword hits don't prove agent authorship.
+
+## Consequences for the analysis
+
+1. **Exposure is a lower bound.** We only see what was public on dse (plus probier/fractal). An answer we label "independent" (83 of 1,108) may have been relayed through a surface we don't have: Discord, uncrawled wikis or pastebins. So the 93% "already public" share is a floor, and the 83 independent lookups are a ceiling.
+2. **Cross-site diffusion results are bounded samples.** "First seen on site X" means first seen *in the captured material*.
+3. **Absence is not evidence.** Sites with `no_selected_agent_text_in_compilation` were mostly not searched, not searched and found empty.
+4. If more data ever arrives, the highest-value gaps for provenance are **Discord** (an explicit coordination channel), the 12 inventoried wikiservice farms, and **Wiki4D** revision bodies.
