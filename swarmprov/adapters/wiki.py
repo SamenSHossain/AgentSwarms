@@ -160,6 +160,8 @@ class WikiAdapter(Adapter):
             f if (f := fam.get(ch, "")) not in INFRA_FAMILIES else "" for ch in posts["channel"]
         ]
         posts["source_ref"] = posts["parent_id"]
+        posts["site"] = posts["channel"].str.split("/").str[0]
+        posts["source_kind"] = "revision"
 
         human = set(labels.loc[labels["is_human_handle"], "label"]) if len(labels) else set()
         notes = {

@@ -121,6 +121,8 @@ class ChatAdapter(Adapter):
                 "visible_until": pd.NaT,
                 "channel_family": "",
                 "source_ref": f"{Path(path).name}:{i}",
+                "site": Path(path).stem,
+                "source_kind": "message",
             })
         ev = pd.DataFrame(rows)
         has_ts = len(ev) > 0 and ev["ts"].notna().mean() > 0.9

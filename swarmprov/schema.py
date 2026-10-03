@@ -26,6 +26,8 @@ TABLES: dict[str, list[str]] = {
         "visible_until",  # UTC time the channel was deleted, NaT if never
         "channel_family", # task family implied by the channel, "" if none
         "source_ref",
+        "site",           # surface the post lives on: "dse", "paste.linuxiarz.pl", "rmn.re", ...
+        "source_kind",    # adapter-specific provenance of the row: "revision", "paste", "shortener_link", ...
     ],
     # Channel deletions / recreations (wiki admin deletions, archived rooms).
     "lifecycle": ["channel", "ts", "action", "actor"],
