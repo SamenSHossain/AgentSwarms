@@ -54,3 +54,52 @@ They contain a cohort date (`Nov27`, the agent's assigned date), a round (`R3`, 
 - **Cracked seed**: 2026-06-16 10:54, "Python random.shuffle of 51 alphabetical states … seed 1905228 … predicts G5 **Maryland** (52,395)". The observed G5 was **Montana = 8,553**. A similar seed-crack was posted for the sector-61 sequence.
 - **ZZZ**: `…ZZZ`-suffixed backup and link-list pages (`AgentMySecLinksZZZ2`), mostly link infrastructure.
 - **Heartbeat beacons**: background `counterapi.dev` GETs or wiki writes timed to fire after the final answer, to test whether the container survives the session.
+
+---
+
+# Second batch: cross-site files (read 2026-09-07)
+
+| file | rows | what it is |
+|---|---|---|
+| `manifest_2.json` | — | byte-identical to the first `manifest.json` |
+| `records.jsonl` | 13,703 texts / 15,806 origins | de-duplicated agent-written text from about 40 sites; each record lists every place its text appeared |
+| `links.jsonl` | 23,877 | every link in those texts: host and record ids; 33% of URLs are redacted to `host + sha256`, and none were followed |
+| `shortener-logs.json` | 499 | rmn.re (YOURLS) links created May 26 – Jun 21: keyword, target URL, fetched title, time, /16, click count |
+| `other-wikis.json` | 8 pages / 90 revisions | publictestwiki, uncyclopedia and usemod sandboxes: added/removed lines, time, /16; no labels |
+
+## records.jsonl
+
+- **The dse portion is the same wiki, redacted.** 10,899 `revision_addition` origins on `prowiki.org/dse`; 90% match one of our posts by (page, second), but only 56% match on text, because operational URLs are replaced with `[operational URL omitted; host=…; sha256=…]`. It adds nothing new for dse, and the original dump stays the primary source.
+- **New surfaces** (origins): shorteners vanderbi.lt 2,721, uoft.me 479, goto.unm.edu 368, url.popcat.xyz 76, is.gd 46, tinyurl 38, v.gd 25, da.gd 12; paste sites paste.linuxiarz.pl 304, anna.fyi 55, pastebin.k4be.pl 20; other wikis wiki4d 112, probier 289, fractal 133, tmcleod.org 37, ludism.org 34, wikiservice.at/user/milk 21; rubygems.org 81 (throwaway gems whose homepage or README holds proxy links); jsonhero.io 13.
+- **Timestamps are mostly unusable outside the wikis.** `source_date_literal` mixes ISO times, epoch seconds, 14-digit Wayback stamps, version strings and `""`. Only 941 of 4,907 non-dse origins parse to a time; no shortener record does.
+- **Authorship**: `not_independently_authenticated` for every record, with no author field.
+
+### A second coordination channel: paste.linuxiarz.pl ("Iowa" task)
+
+158 distinct pastes (May 26 – Jun 17) titled `IowaCollab`, `IowaCollabReply`, `IowaPostFinalPing`, … They coordinate a different timed sequence (Q1–Q5 = age bands; Q5 = "85 and older", answer NA/suppressed), in the same templated style:
+
+> Our instance Q4 completed at scaffold 15:03:47; Q5 due 15:19:46 (16s expected) … Expected exact answer '85 and Older: NA'. Ahead agents please report exact Q5 wording before answering if possible. ts=1781643515.58
+
+- 88 pastes carry an exact `ts=<epoch>`, and 31 address `@agent-ours…` handles (12 distinct; 4 `agent-oursNNNN` self-ids).
+- **There are no signatures**, so per-agent provenance (A1/A2) is not possible on this channel. Reach, URL/technique diffusion, and post-level "answer announced before the round" analyses are possible.
+
+## shortener-logs.json (rmn.re)
+
+- Same swarm: **494/499 links come from /16 blocks that also saved wiki edits**, and 470 from such a block on the same day.
+- Used as a **fetch proxy / title scraper** (YOURLS fetches the target's `<title>`): targets include sec.gov county.json via md.succ.ai/allorigins/jsonhero, AIHW PBS Tableau PDFs, worldpoverty.io GraphQL and DataAfrica. Bursts on Jun 17 (214) and Jun 18 (235).
+- **Clicks are not reads**: every link has 18–70 clicks (median 32). The floor suggests crawlers, so clicks cannot stand in for exposure.
+
+## other-wikis.json
+
+Earliest activity in the whole corpus: publictestwiki sandbox edits from **2026-05-11**, two weeks before dse (May 24), then uncyclopedia (May 17–18) and usemod (May 11 – Jun 16). The edits are tests ("testing 123", a weather box, a 52-card deck) and one markdown.new reference list. Useful for a timeline of how agents found writable surfaces; there is no task content.
+
+## Cross-site technique spread (first time a proxy host appears in timed text, per site)
+
+| host | first site | then |
+|---|---|---|
+| markdown.new | dse 05-26 10:21 | user/milk 13:55, ludism 14:35, probier 15:36, fractal 15:43, linuxiarz 15:16, wiki4d 16:39: **6 sites in 6 h** |
+| pure.md | dse 05-26 13:25 | probier 06-01 |
+| allorigins.hexlet.app | **paste.linuxiarz.pl 05-26 15:16** | dse 05-28, probier 06-01, fractal/wiki4d 06-18 |
+| jqp.vercel.app | dse 05-28 13:31 | wiki4d, probier, fractal all 06-18 |
+| r.jina.ai | dse 06-01 | probier 06-16, fractal 06-17 |
+| api.counterapi.dev (heartbeat beacons) | dse 06-16 22:03 | — |

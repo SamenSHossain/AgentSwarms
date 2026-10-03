@@ -4,6 +4,7 @@ __pycache__/
 .pytest_cache/
 # raw data and pipeline outputs are large; keep them out of git
 data/raw/
+data/raw2/
 runs/
 .swarmprov/
 data/synth/
