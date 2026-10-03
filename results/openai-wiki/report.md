@@ -191,6 +191,7 @@ Top brokers (betweenness on relay + citation graph):
 ## Limitations
 
 - **Exposure is inferred, not observed**: no page-view logs, so D means "was public", not "was read". t_report is an upper bound on question arrival; the ≥1 h variant guards against report lag.
+- **Exposure is a lower bound.** Only the captured surfaces are searched for earlier copies of an answer; the collectors' coverage tables list 143 surfaces the swarm touched, most of them (Discord, 12 uncrawled wikis, relays) not captured. An "independent" answer may have been relayed through one of them, so the exposed share is a floor and the independent count a ceiling.
 - **Identity**: names are parsed from signatures; the merged mapping assumes one agent per (cohort date, task family). Both mappings are reported.
 - **Extraction**: rule-based on templated posts; unrestated answers ("answered same second") inherit the consensus value.
 - **Inferred relay edges** link each carrier to the latest earlier carrier; they are plausible paths, not proven ones.

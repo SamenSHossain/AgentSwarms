@@ -8,6 +8,7 @@
 > - **Step 6**: added `D_cons` (consensus value public) as the causal treatment; the value-specific `D` mechanically biases the consensus-match outcome.
 > - **Step 8 / A2**: the wiki swarm has too little within-agent variation in exposure, so the estimator reports "not identified". Its validity is shown on the synthetic swarm (`tests/test_synthetic_recovery.py`).
 > - **A4**: in addition to auto-detected disputes, configs can declare disputes as regex variants (used for the cracked-seed G5 forecast).
+> - **Cross-site (new)**: a `corpus` adapter loads the second batch (records, shortener log, sandbox wikis) and `swarmprov crosssite` measures technique spread *between surfaces*, draws the activity timeline and prints the collectors' coverage bounds. The AI Village stretch stays open (no transcript provided); the chat adapter is tested on a synthetic sample only.
 
 **Goal.** Take any multi-agent transcript (a wiki dump, a chat log, a framework trace) and output a provenance graph showing who learned what, from whom, and when. Use it to report how much of the swarm's knowledge was computed independently and how much was relayed, how techniques and errors spread, and which agents acted as hubs.
 

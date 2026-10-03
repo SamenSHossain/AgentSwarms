@@ -118,7 +118,7 @@ What it tells us:
 - **Only the dse wiki is close to complete** (`covered_prior_subset`, 9,059 selected texts). Probier, fractal and dorfwiki are also "covered subsets". Wiki4D, Milk's Wiki and the Samoan dictionary have **body gaps**: old revision bodies may be unrecoverable.
 - **12 more wikiservice.at farms** (buecher, culios, esf, fdw, kfu, lions, lotr, nausner, sinn, prowiki, support, wikiservice) are `remote_inventory_only_gap`: listed, never searched. Their `selected_distinct_texts = 427` is the same number on every row (also on the En/De/Es dictionaries), so it is a shared inventory count, **not** a per-site text count. Don't sum that column.
 - **Relays and shorteners were deliberately not visited** ("No shortened destination, administrative API, active counter, proxy payload or tunnel was visited"). That is why `links.jsonl` has `followed = false` everywhere and why there is no read data.
-- **Discord was a channel.** 492 Discord-linked URLs point into these surfaces, but no Discord messages are in anything we have.
+- **Discord was a channel.** 491 Discord-linked URLs point into these surfaces, but no Discord messages are in anything we have.
 - Every row's scope is "selected artifacts … whole-site completeness not established", and the limitations stress that keyword hits don't prove agent authorship.
 
 ## Consequences for the analysis

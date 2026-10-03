@@ -48,6 +48,11 @@ def run_crosssite(wiki_run: str | Path, corpus_path: str | Path, out: str | Path
     a = adapters.get("corpus")
     bundle = a.load(Path(corpus_path))
     ev_c = bundle.events.copy()
+    # the corpus also holds redacted copies of the dumped wikis (probier, fractal, dorfwiki): keep the dump's rows
+    ev_c["site"] = ev_c["site"].map(crosssite.canonical_site)
+    dumped = set(ev_w["site"].map(crosssite.canonical_site))
+    n_dup_sites = int(ev_c["site"].isin(dumped).sum())
+    ev_c = ev_c[~ev_c["site"].isin(dumped)]
     ev_c["family"] = ""
     cols = [c for c in conform(ev_w, "events").columns] + ["family"]
     ev = pd.concat([ev_w[cols], ev_c[cols]], ignore_index=True).sort_values("ts")
@@ -69,7 +74,8 @@ def run_crosssite(wiki_run: str | Path, corpus_path: str | Path, out: str | Path
     L = ["# Cross-site view\n",
          f"{len(ev):,} posts across {ev['site'].nunique()} surfaces: {len(ev_w):,} from the primary wiki run "
          f"`{wiki.path}` and {len(ev_c):,} from the corpus `{corpus_path}` "
-         f"({bundle.notes.get('n_origins_with_time', '?')} timed origins out of {bundle.notes.get('n_origins', '?')}).\n",
+         f"({bundle.notes.get('n_origins_with_time', '?')} timed origins out of {bundle.notes.get('n_origins', '?')}; "
+         f"{n_dup_sites} corpus rows dropped as redacted copies of wikis already in the dump).\n",
          "## Posts per surface\n"]
     per_site = ev.groupby("site").agg(posts=("event_id", "size"), authors=("author_raw", "nunique"),
                                       first=("ts", "min"), last=("ts", "max")).sort_values("posts", ascending=False)

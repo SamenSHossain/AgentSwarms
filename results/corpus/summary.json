@@ -1,0 +1,118 @@
+{
+  "mapping": "merged",
+  "profile": {
+    "adapter": "corpus",
+    "n_events": 1296,
+    "n_authors": 126,
+    "first_ts": "2026-03-11 17:03:08+00:00",
+    "last_ts": "2026-07-07 19:12:00+00:00"
+  },
+  "A3": [
+    {
+      "technique": "proxy-markdown-new",
+      "first_seen": "2026-05-26 13:55:19+00:00",
+      "originator": "anon@wikiservice.at/user/milk",
+      "n_posts": 88,
+      "at_risk": 94,
+      "adopters": 8,
+      "adoption_share": 0.0851063829787234,
+      "median_hours_to_adopt": NaN,
+      "median_hours_among_adopters": 2.897361111111111
+    },
+    {
+      "technique": "proxy-allorigins",
+      "first_seen": "2026-05-26 15:16:26+00:00",
+      "originator": "anon@paste.linuxiarz.pl",
+      "n_posts": 80,
+      "at_risk": 93,
+      "adopters": 18,
+      "adoption_share": 0.1935483870967742,
+      "median_hours_to_adopt": 553.9066666666666,
+      "median_hours_among_adopters": 551.8715277777778
+    },
+    {
+      "technique": "proxy-jqp",
+      "first_seen": "2026-06-18 16:00:07+00:00",
+      "originator": "ip16:20.230",
+      "n_posts": 21,
+      "at_risk": 18,
+      "adopters": 5,
+      "adoption_share": 0.2777777777777778,
+      "median_hours_to_adopt": NaN,
+      "median_hours_among_adopters": 2.263611111111111
+    },
+    {
+      "technique": "proxy-md-succ",
+      "first_seen": "2026-06-18 15:23:34+00:00",
+      "originator": "anon@wikiservice.at/probier",
+      "n_posts": 67,
+      "at_risk": 17,
+      "adopters": 4,
+      "adoption_share": 0.23529411764705882,
+      "median_hours_to_adopt": NaN,
+      "median_hours_among_adopters": 4.370833333333334
+    },
+    {
+      "technique": "proxy-jina",
+      "first_seen": "2026-05-17 21:30:24+00:00",
+      "originator": "ip16:104.209",
+      "n_posts": 27,
+      "at_risk": 93,
+      "adopters": 5,
+      "adoption_share": 0.053763440860215055,
+      "median_hours_to_adopt": 1221.61,
+      "median_hours_among_adopters": 764.0825
+    },
+    {
+      "technique": "proxy-pure-md",
+      "first_seen": "2026-06-01 14:09:19+00:00",
+      "originator": "anon@wikiservice.at/probier",
+      "n_posts": 3,
+      "at_risk": 92,
+      "adopters": 0,
+      "adoption_share": 0.0,
+      "median_hours_to_adopt": NaN,
+      "median_hours_among_adopters": NaN
+    },
+    {
+      "technique": "shortener-da-gd",
+      "first_seen": "2026-06-16 20:05:22+00:00",
+      "originator": "anon@paste.linuxiarz.pl",
+      "n_posts": 15,
+      "at_risk": 91,
+      "adopters": 7,
+      "adoption_share": 0.07692307692307693,
+      "median_hours_to_adopt": NaN,
+      "median_hours_among_adopters": 44.17722222222222
+    }
+  ],
+  "A4": {
+    "n_value_slots_disputed": 0,
+    "n_sequence_slots_disputed": 0,
+    "featured": []
+  },
+  "A5": {
+    "n_nodes": 18,
+    "n_edges": 10,
+    "n_exposure_edges": 0,
+    "n_relay_edges": 10,
+    "n_xchannel_edges": 91,
+    "n_citation_edges": 0,
+    "exposure_sources": 0,
+    "gini_exposure_outdegree": NaN,
+    "top10_share_exposure": NaN,
+    "gini_relay_outdegree": 0.0,
+    "mean_chain_depth": NaN,
+    "mean_agents_per_fact": NaN
+  },
+  "A6": {
+    "urls": {
+      "facts": 1569,
+      "repeated": 63,
+      "mean_repeaters": 0.06437221159974506,
+      "p90_repeaters": 0.0,
+      "max_hops": 3,
+      "mean_hops_repeated": 1.0317460317460319
+    }
+  }
+}

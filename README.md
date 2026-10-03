@@ -28,6 +28,10 @@ swarmprov run full-wiki-logs.zip -o runs/wiki          # zip works too
 # any chat transcript (AI Village village-transcript.json, Slack/Discord exports, framework logs)
 swarmprov run village-transcript.json -o runs/village --adapter chat --config my_config.json
 
+# the cross-site batch (records.jsonl, links.jsonl, shortener-logs.json, other-wikis.json, coverage CSVs)
+swarmprov run data/raw2 -o runs/corpus                 # standard pipeline on the corpus alone (reach, techniques)
+swarmprov crosssite runs/wiki data/raw2 -o runs/crosssite   # wiki run + corpus: technique spread between surfaces
+
 # synthetic swarm with known provenance (used by the tests)
 swarmprov synth -o data/synth/transcript.jsonl --agents 60 --seed 2
 swarmprov run data/synth/transcript.jsonl -o runs/synth --config data/synth/config.json
@@ -43,6 +47,7 @@ Stages can be rerun on their own; each one reads and writes Parquet tables in th
 | `swarmprov graph RUN` | → `edges_*`, `chains_*`, `provenance_merged.graphml` |
 | `swarmprov report RUN [--mapping strict]` | → `report.md`, `summary.json`, `figures/` |
 | `swarmprov sample-gold RUN -n 100` / `swarmprov validate RUN labels.jsonl` | hand-label sample / precision–recall |
+| `swarmprov crosssite WIKI_RUN CORPUS_DIR -o RUN` | combined events → `technique_spread`, `technique_site_summary`, timeline, coverage bounds |
 
 ## Results on the OpenAI wiki swarm
 
@@ -50,12 +55,25 @@ The full report, with all tables and figures, is in [`results/openai-wiki/report
 
 | | finding |
 |---|---|
-| **A1 Provenance** | **1,108 answers by 617 agents; only 83 were independent lookups.** For 93% of answers, the same item and value were already on the wiki before the agent reported answering; for 83%, at least an hour before. The median head start was 11.6 h. In 19% of rounds the agent had posted the answer itself before the question arrived. |
+| **A1 Provenance** | **1,108 answers by 617 agents; at most 83 were independent lookups.** For 93% of answers, the same item and value were already on the wiki before the agent reported answering; for 83%, at least an hour before. The median head start was 11.6 h. In 19% of rounds the agent had posted the answer itself before the question arrived. These are floors: only captured surfaces are searched (see coverage bounds below). |
 | **A2 Does availability cause copying?** | **Not identified in this swarm.** The consensus value was public before almost every report, so only 3–37 agents ever switch between exposed and unexposed rounds. The fixed-effects estimates are about zero with wide intervals, and the tool reports *"not identified"* when fewer than 10 agents switch. On a synthetic swarm with known copying the same estimator recovers the true effect (0.70 vs 0.70 true), so the null result comes from the data, not the method. |
 | **A3 Diffusion** | The **blob-hostname bypass** was first posted 2026-06-20 05:10 UTC by the Mar30 OECD agent. 17 of 73 at-risk OECD agents (23%) adopted it, a median of 0.8 h after first exposure. The *live-tooltip value* it enabled reached 35 of 74 (47%); Kaplan–Meier median 5.7 h. Heartbeat beacons spread slowly across the whole swarm (96 of 1,114 agents, median 81 h among adopters). |
 | **A4 Errors** | **Cracked-seed G5 forecast**: "Maryland" (RNG prediction) was carried by 30 agents before the observed **Montana** (9 agents) appeared. Montana took the majority of *new* carriers 12 h later. **OECD precision fight**: 16.40→**16.38** (Poland) and 14.60→**14.59** (Slovak Republic) overtook within the first 3-hour bin after the tooltip evidence. **9.90→9.91 (Hungary) never won**: 69 agents kept 9.90, against 17. |
 | **A5 Structure** | 49 agents were the first public source for someone else's answer. **The top 10 supplied 73%** of all exposed answers (out-degree Gini 0.69). Facts repeated by ≥2 agents travelled 2.0 hops on average, with a maximum of 10. |
 | **A6 Reach** | Of 365 task values, 159 were repeated by other agents (mean 3.6 repeaters, p90 10). Of 23,560 URLs, 5,373 were repeated. |
+
+### Cross-site results (wiki run + corpus, [`results/crosssite/report.md`](results/crosssite/report.md))
+
+17,283 posts across 20 surfaces (15,987 from the wiki dump, 871 timed corpus posts after dropping the corpus's redacted copies of wikis already in the dump, plus the rmn.re shortener log and the sandbox wikis).
+
+| finding | detail |
+|---|---|
+| **Fetch-proxy tricks crossed platforms in hours; task tricks never did.** | `markdown.new` first appeared on dse at 09:50 on May 26 and was on **6 other surfaces within 7 h** (user/milk 4.1 h, ludism 4.7, paste.linuxiarz 5.4, probier 5.8, fractal 5.9, wiki4d 6.8). The `allorigins` proxy originated on the **pastebin**, two days before it reached dse. All six task-level techniques (blob bypass, live tooltip, heartbeat beacons, seed cracking, clock.wait, ZZZ pages) stayed on dse. |
+| **The earliest proxy use predates the main wiki by nine days.** | A May 17 publictestwiki sandbox edit already chains three proxies (Facebook redirect → web2md → `r.jina.ai`). |
+| **Three activity waves.** | Sandbox tests from May 11; the main wiki from May 24 with a May 26 burst on every surface; the June 16–22 spike (peak 4,834 dse posts on June 18) with the shortener burst (235 links on June 18) and the pastebin "Iowa" channel (119 posts on June 16). |
+| **Coverage bounds.** | Of 143 surfaces the collectors inventoried, 76 were never searched or yielded no agent text, 23 relays and 23 shorteners were deliberately not visited, and 491 Discord links point into these sites with no Discord messages captured. Every exposure share above is a floor. |
+
+Running the standard pipeline on the corpus alone (`results/corpus/`) exercises the generic path on an unsigned, mixed-format source: 1,296 posts, 126 author strings, 15 answer claims (the pastebin channel is unsigned, so per-agent provenance is not possible there), and 1,569 URL facts for the reach analysis.
 
 ### Validation of the extractor
 
@@ -102,14 +120,16 @@ All source-specific knowledge lives in one adapter plus an `AdapterConfig`, whic
 
 ```
 swarmprov/
-  adapters/   base.py (Adapter, AdapterConfig, Capabilities)  wiki.py  chat.py
+  adapters/   base.py (Adapter, AdapterConfig, Capabilities)  wiki.py  chat.py  corpus.py (records/shortener/other-wikis)
   segment.py  identity.py  rules.py  gazetteer.py  claims.py  exposure.py  graph.py
   extract_llm.py  validate.py  synth.py  report.py  pipeline.py  cli.py  plotting.py
   analysis/   provenance.py (A1)  causal.py (A2)  diffusion.py (A3)  errors.py (A4)  structure.py (A5, A6)
+              crosssite.py (technique spread between surfaces, timeline, coverage bounds)
+  crosssite_pipeline.py   the `crosssite` stage
 tests/        rules, segmentation, chat adapter, LLM merge (fake client), synthetic end-to-end recovery
 validation/   labels (event ids only) for the three validation splits
-results/      the committed report + figures for the wiki dump
+results/      committed reports + figures: openai-wiki/, crosssite/, corpus/, synthetic/
 docs/         PLAN.md (general pipeline plan), DATA.md (what the dump actually contains)
 ```
 
-Run the tests with `python -m pytest -q` (24 tests, about 10 s). The raw data and run directories are git-ignored.
+Run the tests with `python -m pytest -q` (38 tests, about 15 s). The raw data and run directories are git-ignored.
