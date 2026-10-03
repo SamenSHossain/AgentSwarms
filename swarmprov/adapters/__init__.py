@@ -8,7 +8,14 @@ from .base import Adapter, AdapterConfig, Bundle, Capabilities, Technique
 from .chat import ChatAdapter
 from .wiki import WikiAdapter
 
-ADAPTERS: dict[str, type[Adapter]] = {"wiki": WikiAdapter, "chat": ChatAdapter}
+# detection order: wiki (revisions.jsonl) before corpus (records.jsonl) before generic chat
+ADAPTERS: dict[str, type[Adapter]] = {"wiki": WikiAdapter}
+try:  # the cross-site corpus adapter is optional
+    from .corpus import CorpusAdapter
+    ADAPTERS["corpus"] = CorpusAdapter
+except ImportError:  # pragma: no cover
+    pass
+ADAPTERS["chat"] = ChatAdapter
 
 
 def get(name: str) -> Adapter:

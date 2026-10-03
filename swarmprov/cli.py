@@ -8,6 +8,7 @@
     swarmprov report   runs/wiki [--mapping merged|strict]
     swarmprov sample-gold runs/wiki [-n 120]
     swarmprov validate runs/wiki gold.jsonl
+    swarmprov crosssite runs/wiki data/raw2 -o runs/crosssite
     swarmprov synth    -o data/synth.jsonl            # synthetic swarm with known provenance
 """
 
@@ -62,6 +63,11 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("gold")
     s.add_argument("--out-name", default="validation.json", help="file name in the run dir for the scores")
 
+    s = sub.add_parser("crosssite", help="technique spread between surfaces, timeline, coverage bounds")
+    s.add_argument("wiki_run", help="run directory of the primary wiki (e.g. runs/wiki)")
+    s.add_argument("corpus", help="directory with records.jsonl, shortener-logs.json, other-wikis.json, site-coverage.csv")
+    s.add_argument("-o", "--out", default="runs/crosssite")
+
     s = sub.add_parser("synth", help="generate a synthetic swarm transcript with known provenance")
     s.add_argument("-o", "--out", default="data/synth/transcript.jsonl")
     s.add_argument("--agents", type=int, default=60)
@@ -88,6 +94,9 @@ def main(argv: list[str] | None = None) -> int:
     elif a.cmd == "validate":
         from . import validate
         validate.score(RunDir(a.run), a.gold, a.out_name)
+    elif a.cmd == "crosssite":
+        from .crosssite_pipeline import run_crosssite
+        run_crosssite(a.wiki_run, a.corpus, a.out)
     elif a.cmd == "synth":
         from . import synth
         synth.write(a.out, n_agents=a.agents, copy_rate=a.copy_rate, seed=a.seed)
