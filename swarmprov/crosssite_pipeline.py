@@ -84,6 +84,7 @@ def run_crosssite(wiki_run: str | Path, corpus_path: str | Path, out: str | Path
     L.append("\n## Activity timeline\n")
     L.append(f"![timeline](figures/{Path(fig_time).name})\n")
     if cov:
+        L.append("\n## Coverage bounds (from the collectors' site inventory)\n")
         L.append(crosssite.coverage_markdown(cov))
     (run.path / "report.md").write_text("\n".join(L))
     (run.path / "summary.json").write_text(json.dumps({
