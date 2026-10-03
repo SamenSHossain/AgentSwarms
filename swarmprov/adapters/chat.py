@@ -28,15 +28,17 @@ ALIASES = {
 
 
 def _read_any(path: Path):
-    opener = gzip.open if path.suffix == ".gz" else open
-    with opener(path, "rt", encoding="utf-8") as fh:
-        head = fh.read(1)
-        fh.seek(0)
-        if head in "[{":
-            try:
-                return json.load(fh)
-            except json.JSONDecodeError:
-                fh.seek(0)
+    gz = path.suffix == ".gz"
+    inner = path.name[:-3] if gz else path.name
+    with (gzip.open if gz else open)(path, "rt", encoding="utf-8") as fh:
+        if not inner.endswith(".jsonl"):
+            head = fh.read(1)
+            fh.seek(0)
+            if head in "[{":
+                try:
+                    return json.load(fh)
+                except json.JSONDecodeError:
+                    fh.seek(0)
         return [json.loads(line) for line in fh if line.strip()]
 
 
@@ -83,6 +85,13 @@ def _to_ts(v) -> pd.Timestamp:
     return pd.to_datetime(v, utc=True, errors="coerce")
 
 
+def _site(path: Path) -> str:
+    name = path.name
+    while name.endswith((".gz", ".json", ".jsonl")):
+        name = name.rsplit(".", 1)[0]
+    return name
+
+
 def _text(v) -> str:
     if isinstance(v, list):  # content blocks
         return "\n".join(b.get("text", "") if isinstance(b, dict) else str(b) for b in v)
@@ -121,15 +130,17 @@ class ChatAdapter(Adapter):
                 "visible_until": pd.NaT,
                 "channel_family": "",
                 "source_ref": f"{Path(path).name}:{i}",
-                "site": Path(path).stem,
+                "site": _site(Path(path)),
                 "source_kind": "message",
             })
+        if not rows:
+            raise ValueError(f"{path}: no messages with text found (pass mapping={{'text': <field>}} ?)")
         ev = pd.DataFrame(rows)
-        has_ts = len(ev) > 0 and ev["ts"].notna().mean() > 0.9
+        has_ts = ev["ts"].notna().mean() > 0.9
         caps = Capabilities(has_wall_clock=has_ts, has_explicit_author=True, has_reads=False,
-                            has_lifecycle=False, has_threading=bool(len(ev) and ev["parent_id"].notna().any()))
-        notes = {"n_messages": len(ev), "n_channels": int(ev["channel"].nunique()) if len(ev) else 0,
-                 "n_authors": int(ev["author_raw"].nunique()) if len(ev) else 0}
+                            has_lifecycle=False, has_threading=bool(ev["parent_id"].notna().any()))
+        notes = {"n_messages": len(ev), "n_channels": int(ev["channel"].nunique()),
+                 "n_authors": int(ev["author_raw"].nunique())}
         return Bundle(events=ev, capabilities=caps, notes=notes)
 
     def config(self) -> AdapterConfig:

@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import adapters, claims as claims_mod, exposure, graph, identity, rules
+from . import adapters, claims as claims_mod, exposure, graph, identity, remote, rules
 from .schema import RunDir, conform
 
 AGENT_COLS = {"merged": "agent_merged", "strict": "agent_strict"}
@@ -30,6 +30,10 @@ def load_config(run: RunDir):
 
 
 def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | None = None) -> dict:
+    source = str(path)
+    if remote.is_remote(path):
+        _log(f"fetch {path}")
+        path = remote.resolve(path)
     a = adapters.detect(path) if adapter == "auto" else adapters.get(adapter)
     _log(f"ingest {path} with adapter '{a.name}'")
     b = a.load(Path(path))
@@ -45,7 +49,7 @@ def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | N
     if b.reads is not None:
         run.write("reads", b.reads)
     profile = {
-        "adapter": a.name, "config": cfg.name, "source": str(path),
+        "adapter": a.name, "config": cfg.name, "source": source,
         "config_path": str(Path(config).resolve()) if config else None,
         "capabilities": b.capabilities.as_dict(),
         "n_events": len(ev), "n_authors": int(ev["author_raw"].nunique()),

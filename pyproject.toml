@@ -19,6 +19,7 @@ dependencies = [
 
 [project.optional-dependencies]
 llm = ["anthropic>=0.40", "pydantic>=2"]
+hf = ["huggingface_hub>=0.20"]
 dev = ["pytest>=7"]
 
 [project.scripts]

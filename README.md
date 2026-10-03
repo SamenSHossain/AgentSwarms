@@ -19,14 +19,15 @@ transcript ──adapter──▶ events ──rules/LLM──▶ claims ──�
 
 ```bash
 pip install -e .            # pandas, pyarrow, networkx, matplotlib, pyfixest
-# optional: pip install -e '.[llm]'  for Claude-based extraction
+# optional: pip install -e '.[llm]'  for Claude-based extraction;  '.[hf]'  for hf:// inputs
 
 # the wiki dump: a directory or the .zip with revisions/events/pages/labels.jsonl
 swarmprov run data/raw -o runs/wiki                    # ≈1 min; writes runs/wiki/report.md
 swarmprov run full-wiki-logs.zip -o runs/wiki          # zip works too
 
-# any chat transcript (AI Village village-transcript.json, Slack/Discord exports, framework logs)
+# any chat transcript (AI Village, Slack/Discord exports, framework logs); hf:// URIs are fetched first
 swarmprov run village-transcript.json -o runs/village --adapter chat --config my_config.json
+swarmprov run hf://datasets/aidigestorg/ai-village/chat_messages.jsonl.gz -o runs/village --adapter chat
 
 # the cross-site batch (records.jsonl, links.jsonl, shortener-logs.json, other-wikis.json, coverage CSVs)
 swarmprov run data/raw2 -o runs/corpus                 # standard pipeline on the corpus alone (reach, techniques)
@@ -122,7 +123,7 @@ All source-specific knowledge lives in one adapter plus an `AdapterConfig`, whic
 swarmprov/
   adapters/   base.py (Adapter, AdapterConfig, Capabilities)  wiki.py  chat.py  corpus.py (records/shortener/other-wikis)
   segment.py  identity.py  rules.py  gazetteer.py  claims.py  exposure.py  graph.py
-  extract_llm.py  validate.py  synth.py  report.py  pipeline.py  cli.py  plotting.py
+  extract_llm.py  validate.py  synth.py  report.py  pipeline.py  cli.py  plotting.py  remote.py (hf:// inputs)
   analysis/   provenance.py (A1)  causal.py (A2)  diffusion.py (A3)  errors.py (A4)  structure.py (A5, A6)
               crosssite.py (technique spread between surfaces, timeline, coverage bounds)
   crosssite_pipeline.py   the `crosssite` stage
@@ -132,4 +133,4 @@ results/      committed reports + figures: openai-wiki/, crosssite/, corpus/, sy
 docs/         PLAN.md (general pipeline plan), DATA.md (what the dump actually contains)
 ```
 
-Run the tests with `python -m pytest -q` (38 tests, about 15 s). The raw data and run directories are git-ignored.
+Run the tests with `python -m pytest -q` (46 tests, about 20 s). The raw data and run directories are git-ignored.

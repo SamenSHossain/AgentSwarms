@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import adapters
+from . import adapters, remote
 from .adapters.base import Technique
 from .analysis import crosssite
 from .schema import RunDir, conform
@@ -45,6 +45,7 @@ def run_crosssite(wiki_run: str | Path, corpus_path: str | Path, out: str | Path
     run = RunDir(out)
     wiki = RunDir(wiki_run)
     ev_w = _wiki_events(wiki)
+    corpus_path = remote.resolve(corpus_path)
     a = adapters.get("corpus")
     bundle = a.load(Path(corpus_path))
     ev_c = bundle.events.copy()
