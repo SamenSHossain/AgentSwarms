@@ -10,12 +10,14 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from urllib.parse import unquote
 
+# revisions may contain '/' only in the Hub's special refs; pandas also percent-encodes them
 HF_RX = re.compile(
-    r"^hf://(?:(?P<type>datasets|spaces)/)?(?P<repo>(?!datasets/|spaces/)[^/@]+/[^/@]+)"
-    r"(?:@(?P<rev>[^/]+))?(?:/(?P<file>.+[^/]))?$"
+    r"^hf://(?:(?P<type>datasets|spaces|models)/)?(?P<repo>(?!(?:datasets|spaces|models)/)[^/@]+/[^/@]+)"
+    r"(?:@(?P<rev>refs/(?:convert/[\w.-]+|pr/\d+)|[^/]+))?(?:/(?P<file>.*[^/]))?$"
 )
-REPO_TYPES = {"datasets": "dataset", "spaces": "space", None: "model"}
+REPO_TYPES = {"datasets": "dataset", "spaces": "space", "models": "model", None: "model"}
 
 
 def is_remote(path) -> bool:
@@ -28,12 +30,13 @@ def resolve(path: str | Path, cache_dir: str | None = None) -> Path:
         return Path(path)
     m = HF_RX.match(path)
     if not m:
-        raise ValueError(f"not a Hugging Face URI: {path!r} (expected hf://datasets/<owner>/<name>/<file>)")
+        raise ValueError(f"not a Hugging Face URI: {path!r} (expected hf://datasets/<owner>/<name>[@<revision>][/<file>])")
     try:
         import huggingface_hub as hub
     except ImportError as e:  # pragma: no cover
         raise ImportError("hf:// inputs need huggingface_hub: pip install 'swarmprov[hf]'") from e
-    kw = dict(repo_id=m["repo"], repo_type=REPO_TYPES[m["type"]], revision=m["rev"], cache_dir=cache_dir)
+    kw = dict(repo_id=m["repo"], repo_type=REPO_TYPES[m["type"]],
+              revision=unquote(m["rev"]) if m["rev"] else None, cache_dir=cache_dir)
     if m["file"]:
         return Path(hub.hf_hub_download(filename=m["file"], **kw))
     return Path(hub.snapshot_download(**kw))

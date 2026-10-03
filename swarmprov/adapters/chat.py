@@ -27,19 +27,39 @@ ALIASES = {
 }
 
 
+WRAPPER_KEYS = ("messages", "events", "transcript", "items", "data")
+
+
 def _read_any(path: Path):
+    if path.is_dir():
+        raise ValueError(f"{path} is a directory; the chat adapter reads one transcript file "
+                         f"(e.g. hf://datasets/<owner>/<name>/<file>.jsonl.gz)")
     gz = path.suffix == ".gz"
     inner = path.name[:-3] if gz else path.name
     with (gzip.open if gz else open)(path, "rt", encoding="utf-8") as fh:
-        if not inner.endswith(".jsonl"):
-            head = fh.read(1)
-            fh.seek(0)
-            if head in "[{":
-                try:
-                    return json.load(fh)
-                except json.JSONDecodeError:
-                    fh.seek(0)
+        if inner.endswith(".jsonl"):
+            # line-delimited first, so a one-record file is still one message ...
+            try:
+                rows = [json.loads(line) for line in fh if line.strip()]
+            except json.JSONDecodeError:
+                rows = None
+            if rows is not None and not (len(rows) == 1 and _is_document(rows[0])):
+                return rows
+            fh.seek(0)  # ... but a JSON document saved under a .jsonl name still loads
+            return json.load(fh)
+        head = fh.read(1)
+        fh.seek(0)
+        if head in "[{":
+            try:
+                return json.load(fh)
+            except json.JSONDecodeError:
+                fh.seek(0)
         return [json.loads(line) for line in fh if line.strip()]
+
+
+def _is_document(obj) -> bool:
+    """A whole transcript on one line: an array, or a wrapper object around one."""
+    return isinstance(obj, list) or (isinstance(obj, dict) and any(isinstance(obj.get(k), list) for k in WRAPPER_KEYS))
 
 
 def _flatten(obj, channel: str = "") -> list[dict]:
@@ -53,7 +73,7 @@ def _flatten(obj, channel: str = "") -> list[dict]:
                 out.append(m)
         return out
     if isinstance(obj, dict):
-        for key in ("messages", "events", "transcript", "items", "data"):
+        for key in WRAPPER_KEYS:
             if isinstance(obj.get(key), list):
                 return _flatten(obj[key], channel)
         out = []

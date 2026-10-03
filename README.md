@@ -133,4 +133,4 @@ results/      committed reports + figures: openai-wiki/, crosssite/, corpus/, sy
 docs/         PLAN.md (general pipeline plan), DATA.md (what the dump actually contains)
 ```
 
-Run the tests with `python -m pytest -q` (46 tests, about 20 s). The raw data and run directories are git-ignored.
+Run the tests with `python -m pytest -q` (59 tests, about 20 s). The raw data and run directories are git-ignored.
