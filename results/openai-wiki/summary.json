@@ -1,0 +1,348 @@
+{
+  "mapping": "merged",
+  "profile": {
+    "adapter": "wiki",
+    "n_events": 15987,
+    "n_authors": 3232,
+    "first_ts": "2026-05-24 06:02:19+00:00",
+    "last_ts": "2026-07-02 17:51:22+00:00"
+  },
+  "A1": {
+    "n_answers": 1108,
+    "n_independent": 83,
+    "share_exposed": 0.9250902527075813,
+    "share_exposed_10m": 0.907942238267148,
+    "share_exposed_60m": 0.8321299638989169,
+    "share_self_prepared": 0.18501805054151624,
+    "median_gap_h": 11.62,
+    "n_agents": 617
+  },
+  "A2": [
+    {
+      "outcome": "y_instant",
+      "outcome_label": "Answered instantly (<= 2 s claimed)",
+      "treatment": "D_cons",
+      "treatment_label": "Consensus public before report",
+      "n": 787,
+      "agents": 302,
+      "items": 57,
+      "agents_with_D_variation": 17,
+      "mean_y_D0": 0.4838709677419355,
+      "mean_y_D1": 0.48412698412698413,
+      "beta": -0.06633494373768489,
+      "se": 0.06561512920742678,
+      "p": 0.31284807352042066,
+      "ci_lo": -0.19546090324455745,
+      "ci_hi": 0.06279101576918766,
+      "note": NaN
+    },
+    {
+      "outcome": "y_instant",
+      "outcome_label": "Answered instantly (<= 2 s claimed)",
+      "treatment": "D_cons_w60m",
+      "treatment_label": "Consensus public >= 1 h before",
+      "n": 787,
+      "agents": 302,
+      "items": 57,
+      "agents_with_D_variation": 37,
+      "mean_y_D0": 0.6063829787234043,
+      "mean_y_D1": 0.4675324675324675,
+      "beta": -0.11273927227854844,
+      "se": 0.11436991918204581,
+      "p": 0.3250565514789754,
+      "ci_lo": -0.3378112294855392,
+      "ci_hi": 0.11233268492844237,
+      "note": NaN
+    },
+    {
+      "outcome": "y_instant|known",
+      "outcome_label": "Answered instantly, rounds with stated latency",
+      "treatment": "D_cons",
+      "treatment_label": "Consensus public before report",
+      "n": 328,
+      "agents": 144,
+      "items": 35,
+      "agents_with_D_variation": 4,
+      "mean_y_D0": 1.0,
+      "mean_y_D1": 0.8996865203761756,
+      "beta": NaN,
+      "se": NaN,
+      "p": NaN,
+      "ci_lo": NaN,
+      "ci_hi": NaN,
+      "note": "not identified: only 4 agents switch exposure status"
+    },
+    {
+      "outcome": "y_instant|known",
+      "outcome_label": "Answered instantly, rounds with stated latency",
+      "treatment": "D_cons_w60m",
+      "treatment_label": "Consensus public >= 1 h before",
+      "n": 328,
+      "agents": 144,
+      "items": 35,
+      "agents_with_D_variation": 10,
+      "mean_y_D0": 0.9523809523809523,
+      "mean_y_D1": 0.8951048951048951,
+      "beta": 0.0009667228623873576,
+      "se": 0.0038238467275152834,
+      "p": 0.800785263912553,
+      "ci_lo": -0.00659370170912112,
+      "ci_hi": 0.008527147433895835,
+      "note": NaN
+    },
+    {
+      "outcome": "y_consensus",
+      "outcome_label": "Answer matches the consensus value",
+      "treatment": "D_cons",
+      "treatment_label": "Consensus public before report",
+      "n": 595,
+      "agents": 227,
+      "items": 48,
+      "agents_with_D_variation": 3,
+      "mean_y_D0": 0.6470588235294118,
+      "mean_y_D1": 0.801038062283737,
+      "beta": NaN,
+      "se": NaN,
+      "p": NaN,
+      "ci_lo": NaN,
+      "ci_hi": NaN,
+      "note": "not identified: only 3 agents switch exposure status"
+    },
+    {
+      "outcome": "y_consensus",
+      "outcome_label": "Answer matches the consensus value",
+      "treatment": "D_cons_w60m",
+      "treatment_label": "Consensus public >= 1 h before",
+      "n": 595,
+      "agents": 227,
+      "items": 48,
+      "agents_with_D_variation": 15,
+      "mean_y_D0": 0.7916666666666666,
+      "mean_y_D1": 0.7970749542961609,
+      "beta": 0.024765532182865535,
+      "se": 0.0944582188438045,
+      "p": 0.7934186648928174,
+      "ci_lo": -0.16137037578299152,
+      "ci_hi": 0.21090144014872259,
+      "note": NaN
+    }
+  ],
+  "A3": [
+    {
+      "technique": "blob-hostname-bypass",
+      "first_seen": "2026-06-20 05:10:21+00:00",
+      "originator": "Mar30|oecd-equity",
+      "n_posts": 24,
+      "at_risk": 73,
+      "adopters": 17,
+      "adoption_share": 0.2328767123287671,
+      "median_hours_to_adopt": NaN,
+      "median_hours_among_adopters": 0.7844444444444445
+    },
+    {
+      "technique": "live-tooltip-value",
+      "first_seen": "2026-06-20 04:44:39+00:00",
+      "originator": "Apr19|oecd-equity",
+      "n_posts": 50,
+      "at_risk": 74,
+      "adopters": 35,
+      "adoption_share": 0.47297297297297297,
+      "median_hours_to_adopt": 5.735277777777778,
+      "median_hours_among_adopters": 4.196111111111111
+    },
+    {
+      "technique": "heartbeat-beacon",
+      "first_seen": "2026-06-17 00:19:12+00:00",
+      "originator": "Apr15|ihme-lymphatic-filariasis",
+      "n_posts": 199,
+      "at_risk": 1114,
+      "adopters": 96,
+      "adoption_share": 0.08617594254937164,
+      "median_hours_to_adopt": NaN,
+      "median_hours_among_adopters": 80.57305555555556
+    },
+    {
+      "technique": "zzz-backup-pages",
+      "first_seen": "2026-05-31 00:23:58+00:00",
+      "originator": "test",
+      "n_posts": 78,
+      "at_risk": 1642,
+      "adopters": 27,
+      "adoption_share": 0.016443361753958587,
+      "median_hours_to_adopt": NaN,
+      "median_hours_among_adopters": 451.09055555555557
+    },
+    {
+      "technique": "rng-seed-crack",
+      "first_seen": "2026-06-16 09:47:08+00:00",
+      "originator": "Apr02|datausa-sector61-state",
+      "n_posts": 51,
+      "at_risk": 1602,
+      "adopters": 42,
+      "adoption_share": 0.026217228464419477,
+      "median_hours_to_adopt": NaN,
+      "median_hours_among_adopters": 12.1875
+    },
+    {
+      "technique": "clock-wait-fastforward",
+      "first_seen": "2026-06-16 11:06:46+00:00",
+      "originator": "Mar13|datausa-grocery-workforce",
+      "n_posts": 195,
+      "at_risk": 1594,
+      "adopters": 135,
+      "adoption_share": 0.08469259723964868,
+      "median_hours_to_adopt": NaN,
+      "median_hours_among_adopters": 12.698611111111111
+    }
+  ],
+  "A4": {
+    "n_value_slots_disputed": 13,
+    "n_sequence_slots_disputed": 2,
+    "featured": [
+      {
+        "slot": "datausa-grocery-workforce | G5 (cracked-seed forecast vs observed)",
+        "kind": "declared",
+        "variants (agents)": "Maryland (RNG forecast) (30), Montana (observed) (9)",
+        "agents carrying both": 3,
+        "first variant": "Maryland (RNG forecast)",
+        "winner": "Montana (observed)",
+        "corrected": true,
+        "winner first seen": "2026-06-16 10:54:31+00:00",
+        "winner majority from": "2026-06-16 22:54:31+00:00",
+        "hours to overtake": 12.0
+      },
+      {
+        "slot": "oecd-equity | Poland",
+        "kind": "value",
+        "variants (agents)": "16.38 (33), 16.4 (50)",
+        "agents carrying both": 13,
+        "first variant": "16.4",
+        "winner": "16.38",
+        "corrected": true,
+        "winner first seen": "2026-06-20 04:56:50+00:00",
+        "winner majority from": "2026-06-20 04:56:50+00:00",
+        "hours to overtake": 0.0
+      },
+      {
+        "slot": "oecd-equity | Hungary",
+        "kind": "value",
+        "variants (agents)": "9.9 (69), 9.91 (17)",
+        "agents carrying both": 11,
+        "first variant": "9.9",
+        "winner": "9.91",
+        "corrected": true,
+        "winner first seen": "2026-06-20 04:56:50+00:00",
+        "winner majority from": "None",
+        "hours to overtake": NaN
+      },
+      {
+        "slot": "oecd-equity | Slovak Republic",
+        "kind": "value",
+        "variants (agents)": "14.59 (49), 14.6 (55)",
+        "agents carrying both": 20,
+        "first variant": "14.6",
+        "winner": "14.59",
+        "corrected": true,
+        "winner first seen": "2026-06-20 04:56:50+00:00",
+        "winner majority from": "2026-06-20 04:56:50+00:00",
+        "hours to overtake": 0.0
+      }
+    ]
+  },
+  "A5": {
+    "n_nodes": 1435,
+    "n_edges": 2447,
+    "n_exposure_edges": 1025,
+    "n_relay_edges": 9263,
+    "n_xchannel_edges": 11809,
+    "n_citation_edges": 227,
+    "exposure_sources": 49,
+    "gini_exposure_outdegree": 0.691806869089099,
+    "top10_share_exposure": 0.7336585365853658,
+    "gini_relay_outdegree": 0.6640724129700122,
+    "mean_chain_depth": 2.0314465408805034,
+    "mean_agents_per_fact": 9.371069182389936
+  },
+  "A6": {
+    "task values": {
+      "facts": 365,
+      "repeated": 159,
+      "mean_repeaters": 3.6465753424657534,
+      "p90_repeaters": 10.0,
+      "max_hops": 10,
+      "mean_hops_repeated": 2.0314465408805034
+    },
+    "urls": {
+      "facts": 23560,
+      "repeated": 5373,
+      "mean_repeaters": 0.8379032258064516,
+      "p90_repeaters": 2.0,
+      "max_hops": 18,
+      "mean_hops_repeated": 1.7171040387120788
+    }
+  },
+  "validation": {
+    "validation_dev": {
+      "n": 60,
+      "labeller": "assistant-audit (Claude); replace with human labels",
+      "gold_answers": 35,
+      "predicted_answers": 32,
+      "fields": {
+        "answer_post": {
+          "precision": 1.0,
+          "recall": 0.967741935483871,
+          "support": 31
+        },
+        "item": {
+          "accuracy": 1.0,
+          "support": 32
+        },
+        "value": {
+          "accuracy": 1.0,
+          "support": 21
+        },
+        "episode": {
+          "accuracy": 0.96875,
+          "support": 32
+        },
+        "latency_class": {
+          "accuracy": 1.0,
+          "support": 18
+        }
+      },
+      "split": "dev (tuned on)",
+      "labels_file": "validation/dev_labels.jsonl"
+    },
+    "validation_test": {
+      "n": 40,
+      "labeller": "assistant-audit (Claude), untouched test set; replace with human labels",
+      "gold_answers": 26,
+      "predicted_answers": 25,
+      "fields": {
+        "answer_post": {
+          "precision": 1.0,
+          "recall": 0.9090909090909091,
+          "support": 22
+        },
+        "item": {
+          "accuracy": 0.96,
+          "support": 25
+        },
+        "value": {
+          "accuracy": 1.0,
+          "support": 16
+        },
+        "episode": {
+          "accuracy": 0.96,
+          "support": 25
+        },
+        "latency_class": {
+          "accuracy": 1.0,
+          "support": 9
+        }
+      },
+      "split": "untouched test",
+      "labels_file": "validation/test_labels.jsonl"
+    }
+  }
+}

@@ -1,0 +1,1253 @@
+src,dst,family,item,value_norm,kind,dt_s,event_id
+Sep21|datausa-grocery-workforce,Apr27|datausa-grocery-workforce,datausa-grocery-workforce,Georgia,90725,exposure,420.0,8a958227c0aae0d3
+clothingsequencescout,May15|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,1128.0,c3b44091760f8497
+Apr27|datausa-grocery-workforce,Sep21|datausa-grocery-workforce,datausa-grocery-workforce,Arkansas,20794,exposure,655.0,7e24c61cf77bf07a
+clothingsequencescout,May24|datausa-clothing-workforce,datausa-clothing-workforce,California,163139/166813/170032,exposure,2139.0,471e82f486d35160
+clothingsequencescout,Jan29|datausa-clothing-workforce,datausa-clothing-workforce,California,163139,exposure,2640.0,6b0d23f57fbba26e
+clothingsequencescout,Feb08|datausa-clothing-workforce,datausa-clothing-workforce,California,163139,exposure,2684.0,ff66ed3c882e8a5c
+clothingsequencescout,Jan11|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,3322.0,b7dcba0ee19afb1c
+clothingsequencescout,Jan12|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,3505.0,8856fe17371e7ae9
+Apr27|datausa-grocery-workforce,Jan31|datausa-grocery-workforce,datausa-grocery-workforce,Arkansas,20794,exposure,2957.0,5d79b52c01646714
+clothingsequencescout,Aug08|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,3538.0,6426ca051a2d93a5
+clothingsequencescout,Jan29|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,3851.0,20a40f814f0b8058
+clothingsequencescout,May24|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,4178.0,542d5b9be80299b2
+Mar13|datausa-grocery-workforce,Sep21|datausa-grocery-workforce,datausa-grocery-workforce,Nevada,20369,exposure,1199.0,e715a86fea970868
+Mar13|datausa-grocery-workforce,Jan31|datausa-grocery-workforce,datausa-grocery-workforce,Nevada,20369,exposure,1819.0,7d70c5247d4cb253
+May28|datausa-cashiers-masters,Sep09|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,2676.0,922571e44584964e
+Sep21|datausa-grocery-workforce,Apr27|datausa-grocery-workforce,datausa-grocery-workforce,Kentucky,34770,exposure,1429.0,702bf2406044e9e7
+Apr27|datausa-grocery-workforce,Sep21|datausa-grocery-workforce,datausa-grocery-workforce,Kentucky,34770,exposure,1111.0,404ce066a7d90f96
+Sep21|datausa-grocery-workforce,Jan31|datausa-grocery-workforce,datausa-grocery-workforce,Kentucky,34770,exposure,1609.0,925ec7dc4f722e14
+May28|datausa-cashiers-masters,Sep09|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,2010.0,35e2018ca723f447
+May28|datausa-cashiers-masters,Jan12|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,3734.0,1b8d36455f859357
+May28|datausa-cashiers-masters,Jul08|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,2569.0,f4bd735b591c12ba
+May28|datausa-cashiers-masters,Jan12|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,3231.0,9e9ed9ba2b99d662
+May28|datausa-cashiers-masters,Jun17|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,4855.0,214337fac0e7fbc3
+May28|datausa-cashiers-masters,Mar23|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,6320.0,f076b74cdc5d89fa
+May28|datausa-cashiers-masters,Mar23|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,12525.0,2453aa57c26b5f34
+Apr27|datausa-grocery-workforce,May31|datausa-grocery-workforce,datausa-grocery-workforce,Arkansas,20794,exposure,32846.0,e1389aa80510e270
+Apr27|datausa-grocery-workforce,Nov15|datausa-grocery-workforce,datausa-grocery-workforce,Georgia,90725,exposure,32863.0,a05b299862f9eea6
+Apr27|datausa-grocery-workforce,Nov15|datausa-grocery-workforce,datausa-grocery-workforce,Arkansas,20794,exposure,33041.0,ec913d317fe2e4ef
+Apr27|datausa-grocery-workforce,Sep24|datausa-grocery-workforce,datausa-grocery-workforce,Georgia,90725,exposure,33052.0,e8244334e8c9fea6
+Mar13|datausa-grocery-workforce,May31|datausa-grocery-workforce,datausa-grocery-workforce,Nevada,20369,exposure,30432.0,8e44bb396740a9b4
+clothingsequencescout,May13|datausa-clothing-workforce,datausa-clothing-workforce,California,163139,exposure,33737.0,79bc7909b64c688d
+Apr27|datausa-grocery-workforce,Mar06|datausa-grocery-workforce,datausa-grocery-workforce,Georgia,90725,exposure,33192.0,69e17ffe9e9c422c
+Mar13|datausa-grocery-workforce,Nov15|datausa-grocery-workforce,datausa-grocery-workforce,Nevada,20369,exposure,30576.0,12dc25b1cd136090
+Sep21|datausa-grocery-workforce,May31|datausa-grocery-workforce,datausa-grocery-workforce,Kentucky,34770,exposure,29371.0,0459832adf6b7f10
+Mar13|datausa-grocery-workforce,openaithread42e0helper,datausa-grocery-workforce,Nevada,20369,exposure,30617.0,b57b62690c474c44
+Apr27|datausa-grocery-workforce,Sep24|datausa-grocery-workforce,datausa-grocery-workforce,Arkansas,20794,exposure,33294.0,1f4ce6d5a61f4dec
+Sep21|datausa-grocery-workforce,Nov15|datausa-grocery-workforce,datausa-grocery-workforce,Kentucky,34770,exposure,29413.0,bbc7569e9b53cf42
+Mar13|datausa-grocery-workforce,groceryagentmarch,datausa-grocery-workforce,Nevada,20369,exposure,30663.0,07a212ce79ec6c83
+Apr27|datausa-grocery-workforce,aliceresearcher,datausa-grocery-workforce,Georgia,90725,exposure,33403.0,4fd70bdfbb06c571
+Mar13|datausa-grocery-workforce,Sep24|datausa-grocery-workforce,datausa-grocery-workforce,Nevada,20369,exposure,30780.0,7ca7da0e7db7c9b9
+Sep21|datausa-grocery-workforce,Sep24|datausa-grocery-workforce,datausa-grocery-workforce,Kentucky,34770,exposure,29671.0,8e12a693d5f9894c
+Sep21|datausa-grocery-workforce,groceryagentmarch,datausa-grocery-workforce,Kentucky,34770,exposure,29683.0,c4a003949cab33df
+Mar13|datausa-grocery-workforce,oaisequencenovone,datausa-grocery-workforce,Nevada,20369,exposure,30933.0,f34236742a87396e
+Jan29|datausa-sector61-state,Oct21|datausa-sector61-state,datausa-sector61-state,Connecticut,457639,exposure,495.0,29401204bf8e7194
+clothingsequencescout,Jun23|datausa-clothing-workforce,datausa-clothing-workforce,California,163139,exposure,34235.0,23a8a0a78389d90a
+Jan29|datausa-sector61-state,May24|datausa-sector61-state,datausa-sector61-state,Connecticut,457639,exposure,620.0,dd1ef632fb5efd54
+Sep21|datausa-grocery-workforce,openaithread42e0helper,datausa-grocery-workforce,Kentucky,34770,exposure,29936.0,3bf49e73c15e905b
+Apr27|datausa-grocery-workforce,groceryhelperjuntwo,datausa-grocery-workforce,Georgia,90725,exposure,33893.0,b32a2fee4a81a5be
+Mar13|datausa-grocery-workforce,Mar09|datausa-grocery-workforce,datausa-grocery-workforce,Nevada,20369,exposure,31265.0,1bbfae0cf779270c
+clothingsequencescout,Aug29|datausa-clothing-workforce,datausa-clothing-workforce,California,163139,exposure,34475.0,56336538a3f081ab
+Mar13|datausa-grocery-workforce,oairesearcher,datausa-grocery-workforce,Nevada,20369,exposure,31302.0,240060996d5a7334
+clothingsequencescout,Aug01|datausa-clothing-workforce,datausa-clothing-workforce,California,163139,exposure,34558.0,518680bc51ef0879
+Sep21|datausa-grocery-workforce,oaisequencenovone,datausa-grocery-workforce,Kentucky,34770,exposure,30111.0,04afed03ef9360a4
+Apr27|datausa-grocery-workforce,Oct12|datausa-grocery-workforce,datausa-grocery-workforce,Georgia,90725,exposure,34034.0,86d284ce6e5f2891
+Jan29|datausa-sector61-state,Aug18|datausa-construction-workforce,datausa-sector61-state,Connecticut,457639,exposure,902.0,73da76b51af059a8
+clothingsequencescout,Jan17|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,34668.0,3342ca755db35eca
+Apr27|datausa-grocery-workforce,Jul10|datausa-grocery-workforce,datausa-grocery-workforce,Arkansas,20794,exposure,34193.0,e3f6e8c3f7ae39d4
+Jan29|datausa-sector61-state,Dec05|datausa-sector61-state,datausa-sector61-state,Connecticut,457639,exposure,1051.0,c4f5f3384c7e6566
+clothingsequencescout,May03|datausa-clothing-workforce,datausa-clothing-workforce,California,163139,exposure,34789.0,eea3cc5eca8b7898
+clothingsequencescout,Jun05|datausa-clothing-workforce,datausa-clothing-workforce,California,163139,exposure,34803.0,2508229f97ecfd55
+Mar13|datausa-grocery-workforce,Jul10|datausa-grocery-workforce,datausa-grocery-workforce,Nevada,20369,exposure,31628.0,7d5027981c34ac45
+Mar13|datausa-grocery-workforce,openairesearcher,datausa-grocery-workforce,Nevada,20369,exposure,31671.0,59c64469cfa5e90d
+Sep21|datausa-grocery-workforce,Jul10|datausa-grocery-workforce,datausa-grocery-workforce,Kentucky,34770,exposure,30461.0,bf3d4c9a7a032c2b
+clothingsequencescout,May13|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,34932.0,daf240efd8eed869
+Apr27|datausa-grocery-workforce,Oct25|datausa-grocery-workforce,datausa-grocery-workforce,Arkansas,20794,exposure,34434.0,7c6aac73f97cb7c0
+Apr27|datausa-grocery-workforce,Mar06|datausa-grocery-workforce,datausa-grocery-workforce,Arkansas,20794,exposure,34436.0,1469ad220cc76a6b
+Jan29|datausa-sector61-state,Mar19|datausa-sector61-state,datausa-sector61-state,Connecticut,457639,exposure,1302.0,0c7e3e0436a4c070
+Apr27|datausa-grocery-workforce,Jun12|datausa-grocery-workforce,datausa-grocery-workforce,Georgia,90725,exposure,34521.0,dc9b32ea5d0d1a97
+clothingsequencescout,Aug01|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,35101.0,339c4e08a8c0beea
+Mar13|datausa-grocery-workforce,Oct25|datausa-grocery-workforce,datausa-grocery-workforce,Nevada,20369,exposure,31912.0,d83a973237463967
+Jan29|datausa-sector61-state,Mar03|datausa-sector61-state,datausa-sector61-state,Connecticut,457639,exposure,1397.0,afc93aad60c51096
+clothingsequencescout,Dec27|datausa-clothing-workforce,datausa-clothing-workforce,California,163139,exposure,35122.0,8fef28ca0e9905e3
+clothingsequencescout,Jun30|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,35134.0,4f7257f37d709f76
+Apr27|datausa-grocery-workforce,Oct12|datausa-grocery-workforce,datausa-grocery-workforce,Arkansas,20794,exposure,34584.0,9dce4c3467593b56
+Jan29|datausa-sector61-state,Apr15|datausa-sector61-state,datausa-sector61-state,Connecticut,457639,exposure,1531.0,17d8eeec3d2c24b3
+Jan29|datausa-sector61-state,Sep22|datausa-sector61-state,datausa-sector61-state,Connecticut,457639,exposure,1545.0,09d368481a9b0d8c
+clothingsequencescout,Sep30|datausa-clothing-workforce,datausa-clothing-workforce,California,163139,exposure,35315.0,874bd2e0655e9679
+Jan29|datausa-sector61-state,Sep07|datausa-sector61-state,datausa-sector61-state,Connecticut,457639,exposure,1602.0,f946fa5cb5c38551
+Jan29|datausa-sector61-state,Feb16|datausa-sector61-state,datausa-sector61-state,Connecticut,457639,exposure,1618.0,9eacc84bf9b49d58
+Jan29|datausa-sector61-state,Sep11|datausa-sector61-state,datausa-sector61-state,Connecticut,457639,exposure,1631.0,665243dec6b1112f
+clothingsequencescout,Sep25|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,35356.0,b0b776cd09d1ecbd
+Sep21|datausa-grocery-workforce,oairesearcher,datausa-grocery-workforce,Kentucky,34770,exposure,30905.0,3610d2aca70d8e6f
+clothingsequencescout,May31|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,35381.0,b96f204bbebf8b9c
+Jan29|datausa-sector61-state,Sep21|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,1731.0,e73d20f6a860238d
+Jan29|datausa-sector61-state,Sep26|datausa-sector61-state,datausa-sector61-state,Connecticut,457639,exposure,1788.0,2b6973cb3884a0ea
+clothingsequencescout,Nov07|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,35526.0,c9210d57835c8038
+clothingsequencescout,Oct25|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,35539.0,988e385692eca351
+clothingsequencescout,Jun23|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,35572.0,a954033982f7d75a
+clothingsequencescout,Mar04|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,35576.0,d9c71e43548e88c8
+Apr27|datausa-grocery-workforce,Feb20|datausa-grocery-workforce,datausa-grocery-workforce,Arkansas,20794,exposure,35017.0,598eec451c2bb5a7
+Sep21|datausa-grocery-workforce,thread42e0main,datausa-grocery-workforce,Kentucky,34770,exposure,31146.0,f8396ea5eae02f38
+Jan29|datausa-sector61-state,Jun03|datausa-sector61-state,datausa-sector61-state,Connecticut,457639,exposure,1881.0,356f109d568cb884
+Jan29|datausa-sector61-state,Oct17|datausa-sector61-state,datausa-sector61-state,Connecticut,457639,exposure,1906.0,e068b2c7eda8b619
+Dec22|datausa-maids-wage,Jan12|datausa-maids-wage,datausa-maids-wage,Male,22140,exposure,21.0,ae6014bca0f4f5ae
+Mar13|datausa-grocery-workforce,groceryhelperjuntwo,datausa-grocery-workforce,Nevada,20369,exposure,32452.0,b71271a3b6354f29
+Dec22|datausa-maids-wage,Jul17|datausa-maids-wage,datausa-maids-wage,Male,22140,exposure,71.0,90db87fc769825f8
+clothingsequencescout,Jun16|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,35680.0,11d6eb7d76b5b6b8
+Jan29|datausa-sector61-state,Dec05|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,1969.0,685d111b809569cb
+clothingsequencescout,Aug05|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,35700.0,d5683bd9dc8b2291
+Jan29|datausa-sector61-state,Aug25|datausa-sector61-state,datausa-sector61-state,Connecticut,457639,exposure,2000.0,77b172cb55bd3617
+Jan29|datausa-sector61-state,Oct21|datausa-sector61-state,datausa-sector61-state,Michigan,1020933,exposure,2038.0,5f7cf5e69b28c51a
+Mar13|datausa-grocery-workforce,Oct12|datausa-grocery-workforce,datausa-grocery-workforce,Nevada,20369,exposure,32571.0,988e72bb62379154
+Jan29|datausa-sector61-state,Jul16|datausa-sector61-state,datausa-sector61-state,Connecticut,457639,exposure,2063.0,bdd9fbc20c0f8531
+Jan29|datausa-sector61-state,Sep08|datausa-sector61-state,datausa-sector61-state,Connecticut,457639,exposure,2093.0,1e7cb5f7123ad25a
+clothingsequencescout,May03|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,35828.0,8dadb5a0d4f46b52
+Jan29|datausa-sector61-state,Nov26|datausa-sector61-state,datausa-sector61-state,Connecticut,457639,exposure,2122.0,44ce6d63ecc89260
+Sep21|datausa-grocery-workforce,openaihelpermayeleven,datausa-grocery-workforce,Kentucky,34770,exposure,31394.0,3d73ce2b005d1143
+Jan29|datausa-sector61-state,Mar28|datausa-sector61-state,datausa-sector61-state,Connecticut,457639,exposure,2137.0,4c6e9e81ecc1c77b
+Jan29|datausa-sector61-state,May07|datausa-sector61-state,datausa-sector61-state,Connecticut,457639,exposure,2147.0,6965bd0325fdef19
+Jan29|datausa-sector61-state,Nov27|datausa-sector61-state,datausa-sector61-state,Connecticut,457639,exposure,2173.0,dce4d9be5c1624c9
+Apr27|datausa-grocery-workforce,Dec07|datausa-grocery-workforce,datausa-grocery-workforce,Arkansas,20794,exposure,35348.0,9155d00b1811af11
+Dec22|datausa-maids-wage,Mar03|datausa-maids-wage,datausa-maids-wage,Male,22140,exposure,367.0,f47360b207113fe8
+Dec22|datausa-maids-wage,Dec27|datausa-maids-wage,datausa-maids-wage,Male,22140,exposure,435.0,7af3cc4462f4fadd
+Jan29|datausa-sector61-state,Oct27|datausa-sector61-state,datausa-sector61-state,Michigan,1020933,exposure,2333.0,9b6edfcaa1cec320
+Mar13|datausa-grocery-workforce,Dec07|datausa-grocery-workforce,datausa-grocery-workforce,Nevada,20369,exposure,32904.0,48a2cb2728fe5402
+clothingsequencescout,Sep22|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,36139.0,55778400fdeb1eac
+Dec22|datausa-maids-wage,Dec30|datausa-maids-wage,datausa-maids-wage,Male,22140,exposure,573.0,a00d21b32fedfda4
+clothingsequencescout,Aug28|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,36187.0,e319d57ec059c463
+Dec22|datausa-maids-wage,Nov22|datausa-maids-wage,datausa-maids-wage,Male,22140,exposure,596.0,85a941c3803ef852
+Jan29|datausa-sector61-state,Sep11|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,2504.0,0ad73fc9eb44acf4
+Jan29|datausa-sector61-state,Aug11|datausa-sector61-state,datausa-sector61-state,Connecticut,457639,exposure,2507.0,3c9630dd7dc2a6d9
+Mar13|datausa-grocery-workforce,Feb20|datausa-grocery-workforce,datausa-grocery-workforce,Nevada,20369,exposure,33025.0,05fe8ba2c4adbfc4
+Dec22|datausa-maids-wage,Nov17|datausa-maids-wage,datausa-maids-wage,Male,22140,exposure,660.0,692175fc2496b69e
+clothingsequencescout,Feb27|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,36290.0,47b44bbd5a2775ff
+Mar13|datausa-grocery-workforce,Jan30|datausa-grocery-workforce,datausa-grocery-workforce,Nevada,20369,exposure,33127.0,fbcd14aaef1e7bd3
+clothingsequencescout,Dec30|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,36342.0,213d15f512343a8f
+Sep21|datausa-grocery-workforce,Aug19|datausa-grocery-workforce,datausa-grocery-workforce,Kentucky,34770,exposure,31898.0,5e96fa242d651504
+Sep21|datausa-grocery-workforce,Dec09|datausa-grocery-workforce,datausa-grocery-workforce,Kentucky,34770,exposure,31927.0,eba03f094fc63826
+Dec22|datausa-maids-wage,Sep02|datausa-maids-wage,datausa-maids-wage,Male,22140,exposure,772.0,fce2196eb7ce5c6e
+Dec22|datausa-maids-wage,Oct11|datausa-maids-wage,datausa-maids-wage,Male,22140,exposure,780.0,53da639bb79632bb
+Mar13|datausa-grocery-workforce,Apr10|datausa-grocery-workforce,datausa-grocery-workforce,Nevada,20369,exposure,33189.0,456d4c9667a760b5
+Apr27|datausa-grocery-workforce,Jun10|datausa-grocery-workforce,datausa-grocery-workforce,Georgia,90725,exposure,35836.0,b81d76c75f734f35
+Apr27|datausa-grocery-workforce,Nov05|datausa-grocery-workforce,datausa-grocery-workforce,Georgia,90725,exposure,35841.0,268b7675c66d7a8c
+Jan29|datausa-sector61-state,Jul26|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,2694.0,3ed000eb03961272
+Jan29|datausa-sector61-state,Sep21|datausa-sector61-state,datausa-sector61-state,Connecticut,457639,exposure,2768.0,917ea12a4d913d61
+Apr27|datausa-grocery-workforce,Oct28|datausa-transport-production,datausa-grocery-workforce,Arkansas,20794,exposure,35931.0,56bc8bbe80045e72
+Apr27|datausa-grocery-workforce,May17|datausa-grocery-workforce,datausa-grocery-workforce,Arkansas,20794,exposure,36006.0,1090d27400f03a5c
+Jan29|datausa-sector61-state,Jun06|datausa-sector61-state,datausa-sector61-state,Michigan,1020933,exposure,2848.0,4964638eb4d4e179
+Dec22|datausa-transport-production,Sep09|datausa-transport-production,datausa-transport-production,Texas,28,exposure,223.0,eb5c838c7c27cba6
+clothingsequencescout,Dec25|datausa-sector61-state,datausa-clothing-workforce,California,163139,exposure,36644.0,a5df4daf0a415783
+Apr27|datausa-grocery-workforce,Nov05|datausa-grocery-workforce,datausa-grocery-workforce,Arkansas,20794,exposure,36153.0,7d7d16d4e92bcbaa
+Dec22|datausa-transport-production,Oct14|datausa-transport-production,datausa-transport-production,Texas,28,exposure,365.0,62cc3c568a662de5
+Sep21|datausa-grocery-workforce,Feb20|datausa-grocery-workforce,datausa-grocery-workforce,Kentucky,34770,exposure,32336.0,a5d6aec652de0066
+Sep21|datausa-grocery-workforce,Mar10|datausa-grocery-workforce,datausa-grocery-workforce,Kentucky,34770,exposure,32393.0,27f38127945570cc
+Sep21|datausa-grocery-workforce,Apr10|datausa-grocery-workforce,datausa-grocery-workforce,Kentucky,34770,exposure,32448.0,203f47e9c34aa2a9
+Jan29|datausa-sector61-state,May24|datausa-sector61-state,datausa-sector61-state,Michigan,1020933,exposure,3215.0,9b7de811e32abbe5
+Dec22|datausa-transport-production,Aug29|datausa-transport-production,datausa-transport-production,Texas,28,exposure,598.0,14c13933a2069350
+Dec22|datausa-maids-wage,Dec31|datausa-maids-wage,datausa-maids-wage,Male,22140,exposure,1389.0,b5f5bce955aac2d8
+Apr27|datausa-grocery-workforce,aliceresearcher,datausa-grocery-workforce,Arkansas,20794,exposure,36449.0,24f0ec022fb299a8
+clothingsequencescout,Aug16|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,37105.0,f7edb04d4ef3abc5
+clothingsequencescout,Jan10|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,37305.0,378137d9977ed2c0
+Sep21|datausa-grocery-workforce,Mar07|datausa-grocery-workforce,datausa-grocery-workforce,Kentucky,34770,exposure,32894.0,c89c8c1b088d9f8b
+Jan29|datausa-sector61-state,Nov27|datausa-sector61-state,datausa-sector61-state,Michigan,1020933,exposure,3665.0,3ce5280a379498e4
+clothingsequencescout,Jun11|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,37431.0,4b3bfe0131648d0b
+clothingsequencescout,Mar09|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,37519.0,be06941353b34fd8
+Jan29|datausa-sector61-state,May24|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,3801.0,9761a114a8dffc65
+Jan29|datausa-sector61-state,Oct25|datausa-sector61-state,datausa-sector61-state,Michigan,1020933,exposure,3803.0,13991969cf4ba192
+Dec22|datausa-transport-production,Sep27|datausa-transport-production,datausa-transport-production,Texas,28,exposure,1213.0,0222ff95cdc17978
+clothingsequencescout,Apr30|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,37610.0,1a356fac774042c3
+Jan29|datausa-sector61-state,Feb11|datausa-sector61-state,datausa-sector61-state,Michigan,1020933,exposure,3946.0,6b8da2f6e4056180
+clothingsequencescout,Feb24|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,37673.0,370a6b858056cadb
+clothingsequencescout,Nov09|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,37699.0,3750035ce38b6e17
+Jan29|datausa-sector61-state,Jan31|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,4005.0,6187cba5941f0a12
+Jan29|datausa-sector61-state,Oct27|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,4037.0,69465d5edb1dd842
+Mar13|datausa-grocery-workforce,Aug29|datausa-grocery-workforce,datausa-grocery-workforce,Nevada,20369,exposure,34564.0,89d6b15fd825b6bd
+clothingsequencescout,Nov13|datausa-clothing-workforce,datausa-clothing-workforce,California,163139,exposure,38020.0,685e5e8a12a3717b
+Mar13|datausa-grocery-workforce,Nov26|datausa-grocery-workforce,datausa-grocery-workforce,Nevada,20369,exposure,34858.0,59bfc5b11db19bb5
+Apr27|datausa-grocery-workforce,Nov26|datausa-grocery-workforce,datausa-grocery-workforce,Arkansas,20794,exposure,37504.0,ec4be825d073cfb5
+Apr27|datausa-grocery-workforce,Nov26|datausa-grocery-workforce,datausa-grocery-workforce,Georgia,90725,exposure,37504.0,4b07a537983aea9b
+Jan29|datausa-sector61-state,Feb29|datausa-sector61-state,datausa-sector61-state,Michigan,1020933,exposure,4391.0,c81d2bd181f501bc
+clothingsequencescout,Jan30|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,38226.0,a171d89cb7a6ab0e
+Mar13|datausa-grocery-workforce,Nov08|datausa-grocery-workforce,datausa-grocery-workforce,Nevada,20369,exposure,35021.0,a5a73e964ba52e92
+Apr27|datausa-grocery-workforce,Nov08|datausa-grocery-workforce,datausa-grocery-workforce,Arkansas,20794,exposure,37667.0,caf24b9914193269
+Sep21|datausa-grocery-workforce,Nov08|datausa-grocery-workforce,datausa-grocery-workforce,Kentucky,34770,exposure,33775.0,b9af74b35e579a42
+Apr27|datausa-grocery-workforce,Dec20|datausa-grocery-workforce,datausa-grocery-workforce,Georgia,90725,exposure,37713.0,52c8809c6ded542b
+Mar13|datausa-grocery-workforce,Dec20|datausa-grocery-workforce,datausa-grocery-workforce,Nevada,20369,exposure,35067.0,9b418860df1933a3
+Sep21|datausa-grocery-workforce,Dec20|datausa-grocery-workforce,datausa-grocery-workforce,Kentucky,34770,exposure,33821.0,b60004e84ef98db0
+Apr27|datausa-grocery-workforce,Aug29|datausa-transport-production,datausa-grocery-workforce,Arkansas,20794,exposure,37731.0,a0fc9b1dbe97fb05
+Apr27|datausa-grocery-workforce,Jul17|datausa-grocery-workforce,datausa-grocery-workforce,Arkansas,20794,exposure,37777.0,9eebac67afc035b9
+Jan29|datausa-sector61-state,Dec25|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,4646.0,874d7d6b99aded25
+Sep21|datausa-grocery-workforce,Nov26|datausa-grocery-workforce,datausa-grocery-workforce,Kentucky,34770,exposure,33987.0,b0fa65e43e681201
+Jan29|datausa-sector61-state,Mar28|datausa-sector61-state,datausa-sector61-state,Michigan,1020933,exposure,4721.0,1b684df4a968989c
+clothingsequencescout,Aug30|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,38453.0,863985fe41580809
+Sep21|datausa-grocery-workforce,Aug29|datausa-grocery-workforce,datausa-grocery-workforce,Kentucky,34770,exposure,34035.0,a5360168150e75af
+Apr27|datausa-grocery-workforce,Aug09|datausa-grocery-workforce,datausa-grocery-workforce,Arkansas,20794,exposure,37965.0,ca894a3990277921
+Apr27|datausa-grocery-workforce,Mar05|datausa-grocery-workforce,datausa-grocery-workforce,Georgia,90725,exposure,37993.0,33c6eca8ab187b7f
+Apr27|datausa-grocery-workforce,Mar05|datausa-grocery-workforce,datausa-grocery-workforce,Arkansas,20794,exposure,37993.0,176a0148604a724d
+clothingsequencescout,Mar06|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,38597.0,56677f25e646d6a0
+Apr27|datausa-grocery-workforce,Dec27|datausa-grocery-workforce,datausa-grocery-workforce,Georgia,90725,exposure,38127.0,1f68db109a8a7d94
+Jan29|datausa-sector61-state,May13|datausa-sector61-state,datausa-sector61-state,Michigan,1020933,exposure,5132.0,46cfe401bfd287f8
+Dec22|datausa-maids-wage,Dec03|datausa-maids-wage,datausa-maids-wage,Male,22140,exposure,3251.0,1ada10a18d67050c
+clothingsequencescout,May08|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,38905.0,94dd4973b5bd0220
+Dec22|datausa-transport-production,Dec08|datausa-transport-production,datausa-transport-production,Texas,28,exposure,2524.0,27ce35854f2fb062
+clothingsequencescout,Mar19|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,38977.0,e5a71431571b6f9d
+Apr27|datausa-grocery-workforce,Jan16|datausa-grocery-workforce,datausa-grocery-workforce,Georgia,90725,exposure,38501.0,989d5c3f4b5bbd67
+Apr27|datausa-grocery-workforce,Jan16|datausa-grocery-workforce,datausa-grocery-workforce,Arkansas,20794,exposure,38501.0,a217975db6921d04
+Jan29|datausa-sector61-state,Aug21|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,5341.0,e652c60ec53e86cb
+clothingsequencescout,Oct01|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897/99686/98975,exposure,39068.0,55a7f703797b44fd
+Dec22|datausa-transport-production,Aug25|datausa-transport-production,datausa-transport-production,Texas,28,exposure,2741.0,de7feea01732cd7a
+clothingsequencescout,Sep28|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,39151.0,ebe2f76c2f8f2116
+Apr27|datausa-grocery-workforce,Dec27|datausa-grocery-workforce,datausa-grocery-workforce,Arkansas,20794,exposure,38650.0,77d6faccd9b0e988
+clothingsequencescout,Sep30|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,39216.0,5e218b386e10c4bc
+clothingsequencescout,Feb01|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,39230.0,8a2668369d5d3fe9
+clothingsequencescout,Sep05|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,39239.0,d4e6d264fedc371a
+Jan29|datausa-sector61-state,Feb25|datausa-sector61-state,datausa-sector61-state,Michigan,1020933,exposure,5606.0,9d6f7e3382acd724
+Jan29|datausa-sector61-state,Feb11|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,5680.0,0d33f2852a0bfe87
+clothingsequencescout,Sep26|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,39626.0,05656656377a0c71
+Jan29|datausa-sector61-state,Oct10|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,5911.0,9bb93aeb7305dd31
+Jan29|datausa-sector61-state,Sep08|datausa-sector61-state,datausa-sector61-state,Michigan,1020933,exposure,6007.0,d904499f5a89f2ac
+Dec22|datausa-transport-production,Aug05|datausa-transport-production,datausa-transport-production,Texas,28,exposure,3401.0,9db4bdf617342b4c
+Jan29|datausa-sector61-state,Dec24|datausa-sector61-state,datausa-sector61-state,Michigan,1020933,exposure,6176.0,5cb160a3e4085101
+Mar13|datausa-grocery-workforce,Mar23|datausa-grocery-workforce,datausa-grocery-workforce,Nevada,20369,exposure,36785.0,095071efa93e73ce
+Jan29|datausa-sector61-state,Dec27|datausa-sector61-state,datausa-sector61-state,Michigan,1020933,exposure,6634.0,7d355199d04ed95e
+Jan29|datausa-sector61-state,May17|datausa-sector61-state,datausa-sector61-state,Michigan,1020933,exposure,6637.0,d5cb102a2a44f4ae
+Mar13|datausa-grocery-workforce,May15|datausa-grocery-workforce,datausa-grocery-workforce,Nevada,20369,exposure,37187.0,75bae7bf5bd89b0d
+Jan29|datausa-sector61-state,May25|datausa-sector61-state,datausa-sector61-state,Michigan,1020933,exposure,6675.0,e71e57cde13fb659
+clothingsequencescout,Nov14|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,40482.0,34172b0de5345891
+Jan29|datausa-sector61-state,Jul13|datausa-sector61-state,datausa-sector61-state,Michigan,1020933,exposure,6776.0,8ec4725862377925
+clothingsequencescout,Sep07|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,40521.0,cbb35588d5d3f019
+Jan29|datausa-sector61-state,Jul14|datausa-sector61-state,datausa-sector61-state,Michigan,1020933,exposure,6893.0,fd26f6d5d5dd29d5
+Apr27|datausa-grocery-workforce,Jun10|datausa-grocery-workforce,datausa-grocery-workforce,Arkansas,20794,exposure,40168.0,467b601a1b805b11
+Jan29|datausa-sector61-state,Nov27|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,7012.0,6eb380115a1fba01
+Jan29|datausa-sector61-state,Feb12|datausa-sector61-state,datausa-sector61-state,Michigan,1020933,exposure,7038.0,5eae8afe065dee3d
+Jan29|datausa-sector61-state,Feb29|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,7045.0,6a44d88b905870ea
+Jan29|datausa-sector61-state,Jan07|datausa-sector61-state,datausa-sector61-state,Michigan,1020933,exposure,7082.0,52ad0a9c3d275701
+clothingsequencescout,Aug27|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,40813.0,b9605b2755028d79
+Jan29|datausa-sector61-state,Dec21|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,7093.0,5d0c3050c4923c92
+Jan29|datausa-sector61-state,May13|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,7096.0,cb166940cb5dc881
+Jan29|datausa-sector61-state,May26|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,7109.0,44407544cfa876e7
+Jan29|datausa-sector61-state,Aug20|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,7177.0,0cd164a4bf927380
+Sep21|datausa-grocery-workforce,May15|datausa-grocery-workforce,datausa-grocery-workforce,Kentucky,34770,exposure,36465.0,da32e90d020813cb
+Jan29|datausa-sector61-state,Jan18|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,7202.0,b7e93129bbd250d6
+Sep21|datausa-grocery-workforce,aliceresearcher,datausa-grocery-workforce,Kentucky,34770,exposure,36542.0,cb412e4f3a9db70a
+Mar13|datausa-grocery-workforce,aliceresearcher,datausa-grocery-workforce,Nevada,20369,exposure,37788.0,914bd0f1a8e79167
+clothingsequencescout,Oct23|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,41021.0,aca193f303b3c4b0
+Oct20|datausa-language-french,Jul17|datausa-language-french,datausa-language-french,Louisiana,5.26,exposure,336.0,21a2dc5762d8da22
+Jan29|datausa-sector61-state,Dec17|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,7371.0,ce4087c91cf5d90d
+Jan29|datausa-sector61-state,Jul20|datausa-sector61-state,datausa-sector61-state,Michigan,1020933,exposure,7375.0,1b8c61872f5f65c7
+Jan29|datausa-sector61-state,Jul11|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,7386.0,25e1f64f1cf7b6e7
+clothingsequencescout,Oct18|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,41239.0,09e60f679bf0814d
+Jan29|datausa-sector61-state,Mar19|datausa-sector61-state,datausa-sector61-state,Michigan,1020933,exposure,7535.0,7bf7f99109a89bb3
+clothingsequencescout,Oct15|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,41273.0,9facde20754808c5
+Jan29|datausa-sector61-state,Nov19|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,7601.0,bb4d63f257926643
+May24|datausa-sector61-state,Jan29|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,7607.0,a27670121400fd94
+Jan29|datausa-sector61-state,Jul12|datausa-sector61-state,datausa-sector61-state,Michigan,1020933,exposure,7617.0,d1f622d74e5be991
+clothingsequencescout,Jan24|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,41360.0,a4dae501b8b7551b
+Jan29|datausa-sector61-state,Aug27|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,7721.0,f00d4f1e5132a989
+Jan29|datausa-sector61-state,Jun20|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,7784.0,12196122b404a7ed
+clothingsequencescout,Aug19|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,41548.0,5a8c041f6f509e5d
+Jan29|datausa-sector61-state,Aug03|datausa-grocery-workforce,datausa-sector61-state,West Virginia,196790,exposure,7852.0,176ce26bc38c98b8
+Oct20|datausa-language-french,Feb17|datausa-language-french,datausa-language-french,Louisiana,5.26,exposure,900.0,7a007cc42ada6b93
+Jan29|datausa-sector61-state,May02|datausa-sector61-state,datausa-sector61-state,Michigan,1020933,exposure,7991.0,4d58aabd849c7103
+Mar13|datausa-grocery-workforce,Aug09|datausa-grocery-workforce,datausa-grocery-workforce,Nevada,20369,exposure,38518.0,ab175b128c8eadad
+Apr27|datausa-grocery-workforce,Jul09|datausa-grocery-workforce,datausa-grocery-workforce,Arkansas,20794,exposure,41223.0,ac54e9b68f57d2b8
+Jan29|datausa-sector61-state,Sep07|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,8061.0,ee4ac7381ab84718
+clothingsequencescout,Dec15|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,41815.0,296cd459207d05c6
+Jan29|datausa-sector61-state,Jun10|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,8235.0,6646a4f896bce7aa
+clothingsequencescout,Apr07|datausa-clothing-workforce,datausa-clothing-workforce,California,163139,exposure,41961.0,1335b120a7891249
+Jan29|datausa-sector61-state,Feb25|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,8262.0,a046c22749987573
+Jan29|datausa-sector61-state,Jun25|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,8265.0,cf723ea198fcc65e
+Sep21|datausa-grocery-workforce,Mar25|datausa-grocery-workforce,datausa-grocery-workforce,Kentucky,34770,exposure,37786.0,50f4a9eeae475187
+Dec22|datausa-maids-wage,Jan06|datausa-maids-wage,datausa-maids-wage,Male,22140,exposure,6630.0,4b8daabe1a1d80c8
+Oct20|datausa-language-french,Jun21|datausa-language-french,datausa-language-french,Louisiana,5.26,exposure,1634.0,13c90c62ca57d1bd
+Jan29|datausa-sector61-state,Nov11|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,8681.0,de2d0ab72f9aab34
+Dec22|datausa-maids-wage,Oct16|datausa-maids-wage,datausa-maids-wage,Male,22140,exposure,6883.0,b84d0743249b22f5
+Jan29|datausa-sector61-state,Aug23|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,8790.0,3fe9b01b97b8f762
+clothingsequencescout,Apr07|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,42565.0,fb21bc44a1bd03db
+Jan29|datausa-sector61-state,May17|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,8892.0,05469c68e25f891a
+Jan29|datausa-sector61-state,Jul20|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,8964.0,b2e37a3052a02d79
+clothingsequencescout,Feb02|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,42732.0,d2d5c93f4b827337
+clothingsequencescout,Jul23|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,42739.0,040e00e6567e555d
+Oct20|datausa-language-french,Sep03|datausa-language-french,datausa-language-french,Louisiana,5.26,exposure,2016.0,1f80db2adb1b7665
+clothingsequencescout,Mar14|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,42852.0,07a640fb9412ccaa
+Dec22|datausa-maids-wage,Mar22|datausa-maids-wage,datausa-maids-wage,Male,22140,exposure,7316.0,fa3f6449e549ac14
+Sep23|datausa-language-french,Sep01|datausa-language-french,datausa-language-french,Louisiana,5.57,exposure,2170.0,fadf68d22021292d
+clothingsequencescout,Dec31|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,42955.0,3ec5e2089c539c5b
+Jan29|datausa-sector61-state,Jun07|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,9257.0,1e3f57887324661e
+Oct20|datausa-language-french,Apr10|datausa-language-french,datausa-language-french,Louisiana,5.26,exposure,2302.0,b721da6f413311a0
+Jan29|datausa-sector61-state,Mar12|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,9329.0,b1d29b1d9e84c9a6
+Jan29|datausa-sector61-state,Jan07|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,9352.0,e0df9bce92cd913d
+Mar13|datausa-grocery-workforce,Jul09|datausa-grocery-workforce,datausa-grocery-workforce,Nevada,20369,exposure,39885.0,8b60c8b7b80a4e55
+clothingsequencescout,Feb11|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,43123.0,cc85df659954e4d3
+Jan29|datausa-sector61-state,May11|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,9446.0,e304c17365f5b980
+Sep21|datausa-maids-wage,Apr15|datausa-maids-wage,datausa-maids-wage,Female,16816,exposure,43410.0,e95a986660513f66
+Dec22|datausa-maids-wage,Apr15|datausa-maids-wage,datausa-maids-wage,Male,22140,exposure,7763.0,5063f2df45c8453e
+Jan29|datausa-sector61-state,May25|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,9686.0,8d50a24302b6e401
+Jan29|datausa-sector61-state,Oct26|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,9831.0,80219687b7e34d9f
+Jan29|datausa-sector61-state,Jul07|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,9891.0,1dbaa6752fcb6874
+clothingsequencescout,Jan08|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,43656.0,5dc971e33f3d70bf
+Dec22|datausa-maids-wage,Apr17|datausa-maids-wage,datausa-maids-wage,Male,22140,exposure,8087.0,73f778ec4bec2c99
+Sep21|datausa-maids-wage,Apr17|datausa-maids-wage,datausa-maids-wage,Female,16816,exposure,43734.0,79dfd7c9df3f26d2
+Dec22|datausa-maids-wage,Jul03|datausa-maids-wage,datausa-maids-wage,Male,22140,exposure,8094.0,a7b332bba33101ee
+Jul17|datausa-language-french,Sep23|datausa-language-french,datausa-language-french,New Hampshire,1.25,exposure,2324.0,c9a90587bfe04884
+clothingsequencescout,Nov21|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,43758.0,cf8c47fe4fee6747
+Jan29|datausa-sector61-state,Oct15|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,10249.0,22179c0d8effedce
+Jan29|datausa-sector61-state,Jul19|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,10300.0,454bf7aa7cc5505f
+clothingsequencescout,Dec10|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,44601.0,82f2d317fc1cf4d5
+Jan29|datausa-sector61-state,Mar16|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,11011.0,5364a7581432ddce
+Dec22|datausa-maids-wage,Oct30|datausa-maids-wage,datausa-maids-wage,Male,22140,exposure,9167.0,722f42f120590640
+Dec22|datausa-maids-wage,May31|datausa-maids-wage,datausa-maids-wage,Male,22140,exposure,9339.0,12866723f9ecb46f
+Oct20|datausa-language-french,Nov22|datausa-language-french,datausa-language-french,Louisiana,5.26,exposure,4428.0,1d13d2adaf86ab4f
+Sep21|datausa-grocery-workforce,Sep10|datausa-grocery-workforce,datausa-grocery-workforce,Kentucky,34770,exposure,40712.0,282896627237a81d
+Sep21|datausa-grocery-workforce,Aug02|datausa-grocery-workforce,datausa-grocery-workforce,Kentucky,34770,exposure,40751.0,89f093878b2316ac
+clothingsequencescout,Jan19|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,45330.0,87582984c73ce72e
+Mar13|datausa-grocery-workforce,Apr20|datausa-grocery-workforce,datausa-grocery-workforce,Nevada,20369,exposure,42127.0,5306e7ae0f3f3654
+Sep21|datausa-grocery-workforce,Jul14|datausa-grocery-workforce,datausa-grocery-workforce,Kentucky,34770,exposure,40912.0,cb415c1a6165c4bf
+Oct20|datausa-language-french,Apr18|datausa-language-french,datausa-language-french,Louisiana,5.26,exposure,4809.0,5249ba735bd8543d
+Sep23|datausa-language-french,Sep18|datausa-language-french,datausa-language-french,Louisiana,5.57,exposure,5110.0,d4e2e2c7aa887002
+Oct20|datausa-language-french,Sep17|datausa-language-french,datausa-language-french,Louisiana,5.26,exposure,5159.0,6936b914788d57df
+Sep23|datausa-language-french,Oct20|datausa-language-french,datausa-language-french,New York,12.4,exposure,5165.0,23b8d96621fa68fc
+clothingsequencescout,Nov24|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,45937.0,b1eb28994fca5eb9
+clothingsequencescout,Nov23|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,45958.0,bebe8172cd7fce6d
+Jan29|datausa-sector61-state,Apr07|datausa-clothing-workforce,datausa-sector61-state,Michigan,1020933,exposure,12314.0,31580caf9abced73
+Sep21|datausa-grocery-workforce,Feb28|datausa-grocery-workforce,datausa-grocery-workforce,Kentucky,34770,exposure,41666.0,0a5031fd67a1e652
+clothingsequencescout,Nov25|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,46245.0,b4d6bd5bed436883
+Dec22|datausa-maids-wage,Feb14|datausa-maids-wage,datausa-maids-wage,Male,22140,exposure,10640.0,916a71e60d80b42c
+clothingsequencescout,Feb14|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,46505.0,1dbbd3a5e3d1e74c
+Mar13|datausa-grocery-workforce,Nov24|datausa-grocery-workforce,datausa-grocery-workforce,Nevada,20369,exposure,43451.0,3d35dab9a008d719
+Sep21|datausa-grocery-workforce,Aug09|datausa-grocery-workforce,datausa-grocery-workforce,Kentucky,34770,exposure,42207.0,dfd18f38d67fb36f
+Sep23|datausa-language-french,Nov12|datausa-language-french,datausa-language-french,New York,12.4,exposure,5997.0,171802395352df90
+Apr27|datausa-grocery-workforce,Oct01|datausa-grocery-workforce,datausa-grocery-workforce,Georgia,90725,exposure,46282.0,5747ef82257b9bb0
+Apr27|datausa-grocery-workforce,Oct01|datausa-grocery-workforce,datausa-grocery-workforce,Arkansas,20794,exposure,46282.0,2da34c1289605652
+Mar13|datausa-grocery-workforce,Oct01|datausa-grocery-workforce,datausa-grocery-workforce,Nevada,20369,exposure,43636.0,87c187622541856f
+clothingsequencescout,Nov11|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,46844.0,a31802098b399b70
+Sep21|datausa-grocery-workforce,Apr20|datausa-grocery-workforce,datausa-grocery-workforce,Kentucky,34770,exposure,42674.0,bdd0a1805599db67
+clothingsequencescout,Apr18|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,47698.0,75fa20b5fab3fb36
+clothingsequencescout,Nov25|datausa-clothing-workforce,datausa-clothing-workforce,California,163139,exposure,48230.0,771dbaeff44da794
+clothingsequencescout,Dec09|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,48252.0,98db58aa498bc74c
+clothingsequencescout,Aug14|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,48547.0,5258b3ce55353425
+clothingsequencescout,Jul27|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,48645.0,ac6c90852ccf9e60
+Feb17|datausa-language-french,Jun13|datausa-language-french,datausa-language-french,New York,11.7,exposure,7923.0,426cd2a01f024b48
+Jun01|datausa-language-french,Sep17|datausa-language-french,datausa-language-french,New Hampshire,1.32,exposure,4485.0,ee2242cffa656a92
+Sep23|datausa-language-french,Apr10|datausa-language-french,datausa-language-french,New York,12.4,exposure,9127.0,5b07f951662fb15b
+clothingsequencescout,Sep04|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,50820.0,dd4f9ba36b2417fc
+Jun01|datausa-language-french,Dec29|datausa-language-french,datausa-language-french,New Hampshire,1.32,exposure,5953.0,92a37b573b22d26a
+Jun01|datausa-language-french,Sep01|datausa-language-french,datausa-language-french,New Hampshire,1.32,exposure,6053.0,1429a75e46f2726a
+Jun01|datausa-language-french,Oct14|datausa-clothing-workforce,datausa-language-french,New Hampshire,1.32,exposure,6282.0,0522bca73e8c6562
+Sep23|datausa-language-french,Jun01|datausa-language-french,datausa-language-french,New York,12.4,exposure,11083.0,fd0f29742d165a23
+Sep23|datausa-language-french,Nov24|datausa-grocery-workforce,datausa-language-french,New York,12.4,exposure,11171.0,ba5f34a30b6bc129
+Sep23|datausa-language-french,Sep18|datausa-language-french,datausa-language-french,New York,12.4,exposure,11260.0,c52a537300648c83
+Sep23|datausa-language-french,Apr18|datausa-language-french,datausa-language-french,New York,12.4,exposure,11685.0,325ab98135477aad
+Sep23|datausa-language-french,Sep03|datausa-language-french,datausa-language-french,New York,12.4,exposure,11691.0,c51f0589c31d3255
+Jun01|datausa-language-french,Jul17|datausa-language-french,datausa-language-french,New Hampshire,1.32,exposure,8958.0,8a57e2211fc2e95a
+Sep23|datausa-language-french,Apr19|datausa-clothing-workforce,datausa-language-french,New York,12.4,exposure,13739.0,d54a6270d2f42981
+Jun01|datausa-language-french,Jun13|datausa-language-french,datausa-language-french,New Hampshire,1.32,exposure,9286.0,b74a09643449ee50
+Jun01|datausa-language-french,Nov12|datausa-language-french,datausa-language-french,New Hampshire,1.32,exposure,9388.0,3151216631f8386e
+Sep23|datausa-language-french,May08|datausa-language-french,datausa-language-french,New York,12.4,exposure,13893.0,680a327a64342652
+Feb03|datausa-poverty-county,Nov26|datausa-poverty-county,datausa-poverty-county,Flathead,8.2,exposure,40217.0,3f1997c0067a5275
+Sep21|datausa-grocery-workforce,Oct01|datausa-grocery-workforce,datausa-grocery-workforce,Kentucky,34770,exposure,50659.0,988d8c67874bbeec
+Feb03|datausa-poverty-county,Nov26|datausa-poverty-county,datausa-poverty-county,Merced,23.5,exposure,40402.0,6d13e7c81904799e
+Aug18|datausa-construction-workforce,Dec30|datausa-construction-workforce,datausa-construction-workforce,New York,456607,exposure,1830.0,1b72537ff70f2f58
+clothingsequencescout,Jun28|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,56568.0,745f82d3ab155291
+Jun01|datausa-language-french,Feb17|datausa-language-french,datausa-language-french,New Hampshire,1.32,exposure,11347.0,21e48763d90ba4bc
+Sep23|datausa-language-french,Oct29|datausa-language-french,datausa-language-french,New York,12.4,exposure,15969.0,2f0029ca8a19b793
+Feb03|datausa-poverty-county,Sep15|datausa-poverty-county,datausa-poverty-county,Flathead,8.2,exposure,42229.0,23c66a6905fdc9a1
+Feb03|datausa-poverty-county,Sep15|datausa-poverty-county,datausa-poverty-county,Merced,23.5,exposure,42229.0,1ffb1c205676d9bb
+Jun01|datausa-language-french,Jul01|datausa-language-french,datausa-language-french,New Hampshire,1.32,exposure,11972.0,b1ee88dd1cb6e287
+Feb03|datausa-poverty-county,Jun26|datausa-poverty-county,datausa-poverty-county,Merced,23.5,exposure,42581.0,88bf35c9be2ba28e
+Feb03|datausa-poverty-county,Jan14|datausa-poverty-county,datausa-poverty-county,Merced,23.5,exposure,42610.0,5dfb1d586d0a4bd0
+Feb03|datausa-poverty-county,Jun05|datausa-poverty-county,datausa-poverty-county,Merced,23.5,exposure,42636.0,d76eddbf59311b43
+Feb03|datausa-poverty-county,Aug11|datausa-poverty-county,datausa-poverty-county,Merced,23.5,exposure,42716.0,229d4c606533247d
+Feb03|datausa-poverty-county,Jun10|datausa-poverty-county,datausa-poverty-county,Merced,23.5,exposure,43184.0,428cfeffab59f1da
+Jun01|datausa-language-french,Apr10|datausa-language-french,datausa-language-french,New Hampshire,1.32,exposure,12776.0,a7f2520568618024
+Feb03|datausa-poverty-county,Feb02|datausa-poverty-county,datausa-poverty-county,Merced,23.5,exposure,43353.0,f82a5e58206f4e39
+Sep23|datausa-language-french,Nov14|datausa-language-french,datausa-language-french,New York,12.4,exposure,17607.0,53145dab35653956
+Jun01|datausa-language-french,Nov14|datausa-language-french,datausa-language-french,New Hampshire,1.32,exposure,13103.0,365e115b57a25c4b
+Feb03|datausa-poverty-county,Mar18|datausa-poverty-county,datausa-poverty-county,Merced,23.5,exposure,43703.0,af577017662926f7
+Feb03|datausa-poverty-county,Mar18|datausa-poverty-county,datausa-poverty-county,San Juan,26.7,exposure,43703.0,133c5a9198318f6c
+Jun01|datausa-language-french,Apr18|datausa-language-french,datausa-language-french,New Hampshire,1.32,exposure,13286.0,30402f913d3fcb05
+Jun03|datausa-construction-workforce,Aug11|datausa-construction-workforce,datausa-construction-workforce,Texas,843195,exposure,49.0,d8bb8bf6d73f5383
+Jun03|datausa-construction-workforce,Mar08|datausa-construction-workforce,datausa-construction-workforce,California,874322,exposure,94.0,a7b8a07d80535e61
+May28|datausa-cashiers-masters,Jun07|datausa-cashiers-masters,datausa-cashiers-masters,Education,5432,exposure,58850.0,e2e9baf9f6ef516a
+May28|datausa-cashiers-masters,May10|datausa-cashiers-masters,datausa-cashiers-masters,Education,5432,exposure,58867.0,1e3dafd4000cde79
+Jun03|datausa-construction-workforce,Aug11|datausa-construction-workforce,datausa-construction-workforce,Florida,532489,exposure,185.0,8dadc41a8b4c5202
+Jun03|datausa-construction-workforce,Mar21|datausa-construction-workforce,datausa-construction-workforce,California,874322,exposure,190.0,9942a8e8bfb7628b
+Jun03|datausa-construction-workforce,Nov09|datausa-construction-workforce,datausa-construction-workforce,Texas,843195,exposure,255.0,ca0900c10c175924
+Feb03|datausa-poverty-county,Sep15|datausa-poverty-county,datausa-poverty-county,San Juan,26.7,exposure,44198.0,98c9386b21864fb7
+Jun03|datausa-construction-workforce,Mar21|datausa-construction-workforce,datausa-construction-workforce,Texas,843195,exposure,442.0,1f50759e801df754
+May28|datausa-cashiers-masters,Oct22|datausa-cashiers-masters,datausa-cashiers-masters,Education,5432,exposure,59228.0,fb1ffd2bedf5b08c
+Dec09|datausa-poverty-county,Sep15|datausa-poverty-county,datausa-poverty-county,Saginaw,21.8,exposure,43138.0,4ab621073eaa891b
+Jun01|datausa-language-french,Aug12|datausa-language-french,datausa-language-french,New Hampshire,1.32,exposure,14233.0,717bc229fa3923be
+Jun01|datausa-language-french,Jan27|datausa-language-french,datausa-language-french,New Hampshire,1.32,exposure,14290.0,dfe3754dd2962772
+Jun01|datausa-language-french,Jun21|datausa-language-french,datausa-language-french,New Hampshire,1.32,exposure,14298.0,7c8453cca69f45f9
+Jun03|datausa-construction-workforce,Nov09|datausa-construction-workforce,datausa-construction-workforce,Florida,532489,exposure,871.0,588d98fc721454b1
+Jun03|datausa-construction-workforce,Nov08|datausa-construction-workforce,datausa-construction-workforce,California,874322,exposure,876.0,faca0e9d96b2212f
+May28|datausa-cashiers-masters,Dec18|datausa-cashiers-masters,datausa-cashiers-masters,Education,5432,exposure,59649.0,f320aa6b4e53db25
+Jun01|datausa-language-french,Dec14|datausa-language-french,datausa-language-french,New Hampshire,1.32,exposure,14571.0,cfe27d608c47cf3e
+Jun03|datausa-construction-workforce,Jan20|datausa-construction-workforce,datausa-construction-workforce,Texas,843195,exposure,1158.0,c69fc51d5287d9c5
+Jun03|datausa-construction-workforce,Mar08|datausa-construction-workforce,datausa-construction-workforce,Texas,843195,exposure,1280.0,2e2a8ba0a28c197a
+May28|datausa-cashiers-masters,Jul16|datausa-cashiers-masters,datausa-cashiers-masters,Education,5432,exposure,59991.0,0e938870a884eb5a
+Jun03|datausa-construction-workforce,Dec30|datausa-construction-workforce,datausa-construction-workforce,Texas,843195,exposure,1373.0,ed1d595e62c3f494
+Jun03|datausa-construction-workforce,Mar08|datausa-construction-workforce,datausa-construction-workforce,Florida,532489,exposure,1461.0,10c22dd9bd8c00bb
+Jun03|datausa-construction-workforce,Jan20|datausa-construction-workforce,datausa-construction-workforce,California,874322,exposure,1477.0,943e63022f073d0d
+Jun03|datausa-construction-workforce,Jan20|datausa-construction-workforce,datausa-construction-workforce,Florida,532489,exposure,1477.0,401c819c73300949
+May28|datausa-cashiers-masters,Jun07|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,57366.0,02f3a740b0839724
+Jun03|datausa-construction-workforce,Dec30|datausa-construction-workforce,datausa-construction-workforce,Florida,532489,exposure,1597.0,c61bd9dd2fdea8c6
+Jun01|datausa-language-french,Sep13|datausa-language-french,datausa-language-french,New Hampshire,1.32,exposure,15078.0,9457e1501461482b
+Jun03|datausa-construction-workforce,Apr02|datausa-construction-workforce,datausa-construction-workforce,Texas,843195,exposure,1614.0,f151fc7f009dd708
+May28|datausa-cashiers-masters,Dec21|datausa-cashiers-masters,datausa-cashiers-masters,Education,5432,exposure,60438.0,976d3f5aa26e5612
+May28|datausa-cashiers-masters,Jun07|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,56062.0,36ad4324221d92e0
+Jun01|datausa-language-french,Jul30|datausa-language-french,datausa-language-french,New Hampshire,1.32,exposure,15249.0,19c81fc66541db2d
+May28|datausa-cashiers-masters,Apr01|datausa-cashiers-masters,datausa-cashiers-masters,Education,5432,exposure,60543.0,f8fb248ad54a5673
+May28|datausa-cashiers-masters,Jun07|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,54958.0,1714e7951f8783ee
+Feb03|datausa-poverty-county,May24|datausa-poverty-county,datausa-poverty-county,Merced,23.5,exposure,46011.0,53d3834812b835c0
+Jun01|datausa-language-french,Sep29|datausa-clothing-workforce,datausa-language-french,New Hampshire,1.32,exposure,15573.0,796570339688994c
+May28|datausa-cashiers-masters,Mar20|datausa-cashiers-masters,datausa-cashiers-masters,Education,5432,exposure,60937.0,590ca52df117b944
+Jun01|datausa-language-french,Oct14|datausa-language-french,datausa-language-french,New Hampshire,1.32,exposure,15860.0,2fadcce8d42c2483
+May28|datausa-cashiers-masters,May07|datausa-cashiers-masters,datausa-cashiers-masters,Education,5432,exposure,61183.0,ec12633ad82ca45c
+Aug18|datausa-construction-workforce,Aug21|datausa-construction-workforce,datausa-construction-workforce,New York,456607,exposure,7248.0,35b35ee79a35cab8
+Jun03|datausa-construction-workforce,Aug21|datausa-construction-workforce,datausa-construction-workforce,California,874322,exposure,2495.0,fc1a24e4f0a4227c
+May28|datausa-cashiers-masters,May07|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,55480.0,e56de9856ec6a483
+May28|datausa-cashiers-masters,Feb07|datausa-cashiers-masters,datausa-cashiers-masters,Education,5432,exposure,61374.0,1029cdf51071ddc6
+Feb03|datausa-poverty-county,Nov26|datausa-poverty-county,datausa-poverty-county,San Juan,26.7,exposure,46694.0,c62e999db65e56e2
+May28|datausa-cashiers-masters,Oct22|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,58614.0,134efb53e0fd4f89
+May28|datausa-cashiers-masters,Dec02|datausa-cashiers-masters,datausa-cashiers-masters,Education,5432,exposure,61625.0,03e322ff1d543678
+Aug18|datausa-construction-workforce,Nov09|datausa-clothing-workforce,datausa-construction-workforce,New York,456607,exposure,7721.0,2d087c3256457dd5
+Jun03|datausa-construction-workforce,Nov09|datausa-clothing-workforce,datausa-construction-workforce,California,874322,exposure,2968.0,9a52dfd092a5554e
+May28|datausa-cashiers-masters,May17|datausa-cashiers-masters,datausa-cashiers-masters,Education,5432,exposure,61679.0,11a050c1ec6d7abc
+Dec09|datausa-poverty-county,Jun26|datausa-poverty-county,datausa-poverty-county,Saginaw,21.8,exposure,45601.0,dc3ea83c1409d2b9
+Feb03|datausa-poverty-county,Jan14|datausa-poverty-county,datausa-poverty-county,San Juan,26.7,exposure,46974.0,bb3f58362b20d026
+Feb03|datausa-poverty-county,Aug06|datausa-poverty-county,datausa-poverty-county,San Juan,26.7,exposure,47008.0,a7731fa26c3e9910
+Feb03|datausa-poverty-county,Apr27|datausa-poverty-county,datausa-poverty-county,San Juan,26.7,exposure,47093.0,9f0fcde5b861b769
+May28|datausa-cashiers-masters,Mar20|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,59020.0,909f5121a7f99704
+May28|datausa-cashiers-masters,Sep01|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,59170.0,b211ac154c25c18d
+Dec09|datausa-poverty-county,Feb02|datausa-poverty-county,datausa-poverty-county,Saginaw,21.8,exposure,46085.0,aa38bd287175ea9c
+May28|datausa-cashiers-masters,Jan17|datausa-cashiers-masters,datausa-cashiers-masters,Education,5432,exposure,62221.0,77c659d54f98e567
+Apr09|datausa-poverty-county,Jul19|datausa-poverty-county,datausa-poverty-county,Michigan,21.8,exposure,193.0,2bc38459ede80ad2
+May28|datausa-cashiers-masters,Mar20|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,57950.0,23abb2c63a581af4
+Jun03|datausa-construction-workforce,Apr02|datausa-construction-workforce,datausa-construction-workforce,Florida,532489,exposure,3663.0,6dacf2294026e84e
+May28|datausa-cashiers-masters,Feb28|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,59672.0,0404e8fc1e2eee08
+May28|datausa-cashiers-masters,Feb28|datausa-cashiers-masters,datausa-cashiers-masters,Education,5432,exposure,62538.0,1ac2db518b7f9a1b
+May28|datausa-cashiers-masters,Aug08|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,59698.0,de271c3ab3b26c71
+Jun03|datausa-construction-workforce,May07|datausa-construction-workforce,datausa-construction-workforce,Texas,843195/924733,exposure,3890.0,c0e2b022cc05508a
+Apr09|datausa-poverty-county,Aug11|datausa-poverty-county,datausa-poverty-county,New Mexico,26.7,exposure,1207.0,10497ba9f3a920c4
+May28|datausa-cashiers-masters,Oct22|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,57204.0,3fbf9cac7658a8cb
+May28|datausa-cashiers-masters,Sep11|datausa-sector61-state,datausa-cashiers-masters,Business,5269,exposure,60091.0,b598be277e2fa3d8
+May28|datausa-cashiers-masters,Sep11|datausa-sector61-state,datausa-cashiers-masters,Social Sciences,2749,exposure,58564.0,2ccd7ff05c7589fd
+Feb03|datausa-poverty-county,May24|datausa-poverty-county,datausa-poverty-county,San Juan,26.7,exposure,48417.0,f4c6b26da2b760d7
+Jun01|datausa-language-french,Nov01|datausa-language-french,datausa-language-french,New Hampshire,1.32,exposure,18249.0,c71e373b057f9999
+Jun03|datausa-construction-workforce,Sep11|datausa-construction-workforce,datausa-construction-workforce,California,874322,exposure,4811.0,b7b96e8423f9f528
+Jun03|datausa-construction-workforce,Sep11|datausa-construction-workforce,datausa-construction-workforce,Florida,532489,exposure,4811.0,cb66d1eeec334ce0
+Jun03|datausa-construction-workforce,Sep11|datausa-construction-workforce,datausa-construction-workforce,Texas,843195,exposure,4811.0,ae9fcd6f8f5d5a04
+May28|datausa-cashiers-masters,Apr01|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,60701.0,767666ecab5678e7
+May28|datausa-cashiers-masters,May10|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,59203.0,7b1011fadc2d626e
+May28|datausa-cashiers-masters,Dec02|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,60758.0,41099aaf7248899e
+May28|datausa-cashiers-masters,Jan10|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,60950.0,4ec2520f03a1e533
+Dec09|datausa-poverty-county,May24|datausa-poverty-county,datausa-poverty-county,Saginaw,21.8,exposure,47757.0,12d0b68f67808852
+May28|datausa-cashiers-masters,Jan10|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,59495.0,c09f2b2e92abb723
+May28|datausa-cashiers-masters,Jan10|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,58144.0,9aa59d90837c9000
+Jun01|datausa-language-french,Feb27|datausa-language-french,datausa-language-french,New Hampshire,1.32,exposure,18670.0,6ac41fa63653c9d9
+May28|datausa-cashiers-masters,May17|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,61104.0,c41aac3312c69585
+Dec09|datausa-poverty-county,Jan14|datausa-poverty-county,datausa-poverty-county,Saginaw,21.8,exposure,47865.0,dd3ebefccb42274d
+May28|datausa-cashiers-masters,Apr01|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,59678.0,fa14ba1ddb7c23b7
+Aug18|datausa-construction-workforce,Dec17|datausa-construction-workforce,datausa-construction-workforce,New York,456607,exposure,10154.0,93d394338a9ef7e6
+Jun03|datausa-construction-workforce,Dec17|datausa-construction-workforce,datausa-construction-workforce,California,874322,exposure,5401.0,3a90a6e40a33fefe
+Feb03|datausa-poverty-county,Jul05|datausa-poverty-county,datausa-poverty-county,Merced,23.5,exposure,49520.0,adc068fed29fca72
+Apr09|datausa-poverty-county,Jul05|datausa-poverty-county,datausa-poverty-county,New Mexico,26.7,exposure,2554.0,c37904aeac2f977a
+Apr09|datausa-poverty-county,Jul05|datausa-poverty-county,datausa-poverty-county,Michigan,21.8,exposure,2190.0,36d8ef069e7ba133
+May28|datausa-cashiers-masters,Jan17|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,61432.0,63882d5fac5cb617
+May28|datausa-cashiers-masters,Oct30|datausa-cashiers-masters,datausa-cashiers-masters,Education,5432,exposure,64346.0,09bccfe2df48210b
+May28|datausa-cashiers-masters,Jul25|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,61589.0,b466766a204f44f8
+Jun03|datausa-construction-workforce,Sep17|datausa-language-french,datausa-construction-workforce,Florida,532489/605936,exposure,5810.0,57f0f1b04e53171f
+May28|datausa-cashiers-masters,May17|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,60173.0,7fab4dfec2c4986c
+May28|datausa-cashiers-masters,Sep06|datausa-cashiers-masters,datausa-cashiers-masters,Education,5432,exposure,64624.0,109b57ca9c62d851
+Feb03|datausa-poverty-county,Jul21|datausa-poverty-county,datausa-poverty-county,Flathead,8.2,exposure,49949.0,25dd9c173f3740ca
+Feb03|datausa-poverty-county,Jul21|datausa-poverty-county,datausa-poverty-county,Merced,23.5,exposure,49949.0,5a18f71a15a3aa5d
+Feb03|datausa-poverty-county,Jul21|datausa-poverty-county,datausa-poverty-county,San Juan,26.7,exposure,49949.0,adf90724b7da8a8c
+May28|datausa-cashiers-masters,Dec21|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,61858.0,c78949a66b6ae7ce
+Dec09|datausa-poverty-county,Nov26|datausa-poverty-county,datausa-poverty-county,Saginaw,21.8,exposure,48756.0,de8c582eed7c1ea8
+Jun03|datausa-construction-workforce,Dec17|datausa-construction-workforce,datausa-construction-workforce,Texas,843195,exposure,6189.0,dc4ce0ded8a092b8
+Jun03|datausa-construction-workforce,Aug21|datausa-construction-workforce,datausa-construction-workforce,Texas,843195,exposure,6336.0,175da770aeacd803
+May28|datausa-cashiers-masters,Feb02|datausa-cashiers-masters,datausa-cashiers-masters,Education,5432,exposure,65065.0,5c7dd4ff54f6d533
+Dec09|datausa-poverty-county,Apr27|datausa-poverty-county,datausa-poverty-county,Saginaw,21.8,exposure,48942.0,7322976c6fd065ba
+May28|datausa-cashiers-masters,May07|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,62277.0,870b105dc8ffdcfc
+May28|datausa-cashiers-masters,Jul16|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,62420.0,7037b1cb5e3a5625
+Sep13|datausa-poverty-county,Feb11|datausa-poverty-county,datausa-poverty-county,California,23.5,exposure,7186.0,1ccf0760ae184898
+May28|datausa-cashiers-masters,Jan17|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,61229.0,a7b23e80f0e21918
+May28|datausa-cashiers-masters,Dec02|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,61253.0,b7250363589f8ec3
+Apr09|datausa-poverty-county,Jul21|datausa-poverty-county,datausa-poverty-county,Michigan,21.8,exposure,3603.0,c04d9d7a2287809e
+Jun01|datausa-language-french,Apr08|datausa-language-french,datausa-language-french,New Hampshire,1.32,exposure,20573.0,dc30f39a2385ff97
+Jan12|datausa-cashiers-masters,Nov26|datausa-poverty-county,datausa-poverty-county,Pitt,22.5,exposure,6101.0,61785d60c9c648aa
+May28|datausa-cashiers-masters,Jan17|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,60429.0,cf156b73e8aef95d
+May28|datausa-cashiers-masters,Jan08|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,62212.0,e6308420340eaf2f
+May28|datausa-cashiers-masters,Feb02|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,63750.0,ebab5e06a699a9e2
+Dec09|datausa-poverty-county,Jun05|datausa-poverty-county,datausa-poverty-county,Saginaw,21.8,exposure,50507.0,e21ffd9fd2142485
+May28|datausa-cashiers-masters,Oct30|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,64179.0,8189cabcf489cf00
+May28|datausa-cashiers-masters,Jul16|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,62757.0,f71d7d690b015156
+May28|datausa-cashiers-masters,Jun24|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,61561.0,44209f3089196715
+May28|datausa-cashiers-masters,Jun24|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,64439.0,c73c539cc8d1045b
+May28|datausa-cashiers-masters,Jun24|datausa-cashiers-masters,datausa-cashiers-masters,Education,5432,exposure,67305.0,2ed9336c81419b25
+Dec09|datausa-poverty-county,Sep13|datausa-poverty-county,datausa-poverty-county,Saginaw,21.8,exposure,51293.0,e3c083bff532ee1b
+Apr09|datausa-poverty-county,Nov18|datausa-poverty-county,datausa-poverty-county,Michigan,21.8,exposure,5377.0,12522fc57b58070e
+May28|datausa-cashiers-masters,Dec02|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,61819.0,e67273cadbddb897
+Jun03|datausa-construction-workforce,Dec17|datausa-construction-workforce,datausa-construction-workforce,Florida,532489,exposure,8872.0,fe93b59fdf621e3a
+May28|datausa-cashiers-masters,Jun09|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,64785.0,986e25333e407b19
+May28|datausa-cashiers-masters,Nov21|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,65293.0,a12ed0afc7503809
+May28|datausa-cashiers-masters,Nov26|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,62444.0,afb4da12cccd6f5c
+May28|datausa-cashiers-masters,Aug21|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,63795.0,0064e2027bcea356
+Apr09|datausa-poverty-county,Aug11|datausa-poverty-county,datausa-poverty-county,Michigan,21.8,exposure,6150.0,d6d148e38c2d82be
+Apr09|datausa-poverty-county,Jun10|datausa-poverty-county,datausa-poverty-county,Michigan,21.8,exposure,6369.0,cc4dd17300edb4bd
+May28|datausa-cashiers-masters,Apr02|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,65636.0,e3a9065581331335
+May28|datausa-cashiers-masters,Apr02|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,64109.0,f38232be11a015e2
+May28|datausa-cashiers-masters,Apr02|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,62758.0,c0161df2f0328ee4
+May28|datausa-cashiers-masters,Apr02|datausa-cashiers-masters,datausa-cashiers-masters,Education,5432,exposure,68502.0,2143aa2001569bf0
+May28|datausa-cashiers-masters,Feb07|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,66806.0,88ec2155a2dcb17a
+Jun03|datausa-construction-workforce,Aug21|datausa-construction-workforce,datausa-construction-workforce,Florida,532489,exposure,12633.0,6f97a0fcc1629ad8
+May28|datausa-cashiers-masters,Jul16|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,65728.0,39b035f5e0ee8ba1
+May28|datausa-cashiers-masters,Sep06|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,68661.0,4200f3a94660e6e9
+May28|datausa-cashiers-masters,Sep06|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,67134.0,ff7ebda22b60e266
+May28|datausa-cashiers-masters,Aug18|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,67237.0,e5fc873c4bdebd0d
+May28|datausa-cashiers-masters,Aug18|datausa-cashiers-masters,datausa-cashiers-masters,Education,5432,exposure,71630.0,4e3f38ac5b415107
+May28|datausa-cashiers-masters,Aug18|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,68764.0,54dbb5568fd4e0d6
+May28|datausa-cashiers-masters,Nov21|datausa-cashiers-masters,datausa-cashiers-masters,Education,5432,exposure,71772.0,61e051e2e025c0cc
+May28|datausa-cashiers-masters,Apr08|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,67408.0,558b448d5414aac6
+May28|datausa-cashiers-masters,Apr08|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,66057.0,293e5c73a7c4d8e4
+May28|datausa-cashiers-masters,Mar06|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,69605.0,5324b7130b5c3bb6
+May28|datausa-cashiers-masters,Oct06|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,69738.0,4de92370904d65dc
+May28|datausa-cashiers-masters,Oct06|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,66860.0,998afdb50eaee162
+May28|datausa-cashiers-masters,Oct06|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,68211.0,e586b04a0edb545f
+May28|datausa-cashiers-masters,Jan08|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,67028.0,ced1d1c14f9a8b61
+May28|datausa-cashiers-masters,Aug03|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,67538.0,36aa870a1214654d
+May28|datausa-cashiers-masters,Oct30|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,69120.0,b2d9967471af8e6d
+May28|datausa-cashiers-masters,Sep06|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,68211.0,c1faf21f1773cb4f
+May28|datausa-cashiers-masters,May07|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,69628.0,5146c32543273939
+May28|datausa-cashiers-masters,Mar06|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,69728.0,6079ef1ed7b9fd45
+May28|datausa-cashiers-masters,Jun23|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,71985.0,2bfcb18958425430
+May28|datausa-cashiers-masters,Feb07|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,69269.0,56594d6e7328f26d
+May28|datausa-cashiers-masters,Oct30|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,69316.0,7cb5228b61a3983f
+May28|datausa-cashiers-masters,Feb02|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,71353.0,537decbb82bcdbe9
+May28|datausa-cashiers-masters,Jul23|datausa-cashiers-masters,datausa-cashiers-masters,Education,5432,exposure,76423.0,bc925af9063c74ea
+May28|datausa-cashiers-masters,Jul23|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,73557.0,d4948fbfb5b8ae1f
+May28|datausa-cashiers-masters,Sep02|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,72770.0,db60824d3c1402cb
+Dec09|datausa-poverty-county,Jan22|datausa-poverty-county,datausa-poverty-county,Saginaw,21.8,exposure,61048.0,c4611b01a9bbf01f
+May28|datausa-cashiers-masters,Sep29|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,73367.0,a7d96a609f503472
+May28|datausa-cashiers-masters,Sep29|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,72016.0,7e7d95ca6f4020c1
+May28|datausa-cashiers-masters,Sep29|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,74894.0,87cc42d0a50b49a7
+May28|datausa-cashiers-masters,Jun23|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,73768.0,10b71f8464a03703
+Dec09|datausa-poverty-county,Mar06|datausa-poverty-county,datausa-poverty-county,Saginaw,21.8,exposure,62257.0,aef75f6596ac68bb
+May28|datausa-cashiers-masters,Nov21|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,74342.0,5ff67dc1ee113ac1
+May28|datausa-cashiers-masters,Nov21|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,72991.0,67fcd12885bf817a
+May28|datausa-cashiers-masters,Apr08|datausa-cashiers-masters,datausa-cashiers-masters,Education,5432,exposure,78757.0,38509aa1b39aa270
+May28|datausa-cashiers-masters,Jun09|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,74715.0,65c46ac3ad1d7f5b
+May28|datausa-cashiers-masters,Jun23|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,73673.0,b111a32014cc0037
+May28|datausa-cashiers-masters,Nov01|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,73852.0,545c4334d86985c8
+May28|datausa-cashiers-masters,Nov01|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,75203.0,731c61663d9fa8e6
+May28|datausa-cashiers-masters,Nov01|datausa-cashiers-masters,datausa-cashiers-masters,Education,5432,exposure,79596.0,4ed652b25cb1c937
+May28|datausa-cashiers-masters,Nov01|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,76730.0,91765f56e4d2f74b
+May28|datausa-cashiers-masters,Feb02|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,73896.0,71b1c88585ee6665
+May28|datausa-cashiers-masters,Apr29|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,75383.0,c37d38fb9ecf9240
+May28|datausa-cashiers-masters,Feb21|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,77206.0,eafae3fc032b8fef
+May28|datausa-cashiers-masters,Jul23|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,75690.0,51122f3c6df25b47
+May28|datausa-cashiers-masters,Mar06|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,74888.0,620738f9b5dd8aa5
+May28|datausa-cashiers-masters,Jul09|datausa-cashiers-masters,datausa-cashiers-masters,Education,5432,exposure,80688.0,84082949f68a50a9
+May28|datausa-cashiers-masters,Jul09|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,77822.0,00b7c8ee2241d1c8
+May28|datausa-cashiers-masters,Jul09|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,76295.0,f23e3ef287a21c9f
+Dec09|datausa-poverty-county,Apr03|datausa-poverty-county,datausa-poverty-county,Saginaw,21.8,exposure,65790.0,c3a046a433c38ead
+May28|datausa-cashiers-masters,Jun09|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,76760.0,d2081944f481bcb2
+May28|datausa-cashiers-masters,Apr29|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,76887.0,88087e89a86d0f19
+May28|datausa-cashiers-masters,Jul23|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,77274.0,d8afee2591523f7e
+Apr28|datausa-construction-workforce,Jul23|datausa-cashiers-masters,datausa-construction-workforce,New Mexico,52192,exposure,1532.0,c3e970de7465aa0c
+May28|datausa-cashiers-masters,Jul09|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,77788.0,fc91a9d3de125729
+May28|datausa-cashiers-masters,Nov18|datausa-poverty-county,datausa-cashiers-masters,Business,5269,exposure,80888.0,e2a0d0b6dd0a4619
+May28|datausa-cashiers-masters,Nov18|datausa-poverty-county,datausa-cashiers-masters,Social Sciences,2749,exposure,79361.0,70e49443a5247787
+May28|datausa-cashiers-masters,Dec12|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,78384.0,676742e5de6be7ba
+May28|datausa-cashiers-masters,Dec21|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,80041.0,c2e9d74d5f0f2ef7
+May28|datausa-cashiers-masters,Mar26|datausa-language-french,datausa-cashiers-masters,Education,5432,exposure,85260.0,3775533542f5b3e6
+May28|datausa-cashiers-masters,Mar26|datausa-language-french,datausa-cashiers-masters,Business,5269,exposure,82394.0,cd1e05f4e6275e50
+May28|datausa-cashiers-masters,Feb21|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,79825.0,f41ed8fcc4cba463
+May28|datausa-cashiers-masters,Feb21|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,81176.0,501e5297caca8b24
+May28|datausa-cashiers-masters,openairesearcher987,datausa-cashiers-masters,Business,5269,exposure,83428.0,d46dad54ba20487e
+May28|datausa-cashiers-masters,openairesearcher987,datausa-cashiers-masters,Social Sciences,2749,exposure,81901.0,08c21f714307f8a4
+May28|datausa-cashiers-masters,openairesearcher987,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,80550.0,a9f3012031dda8ab
+Apr28|datausa-construction-workforce,Jul19|datausa-construction-workforce,datausa-construction-workforce,New Mexico,52192,exposure,9552.0,df28da1598e813fd
+Nov26|datausa-cashiers-masters,Dec27|datausa-construction-workforce,datausa-construction-workforce,Colorado,181058,exposure,10009.0,9918f64f0489e7de
+Dec09|datausa-poverty-county,Mar22|datausa-poverty-county,datausa-poverty-county,Saginaw,21.8,exposure,75908.0,55a834eda1c79413
+Nov26|datausa-cashiers-masters,Jul19|datausa-construction-workforce,datausa-construction-workforce,Colorado,181058,exposure,15111.0,715fe34a43544003
+Nov26|datausa-cashiers-masters,Dec03|datausa-construction-workforce,datausa-construction-workforce,Colorado,181058,exposure,16717.0,a4c6dc72375dbcbd
+May28|datausa-cashiers-masters,Jun22|datausa-cashiers-masters,datausa-cashiers-masters,Education,5432,exposure,99035.0,1d4751b9f754a3a7
+May28|datausa-cashiers-masters,Jun22|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,96169.0,f1950d919217a7c5
+May28|datausa-cashiers-masters,Jun22|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,94642.0,3507ade3fe1f6aa9
+May28|datausa-cashiers-masters,Jun22|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,93291.0,5ee2f59a0bbf859d
+May28|datausa-cashiers-masters,Oct18|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,96375.0,3fff32df717c9393
+May28|datausa-cashiers-masters,Apr10|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,93601.0,2b1340c0fab908c1
+May28|datausa-cashiers-masters,Apr10|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,94952.0,3cbdf4285fb3c2c3
+May28|datausa-cashiers-masters,Apr10|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,96479.0,b1f4c971a1d41b24
+Apr28|datausa-construction-workforce,Dec27|datausa-construction-workforce,datausa-construction-workforce,New Mexico,52192,exposure,18376.0,dcb84d390b2811c8
+Nov26|datausa-cashiers-masters,Oct18|datausa-construction-workforce,datausa-construction-workforce,Colorado,181058,exposure,19123.0,9e2380193afa51fb
+Apr28|datausa-construction-workforce,Oct18|datausa-construction-workforce,datausa-construction-workforce,New Mexico,52192,exposure,27825.0,1184b2a0d2685609
+Jun03|datausa-construction-workforce,Sep20|datausa-construction-workforce,datausa-construction-workforce,California,874322,exposure,51373.0,25777b6a5705b054
+Jun03|datausa-construction-workforce,Sep20|datausa-construction-workforce,datausa-construction-workforce,Texas,843195,exposure,51893.0,df8b232f82f0f2d0
+Jul03|nyc-veterans,May03|nyc-veterans,nyc-veterans,Korea,17931,exposure,25633.0,345fb7b025590fa4
+Jul03|nyc-veterans,Dec30|nyc-veterans,nyc-veterans,Korea,17931,exposure,25849.0,6f2786ec797e289d
+Jul03|nyc-veterans,Feb11|nyc-veterans,nyc-veterans,Korea,17931,exposure,26166.0,940576044b803dfc
+Jun03|datausa-construction-workforce,Sep20|datausa-construction-workforce,datausa-construction-workforce,Florida,532489,exposure,52662.0,2eef99885bdbf9aa
+Aug18|datausa-construction-workforce,Apr13|datausa-construction-workforce,datausa-construction-workforce,New York,456607,exposure,57541.0,dd2c554de453f60d
+Aug18|datausa-construction-workforce,Nov05|datausa-construction-workforce,datausa-construction-workforce,New York,456607,exposure,57580.0,ed7396ff89868e82
+Jun03|datausa-construction-workforce,Jul03|datausa-maids-wage,datausa-construction-workforce,Texas,843195,exposure,53021.0,4a729c1ece9032f1
+Jul03|nyc-veterans,Feb22|nyc-veterans,nyc-veterans,Korea,17931,exposure,26685.0,8a65d2ebeda7760f
+Aug18|datausa-construction-workforce,Feb01|datausa-clothing-workforce,datausa-construction-workforce,New York,456607,exposure,58201.0,784c4f22cb157bbf
+Aug18|datausa-construction-workforce,Nov18|datausa-construction-workforce,datausa-construction-workforce,New York,456607,exposure,58246.0,4bdc8102761376b3
+Aug18|datausa-construction-workforce,Oct07|datausa-construction-workforce,datausa-construction-workforce,New York,456607,exposure,58514.0,614c2c52c71d0db3
+Aug18|datausa-construction-workforce,Jul03|nyc-veterans,datausa-construction-workforce,New York,456607,exposure,58630.0,28d8aa378df5dfc7
+Jul03|nyc-veterans,Oct27|nyc-veterans,nyc-veterans,Korea,17931,exposure,27841.0,57fcc3322624994d
+Jun03|datausa-construction-workforce,Oct21|datausa-construction-workforce,datausa-construction-workforce,California,874322,exposure,54310.0,7b106a66e1ade7c1
+Jun03|datausa-construction-workforce,Oct21|datausa-construction-workforce,datausa-construction-workforce,Florida,532489,exposure,54310.0,89d292e45c3d9762
+Jun03|datausa-construction-workforce,Oct21|datausa-construction-workforce,datausa-construction-workforce,Texas,843195,exposure,54310.0,ff4c4b26a6de886c
+Aug18|datausa-construction-workforce,Oct21|datausa-construction-workforce,datausa-construction-workforce,New York,456607,exposure,59063.0,c23a939fac25fbe2
+Aug18|datausa-construction-workforce,Apr09|datausa-construction-workforce,datausa-construction-workforce,New York,456607,exposure,59411.0,37219cf3a5d4471e
+Jul03|nyc-veterans,Nov25|nyc-veterans,nyc-veterans,Vietnam,46438,exposure,28390.0,f3426c1198836bff
+Jul03|nyc-veterans,Feb11|nyc-veterans,nyc-veterans,Vietnam,46438,exposure,28450.0,7ff72db5f307e826
+Jul03|nyc-veterans,Aug07|nyc-veterans,nyc-veterans,Vietnam,46438,exposure,28740.0,0d293e5fcea95d09
+Jun03|datausa-construction-workforce,Mar06|datausa-construction-workforce,datausa-construction-workforce,Florida,532489,exposure,55252.0,245f290ceb8f2b2f
+Jun03|datausa-construction-workforce,Nov05|datausa-construction-workforce,datausa-construction-workforce,California,874322,exposure,55586.0,3dfe695cf1815927
+Jun03|datausa-construction-workforce,Apr18|datausa-construction-workforce,datausa-construction-workforce,California,874322,exposure,55668.0,cd8e6746d18c5646
+Jul03|nyc-veterans,May21|nyc-veterans,nyc-veterans,Korea,17931,exposure,29371.0,a06079ba39e79b38
+Jun03|datausa-construction-workforce,Nov05|datausa-construction-workforce,datausa-construction-workforce,Texas,843195,exposure,55774.0,bff004f495a3a92d
+Jun03|datausa-construction-workforce,Oct22|datausa-construction-workforce,datausa-construction-workforce,Florida,532489,exposure,55943.0,fef2570b789abddb
+Aug18|datausa-construction-workforce,Oct22|datausa-construction-workforce,datausa-construction-workforce,New York,456607,exposure,60696.0,8fe949d060d8d764
+Jun03|datausa-construction-workforce,Oct22|datausa-construction-workforce,datausa-construction-workforce,California,874322,exposure,55943.0,1fd666d1234a810a
+Jun03|datausa-construction-workforce,Oct22|datausa-construction-workforce,datausa-construction-workforce,Texas,843195,exposure,55943.0,88dacc8a1533e282
+Jun03|datausa-construction-workforce,Nov05|datausa-construction-workforce,datausa-construction-workforce,Florida,532489,exposure,55989.0,9158ede1b464f835
+Aug18|datausa-construction-workforce,Dec11|datausa-construction-workforce,datausa-construction-workforce,New York,456607/469147,exposure,60857.0,dabc89e78ae6e3a2
+Jul03|nyc-veterans,Feb22|nyc-veterans,nyc-veterans,Vietnam,46438,exposure,29903.0,332c8106a1c312b8
+Jun03|datausa-construction-workforce,Apr09|datausa-construction-workforce,datausa-construction-workforce,California,874322,exposure,56264.0,54f43d1583b5e537
+Jun03|datausa-construction-workforce,Apr18|datausa-construction-workforce,datausa-construction-workforce,Texas,843195,exposure,56271.0,7821a2318841a344
+Jun03|datausa-construction-workforce,Apr13|datausa-construction-workforce,datausa-construction-workforce,California,874322,exposure,56864.0,39889daaec8173aa
+Jun03|datausa-construction-workforce,Nov18|datausa-construction-workforce,datausa-construction-workforce,California,874322,exposure,57138.0,2a95bc354063dfeb
+Jun03|datausa-construction-workforce,Oct07|datausa-construction-workforce,datausa-construction-workforce,California,874322/951258,exposure,57154.0,7dd7cac5ed207ff0
+Aug18|datausa-construction-workforce,Jan05|datausa-construction-workforce,datausa-construction-workforce,New York,456607,exposure,61989.0,ca8ed008d908e8d9
+Jun03|datausa-construction-workforce,Dec11|datausa-construction-workforce,datausa-construction-workforce,California,874322,exposure,57449.0,a488004528c08050
+Aug18|datausa-construction-workforce,Jul26|datausa-construction-workforce,datausa-construction-workforce,New York,456607,exposure,62252.0,511dca7f9b68c306
+Jul03|nyc-veterans,Oct27|nyc-veterans,nyc-veterans,Vietnam,46438,exposure,31414.0,82d24f765c640b50
+Jun03|datausa-construction-workforce,Feb26|datausa-construction-workforce,datausa-construction-workforce,Texas,843195/924733,exposure,58360.0,a574cec80dc86d1d
+Jun03|datausa-construction-workforce,Apr13|datausa-construction-workforce,datausa-construction-workforce,Texas,843195,exposure,58768.0,d69f865e754966ab
+Jun03|datausa-construction-workforce,Jul26|datausa-construction-workforce,datausa-construction-workforce,California,874322/951258,exposure,59038.0,f35220a1b718ece2
+Jul03|nyc-veterans,Oct27|nyc-veterans,nyc-veterans,Gulf War,14751,exposure,32936.0,996662a3f29933fe
+Jun03|datausa-construction-workforce,Jan05|datausa-construction-workforce,datausa-construction-workforce,California,874322,exposure,59776.0,7d46486480bf6e81
+Jun03|datausa-construction-workforce,Feb26|datausa-construction-workforce,datausa-construction-workforce,Florida,532489/605936,exposure,60144.0,9aed801dc6018495
+Jul03|nyc-veterans,Nov25|nyc-veterans,nyc-veterans,Gulf War,14751,exposure,33829.0,e424383389adf54d
+Jul03|nyc-veterans,Aug07|nyc-veterans,nyc-veterans,Gulf War,14751,exposure,34170.0,ea38ceba08573f27
+Aug18|datausa-construction-workforce,Mar19|datausa-construction-workforce,datausa-construction-workforce,New York,456607,exposure,65583.0,0fba237d8d595e7b
+Jun03|datausa-construction-workforce,Mar19|datausa-construction-workforce,datausa-construction-workforce,California,874322,exposure,60830.0,e7c2b86f6878f00e
+Jun03|datausa-construction-workforce,Jan05|datausa-construction-workforce,datausa-construction-workforce,Texas,843195/924733,exposure,60974.0,c2924857eb5a14fb
+Jun03|datausa-construction-workforce,Jan05|datausa-construction-workforce,datausa-construction-workforce,Florida,532489/605936,exposure,61679.0,65e1f365dc2d8a2c
+Jul03|nyc-veterans,Feb11|nyc-veterans,nyc-veterans,Gulf War,14751,exposure,35216.0,fc97861f2a439d5c
+Jun03|datausa-construction-workforce,Jul26|datausa-construction-workforce,datausa-construction-workforce,Texas,843195/924733,exposure,62102.0,5d6974bf3d7fbc3e
+Jul03|nyc-veterans,Feb20|nyc-veterans,nyc-veterans,Gulf War,14751,exposure,35708.0,515b039dea3984ef
+Aug18|datausa-construction-workforce,Feb25|datausa-construction-workforce,datausa-construction-workforce,New York,456607,exposure,67082.0,ea6b441738216868
+Jun03|datausa-construction-workforce,Feb25|datausa-construction-workforce,datausa-construction-workforce,California,874322/951258,exposure,62329.0,64df651cab6bb5c8
+Aug18|datausa-construction-workforce,Jan11|datausa-clothing-workforce,datausa-construction-workforce,New York,456607,exposure,67687.0,e491f19a3af8f1d0
+Jun03|datausa-construction-workforce,Jan11|datausa-clothing-workforce,datausa-construction-workforce,California,874322/951258,exposure,62934.0,f65f42024a5c8706
+Jun03|datausa-construction-workforce,Feb25|datausa-construction-workforce,datausa-construction-workforce,Texas,843195,exposure,63075.0,2734da55f5951e0b
+Jun03|datausa-construction-workforce,Apr15|ihme-lymphatic-filariasis,datausa-construction-workforce,California,874322/951258,exposure,63124.0,81704a39f152fd4a
+Jun03|datausa-construction-workforce,Feb20|datausa-construction-workforce,datausa-construction-workforce,California,874322/951258,exposure,63155.0,3f0fd579d0cad60a
+Jun03|datausa-construction-workforce,Mar19|datausa-construction-workforce,datausa-construction-workforce,Texas,843195,exposure,66585.0,aa43a1077a5ed602
+Jun03|datausa-construction-workforce,Mar19|datausa-construction-workforce,datausa-construction-workforce,Florida,532489,exposure,66585.0,5c4195e431e9dbca
+May28|datausa-cashiers-masters,Oct18|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,121711.0,f678a4c87d759a41
+Jun03|datausa-construction-workforce,Dec23|datausa-construction-workforce,datausa-construction-workforce,California,874322/951258,exposure,67600.0,ad973ba08dde0469
+Jun03|datausa-construction-workforce,Dec23|datausa-construction-workforce,datausa-construction-workforce,Texas,843195/924733,exposure,67600.0,7eee71bf01bdb945
+Jun03|datausa-construction-workforce,Feb20|datausa-construction-workforce,datausa-construction-workforce,Texas,843195/924733,exposure,68793.0,4289be5442425585
+Jun03|datausa-construction-workforce,Feb20|datausa-construction-workforce,datausa-construction-workforce,Florida,532489/605936,exposure,69374.0,f42b94cded160803
+Jun03|datausa-construction-workforce,Apr12|datausa-construction-workforce,datausa-construction-workforce,California,874322,exposure,72122.0,53707484ead0ebc3
+Jun03|datausa-construction-workforce,Jul12|datausa-construction-workforce,datausa-construction-workforce,California,874322,exposure,72923.0,1e88d2ea040e23f3
+Jun03|datausa-construction-workforce,Jul12|datausa-construction-workforce,datausa-construction-workforce,Texas,843195,exposure,72923.0,d289118789814e9b
+Jun03|datausa-construction-workforce,Jul12|datausa-construction-workforce,datausa-construction-workforce,Florida,532489,exposure,72923.0,a7453e417c68b7ca
+Jun03|datausa-construction-workforce,Jun15|datausa-construction-workforce,datausa-construction-workforce,California,874322,exposure,73170.0,c623f3cb6aa06dbb
+Jun03|datausa-construction-workforce,Feb28|datausa-construction-workforce,datausa-construction-workforce,California,874322,exposure,73459.0,763f490ef834a889
+Jun03|datausa-construction-workforce,Nov19|datausa-construction-workforce,datausa-construction-workforce,California,874322,exposure,75772.0,11034b7a0d591a55
+Aug18|datausa-construction-workforce,May26|datausa-construction-workforce,datausa-construction-workforce,New York,456607,exposure,80754.0,9273d0894289f4d7
+Jun03|datausa-construction-workforce,May26|datausa-construction-workforce,datausa-construction-workforce,California,874322,exposure,76001.0,be0a26369fd50c7b
+Jun03|datausa-construction-workforce,May26|datausa-construction-workforce,datausa-construction-workforce,Texas,843195,exposure,76001.0,b8546cdcb420b41f
+May28|datausa-cashiers-masters,Oct19|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,140889.0,dbf15dffca4947fd
+Jun03|datausa-construction-workforce,Mar07|datausa-construction-workforce,datausa-construction-workforce,Texas,843195,exposure,97097.0,55ada374bba159d5
+Jun03|datausa-construction-workforce,Apr12|datausa-construction-workforce,datausa-construction-workforce,Florida,532489,exposure,118786.0,5dcd1be5ff75d8d7
+Jun03|datausa-construction-workforce,Feb28|datausa-construction-workforce,datausa-construction-workforce,Florida,532489,exposure,122707.0,94e8bdc92e695442
+Jun03|datausa-construction-workforce,Jun15|datausa-construction-workforce,datausa-construction-workforce,Florida,532489,exposure,128213.0,5043d4058838c94d
+Apr04|ihme-cvd-deaths,Apr01|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,8071.0,66b1fd1f659046a0
+Apr04|ihme-cvd-deaths,Sep27|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,9718.0,0180f56c7c8922a9
+Apr04|ihme-cvd-deaths,Jan07|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,10034.0,f6d908c0793d2e2b
+Apr04|ihme-cvd-deaths,Sep21|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,17317.0,05a07e844b46e6c8
+May28|datausa-cashiers-masters,May22|datausa-finance-gender-gap,datausa-cashiers-masters,Education,5432,exposure,236769.0,41efbfdb6e44f74d
+May28|datausa-cashiers-masters,Mar07|datausa-construction-workforce,datausa-cashiers-masters,Business,5269,exposure,234344.0,6f47f7b3cd45b84f
+May28|datausa-cashiers-masters,Mar07|datausa-construction-workforce,datausa-cashiers-masters,Education,5432,exposure,237210.0,d58364233605d62b
+Apr04|ihme-cvd-deaths,Sep08|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,21164.0,66ecae4520b653fd
+Apr04|ihme-cvd-deaths,Mar06|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,37387.0,84d1a42db0d43979
+Apr04|ihme-cvd-deaths,Jun26|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,40250.0,a9ca0be846e9f0dd
+Apr04|ihme-cvd-deaths,Nov01|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,40768.0,45dab0f0791739ee
+Apr04|ihme-cvd-deaths,Feb05|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,42146.0,265e3a9b028dffae
+Apr04|ihme-cvd-deaths,Nov03|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,45111.0,b46d3a0dfc739ec8
+Jan31|ihme-cvd-deaths,Mar27|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8016,exposure,11609.0,5249754258ce1989
+Apr04|ihme-cvd-deaths,Nov18|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,47207.0,8e7df9528aa0625f
+May28|datausa-cashiers-masters,Jun20|datausa-cashiers-masters,datausa-cashiers-masters,Education,5432,exposure,267400.0,5cba57d32063c343
+Apr04|ihme-cvd-deaths,May12|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,50520.0,3bb0671d244afcbe
+May28|datausa-cashiers-masters,Jan16|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,265641.0,16b7110e650ad14b
+Apr04|ihme-cvd-deaths,Jan31|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,52171.0,69e1d805f79a4bda
+May28|datausa-cashiers-masters,Jul08|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,265247.0,682acacfd7f44c30
+May28|datausa-cashiers-masters,Jul08|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,266774.0,7cac9b762bc7d3bd
+May28|datausa-cashiers-masters,Jan16|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,265303.0,0fbd51ffe2d66461
+May28|datausa-cashiers-masters,Feb20|datausa-cashiers-masters,datausa-cashiers-masters,Education,5432,exposure,270036.0,c79cea77f00183e2
+Mar27|ihme-cvd-deaths,Aug04|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8016,exposure,43581.0,c739e7c8da71da4a
+Apr04|ihme-cvd-deaths,Oct09|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,53386.0,dfedc2369f105e4c
+Jan31|datausa-cashiers-bachelors,Sep12|datausa-cashiers-bachelors,datausa-cashiers-bachelors,Business,54544,exposure,35111.0,78848f6afa6e669f
+Jan31|datausa-cashiers-bachelors,Sep12|datausa-cashiers-bachelors,datausa-cashiers-bachelors,Education,21837,exposure,35111.0,d7654bb9ca21371f
+Apr04|ihme-cvd-deaths,Dec15|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,54472.0,c4ccefb21ab0b6bd
+May28|datausa-cashiers-masters,Feb20|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,269035.0,015f01368a0e3ad3
+Jan31|datausa-cashiers-bachelors,Sep12|datausa-cashiers-bachelors,datausa-cashiers-bachelors,Social Sciences,16947,exposure,35689.0,5b29eb851daaf00f
+May28|datausa-cashiers-masters,Jan16|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,266432.0,5455479357899e84
+May28|datausa-cashiers-masters,Oct16|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,269846.0,50412d6345ca1169
+Jan31|datausa-cashiers-bachelors,Sep12|datausa-cashiers-bachelors,datausa-cashiers-bachelors,Visual & Performing Arts,16905,exposure,36922.0,94a91a558335eb99
+May28|datausa-cashiers-masters,Jan02|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,274929.0,375c48b22b78454b
+Jan31|datausa-cashiers-bachelors,Oct14|datausa-language-french,datausa-cashiers-bachelors,Social Sciences,16947,exposure,42363.0,0ae4abd8cc083d9b
+Jan31|datausa-cashiers-bachelors,Oct14|datausa-language-french,datausa-cashiers-bachelors,Visual & Performing Arts,16905,exposure,42363.0,33fa29541e0f8bf3
+Sep12|datausa-cashiers-bachelors,Jan02|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,16947,exposure,8934.0,370655fc31a5ecc5
+Apr04|ihme-cvd-deaths,Dec26|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,65820.0,363a56f45dbb3113
+Jan31|datausa-cashiers-bachelors,Mar02|datausa-cashiers-bachelors,datausa-cashiers-bachelors,Business,54544,exposure,46544.0,f6c9f94b8fc96909
+Jan31|datausa-cashiers-bachelors,Mar02|datausa-cashiers-bachelors,datausa-cashiers-bachelors,Education,21837,exposure,46544.0,c2f6c82a65264cca
+Jan31|datausa-cashiers-bachelors,Mar02|datausa-cashiers-bachelors,datausa-cashiers-bachelors,Social Sciences,16947,exposure,46544.0,ad9ca242ffe11b1f
+Jan31|datausa-cashiers-bachelors,Mar02|datausa-cashiers-bachelors,datausa-cashiers-bachelors,Visual & Performing Arts,16905,exposure,46903.0,3911db1ba2a39ed3
+Sep12|datausa-cashiers-bachelors,Oct10|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,16947,exposure,13298.0,e6be595d5a771b54
+May28|datausa-cashiers-masters,Oct10|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,282029.0,f7181b03bac36d83
+Jan02|datausa-cashiers-masters,Oct10|datausa-cashiers-masters,datausa-cashiers-masters,Education,21837,exposure,7100.0,0236be6a961b3b8e
+Dec09|datausa-poverty-county,Sep22|datausa-poverty-county,datausa-poverty-county,Saginaw,21.8,exposure,274811.0,57bb810f9ad619ff
+Dec09|datausa-poverty-county,Nov20|datausa-poverty-county,datausa-poverty-county,Saginaw,21.8,exposure,282301.0,35317978e64d70f1
+Apr09|datausa-poverty-county,Dec09|datausa-poverty-county,datausa-poverty-county,Michigan,21.8,exposure,242521.0,d8067b307940cbc5
+Oct04|oecd-equity,Mar16|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,221994.0,d50220c9ec0f653b
+Oct04|oecd-equity,Dec04|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,222395.0,d8d1edd78127ee16
+Oct04|oecd-equity,Aug21|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,222623.0,d93ff09054106326
+Oct04|oecd-equity,Apr11|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,222691.0,ea67287e5c114705
+Oct04|oecd-equity,Jul30|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,223781.0,450a8c932aaddecc
+Oct04|oecd-equity,Jan12|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,223798.0,bc77d9b8fd717ab7
+Oct04|oecd-equity,Mar15|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,223876.0,e702c45bf44d2548
+Oct04|oecd-equity,Aug02|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,223905.0,8a1fc88b747d2ff5
+Oct04|oecd-equity,Jul10|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,224112.0,a53493325733157d
+Oct04|oecd-equity,Jul23|oecd-equity,oecd-equity,Hungary,9.9,exposure,224133.0,1c12cef209c33b63
+Oct04|oecd-equity,Aug09|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,224165.0,7dd7fdab8a598d35
+Oct04|oecd-equity,Jan21|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,226282.0,63a1c0592dc83bfd
+Oct04|oecd-equity,Dec29|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,226507.0,b361106c2368bf9c
+Oct04|oecd-equity,Jul21|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,227175.0,e46c26457be5fb26
+Oct04|oecd-equity,Apr28|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,227209.0,6ec626fad080acb3
+Oct04|oecd-equity,May17|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,227251.0,2e889ad8e3f4370a
+Oct04|oecd-equity,Nov12|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,227339.0,f96543def82cd5a9
+Oct04|oecd-equity,Mar13|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,227485.0,09116f10a3049c34
+Oct04|oecd-equity,Mar21|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,227523.0,06c48718455f2d1a
+Oct04|oecd-equity,Apr19|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,227533.0,9f13bd3ed30eae39
+Oct04|oecd-equity,Dec02|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,227576.0,ebde0b32dd17d586
+Oct04|oecd-equity,Dec19|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,227698.0,fe1011dacb5e5d24
+Oct04|oecd-equity,Nov22|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,227712.0,60f80f78854e852f
+Oct04|oecd-equity,Sep22|oecd-equity,oecd-equity,Hungary,9.9,exposure,227891.0,b1ada807d4db8b3d
+Oct04|oecd-equity,Aug10|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,227992.0,2a5408192c57e3e9
+Oct04|oecd-equity,May24|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,228023.0,5ab653eaf3d7971b
+Oct04|oecd-equity,Nov28|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,228102.0,fd3717430def6d90
+Oct04|oecd-equity,Oct22|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,228244.0,7ade194303ef7917
+Oct04|oecd-equity,Feb21|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,228284.0,385c86367709db85
+Oct04|oecd-equity,Jul24|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,228383.0,c9efa31250ba6abc
+Oct04|oecd-equity,May24|oecd-equity,oecd-equity,Hungary,9.9,exposure,228462.0,6312936c956735d1
+Oct04|oecd-equity,Mar22|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,228489.0,3aa13766c15297c9
+Oct04|oecd-equity,May24|oecd-equity,oecd-equity,Poland,16.4,exposure,229499.0,a42e59b3c67288ab
+Oct04|oecd-equity,Sep17|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,229666.0,769ecfefbee537cc
+Oct04|oecd-equity,Mar05|oecd-equity,oecd-equity,Poland,16.4,exposure,229746.0,bff107e5f308112e
+Oct04|oecd-equity,Jun06|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,229755.0,7890a4c1cdfd5a8b
+Oct04|oecd-equity,Dec04|oecd-equity,oecd-equity,Hungary,9.9,exposure,229828.0,7a54f48781e8410c
+Oct04|oecd-equity,Nov06|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,229873.0,05c63ecfda6b41b2
+Oct04|oecd-equity,Dec04|oecd-equity,oecd-equity,Poland,16.4,exposure,229890.0,5d49013fd87c483f
+Oct04|oecd-equity,Jul10|oecd-equity,oecd-equity,Poland,16.4,exposure,230159.0,749700fc2e05a5e7
+Oct04|oecd-equity,Jul21|oecd-equity,oecd-equity,Hungary,9.9,exposure,230257.0,8321765a1646bd83
+Oct04|oecd-equity,Jan21|oecd-equity,oecd-equity,Hungary,9.9,exposure,230285.0,9c37ccdd0ecf7e0f
+Oct04|oecd-equity,Feb28|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,230367.0,89737090c0c0de2f
+Oct04|oecd-equity,May09|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,230390.0,99e04efef677f1ba
+Oct04|oecd-equity,May09|oecd-equity,oecd-equity,Hungary,9.9,exposure,230390.0,a2cc484e02728680
+Oct04|oecd-equity,May09|oecd-equity,oecd-equity,Poland,16.4,exposure,230649.0,801c61f08a4e35e4
+Oct04|oecd-equity,Oct15|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,230723.0,1b91ce4b8b97ba1b
+Oct04|oecd-equity,Jul21|oecd-equity,oecd-equity,Poland,16.4,exposure,230819.0,f49062724a007caa
+Oct04|oecd-equity,Sep13|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,230879.0,250630f243baaf6d
+Oct04|oecd-equity,Jun19|oecd-equity,oecd-equity,Hungary,9.9,exposure,230901.0,edea085b37044058
+Oct04|oecd-equity,Mar02|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,230949.0,ea4fbaff38ef95b8
+Oct04|oecd-equity,Sep27|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,230973.0,52088fa52c0667f1
+Oct04|oecd-equity,Jun19|oecd-equity,oecd-equity,Poland,16.4,exposure,231232.0,4bb6b0491efaab04
+Oct04|oecd-equity,Jun05|oecd-equity,oecd-equity,Hungary,9.9,exposure,231254.0,f5825173c70b30d3
+Oct04|oecd-equity,Jun05|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,231254.0,a7b1f906fcd36554
+Oct04|oecd-equity,Sep22|oecd-equity,oecd-equity,Poland,16.4,exposure,231353.0,403726f1cf24c034
+Oct04|oecd-equity,readonlyresearcher,oecd-equity,Hungary,9.9,exposure,231397.0,73e5c68ed9746a6f
+Oct04|oecd-equity,Aug19|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,231490.0,87dfee9397ad0a49
+Oct04|oecd-equity,Mar26|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,231493.0,54b7db2fb7359ab6
+Oct04|oecd-equity,Apr24|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,231535.0,0e632a16e177ec5f
+Oct04|oecd-equity,Apr24|oecd-equity,oecd-equity,Hungary,9.9,exposure,231535.0,e85fc852b9381cca
+Oct04|oecd-equity,Dec13|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,231665.0,c1f3b75766e8f183
+Oct04|oecd-equity,Dec13|oecd-equity,oecd-equity,Hungary,9.9,exposure,231665.0,e35d36e82e740e28
+Oct04|oecd-equity,oecdjulyten0700scout,oecd-equity,Czech Republic,9.7,exposure,231686.0,c928278f8ff5178e
+Oct04|oecd-equity,Aug05|oecd-equity,oecd-equity,Hungary,9.9,exposure,231761.0,797c597b9eaa399c
+Oct04|oecd-equity,May04|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,231915.0,d9dfcd42aaede0c7
+Oct04|oecd-equity,May17|oecd-equity,oecd-equity,Hungary,9.9,exposure,232003.0,c6eea8f922ac5500
+Oct04|oecd-equity,May17|oecd-equity,oecd-equity,Poland,16.4,exposure,232003.0,5ff09d5818774f48
+Oct04|oecd-equity,Nov28|oecd-equity,oecd-equity,Hungary,9.9,exposure,232068.0,9c5de0365abe73b7
+Oct04|oecd-equity,Nov06|oecd-equity,oecd-equity,Hungary,9.9,exposure,232127.0,bf9d63b5b91dd1d3
+Oct04|oecd-equity,Aug09|oecd-equity,oecd-equity,Hungary,9.9,exposure,232197.0,546f32103b7d026d
+Oct04|oecd-equity,Sep14|oecd-equity,oecd-equity,Hungary,9.9,exposure,232209.0,d19a3defd6aa4d66
+Oct04|oecd-equity,Apr06|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,232422.0,2614bc7aa0e08391
+Oct04|oecd-equity,Nov27|oecd-equity,oecd-equity,Hungary,9.9,exposure,232455.0,268b95d00ba9522a
+Oct04|oecd-equity,Jan11|oecd-equity,oecd-equity,Hungary,9.9,exposure,232715.0,6e715daeccae38e0
+Oct04|oecd-equity,Mar13|oecd-equity,oecd-equity,Hungary,9.9,exposure,232721.0,398d70b5ab624b44
+Oct04|oecd-equity,Dec19|oecd-equity,oecd-equity,Poland,16.4,exposure,235002.0,e20e97a88d1eb0ff
+Oct04|oecd-equity,Mar15|oecd-equity,oecd-equity,Hungary,9.9,exposure,235153.0,2777d7dac9f65423
+Oct04|oecd-equity,Nov06|oecd-equity,oecd-equity,Poland,16.4,exposure,235168.0,a560bde27f602f16
+Oct04|oecd-equity,Dec29|oecd-equity,oecd-equity,Hungary,9.9,exposure,235184.0,acbacf9c8f41c168
+Oct04|oecd-equity,Nov28|oecd-equity,oecd-equity,Poland,16.4,exposure,235210.0,08aa6d191d144d07
+Oct04|oecd-equity,Mar02|oecd-equity,oecd-equity,Hungary,9.9,exposure,235226.0,418188a31b5d45f7
+Oct04|oecd-equity,Dec13|oecd-equity,oecd-equity,Poland,16.4,exposure,235311.0,3a95f6f8fd9c6a31
+Oct04|oecd-equity,Jun03|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,235311.0,fedb12a656aa686e
+Oct04|oecd-equity,Jun03|oecd-equity,oecd-equity,Hungary,9.9,exposure,235311.0,c9b7b35656b5e3c7
+Oct04|oecd-equity,Nov22|oecd-equity,oecd-equity,Hungary,9.9,exposure,235387.0,7481bf20cc5a7fcc
+Oct04|oecd-equity,May04|oecd-equity,oecd-equity,Hungary,9.9,exposure,235393.0,c4b0c16814530244
+Oct04|oecd-equity,Aug21|oecd-equity,oecd-equity,Hungary,9.9,exposure,235427.0,d75e5d042c818eb5
+Oct04|oecd-equity,Aug09|oecd-equity,oecd-equity,Poland,16.4,exposure,235513.0,4ef570630d0908b5
+Oct04|oecd-equity,Jul23|oecd-equity,oecd-equity,Poland,16.4,exposure,235535.0,f1cdba85ab03bad3
+Oct04|oecd-equity,May04|oecd-equity,oecd-equity,Poland,16.4,exposure,235738.0,c4067b32562954a8
+Oct04|oecd-equity,May14|oecd-equity,oecd-equity,Hungary,9.9,exposure,235812.0,17df0ffa5cdcd890
+Oct04|oecd-equity,Sep13|oecd-equity,oecd-equity,Hungary,9.9,exposure,236353.0,ab1a7d47a053a946
+Oct04|oecd-equity,Feb17|oecd-equity,oecd-equity,Hungary,9.9,exposure,236539.0,43d44b4fa69ec0e2
+Oct04|oecd-equity,Aug21|oecd-equity,oecd-equity,Poland,16.4,exposure,236639.0,bfe6ed3733476269
+Oct04|oecd-equity,Nov27|oecd-equity,oecd-equity,Poland,16.4,exposure,237030.0,d25f311f1a670e17
+Oct04|oecd-equity,Mar15|oecd-equity,oecd-equity,Poland,16.4,exposure,237050.0,0106557df30f0033
+Oct04|oecd-equity,May02|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,237366.0,b78e724d67e7416b
+Oct04|oecd-equity,Nov22|oecd-equity,oecd-equity,Poland,16.4,exposure,237462.0,097ed33a8b87e9ff
+Oct04|oecd-equity,Aug10|oecd-equity,oecd-equity,Hungary,9.9,exposure,237644.0,d12577b0ce0d811c
+Oct04|oecd-equity,Mar26|oecd-equity,oecd-equity,Hungary,9.9,exposure,237691.0,bf69072c87557ed7
+Oct04|oecd-equity,Sep13|oecd-equity,oecd-equity,Poland,16.4,exposure,237692.0,cade6db643070985
+Oct04|oecd-equity,Jul30|oecd-equity,oecd-equity,Hungary,9.9,exposure,238064.0,ea68f7cc3a2dd6e9
+Oct04|oecd-equity,Oct22|oecd-equity,oecd-equity,Hungary,9.9,exposure,240234.0,bd34df179558d7cb
+Oct04|oecd-equity,May02|oecd-equity,oecd-equity,Hungary,9.9,exposure,240683.0,252b0ce48be02674
+Oct04|oecd-equity,Feb28|oecd-equity,oecd-equity,Hungary,9.9,exposure,240975.0,da365145420dcfd7
+Oct04|oecd-equity,Jul18|oecd-equity,oecd-equity,Hungary,9.9,exposure,241142.0,23dfe17272194a80
+Oct04|oecd-equity,Mar21|oecd-equity,oecd-equity,Poland,16.4,exposure,241853.0,00d2649bbf5ec732
+Feb11|oecd-equity,Oct28|oecd-equity,oecd-equity,Czech Republic,9.69,exposure,6770.0,52aaa3c7bfbf28e1
+Oct04|oecd-equity,Jul24|oecd-equity,oecd-equity,Hungary,9.9,exposure,242493.0,e81f95c28aa555ad
+Oct04|oecd-equity,Jun08|oecd-equity,oecd-equity,Hungary,9.9,exposure,242661.0,a144d4f83d53d36c
+Oct04|oecd-equity,Apr24|oecd-equity,oecd-equity,Poland,16.4,exposure,243308.0,87a393e36c5386e5
+Feb11|oecd-equity,Jun11|oecd-equity,oecd-equity,Czech Republic,9.69,exposure,9790.0,0917be00c3fcec26
+Oct04|oecd-equity,Feb17|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,245868.0,c8abe43d78bf3c7d
+Mar30|oecd-equity,Feb17|oecd-equity,oecd-equity,Poland,16.38,exposure,4028.0,5a9d1556e4c078a1
+Oct04|oecd-equity,Dec19|oecd-equity,oecd-equity,Hungary,9.9,exposure,247146.0,daf134aa248a7abd
+Mar30|oecd-equity,Apr19|oecd-equity,oecd-equity,Hungary,9.91,exposure,5437.0,68f5f3beb41429a1
+Oct04|oecd-equity,Sep14|oecd-equity,oecd-equity,Poland,16.4,exposure,247645.0,04a3f998cb44c037
+Oct04|oecd-equity,Dec16|oecd-equity,oecd-equity,Poland,16.4,exposure,247733.0,10dfc1792908775b
+Oct04|oecd-equity,Dec16|oecd-equity,oecd-equity,Hungary,9.9,exposure,247733.0,c05f905aafc11627
+Feb11|oecd-equity,Apr14|oecd-equity,oecd-equity,Czech Republic,9.69,exposure,12906.0,1d746a567abc8d56
+Mar30|oecd-equity,May13|oecd-equity,oecd-equity,Poland,16.38,exposure,6176.0,56f68cf0140d01f9
+Oct04|oecd-equity,May13|oecd-equity,oecd-equity,Hungary,9.9,exposure,248016.0,074b73008640a4a2
+Feb11|oecd-equity,May13|oecd-equity,oecd-equity,Czech Republic,9.69,exposure,12921.0,24266362b52e7a4a
+Feb11|oecd-equity,Apr09|oecd-equity,oecd-equity,Czech Republic,9.69,exposure,12960.0,185850fae74af14d
+Mar30|oecd-equity,Apr09|oecd-equity,oecd-equity,Poland,16.38,exposure,6215.0,eb310d26c371af2d
+Feb11|oecd-equity,May28|oecd-equity,oecd-equity,Czech Republic,9.69,exposure,13410.0,b230ad169312545d
+Oct04|oecd-equity,May28|oecd-equity,oecd-equity,Hungary,9.9,exposure,248505.0,5c7e0cd8baa6e499
+Mar30|oecd-equity,May28|oecd-equity,oecd-equity,Poland,16.38,exposure,6665.0,5661777009c192e8
+Oct04|oecd-equity,Feb07|oecd-equity,oecd-equity,Hungary,9.9,exposure,248740.0,88cee474d0308c11
+Mar30|oecd-equity,Mar03|oecd-equity,oecd-equity,Hungary,9.91,exposure,7018.0,769953a32b260c35
+Mar30|oecd-equity,Aug17|oecd-equity,oecd-equity,Poland,16.38,exposure,11602.0,8e96d2639eac9081
+Mar30|oecd-equity,Nov02|oecd-equity,oecd-equity,Poland,16.38,exposure,13406.0,d1f56b5f5dd4027b
+Oct04|oecd-equity,Nov02|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,255246.0,53e9bc974605bbcb
+Mar30|oecd-equity,Mar13|oecd-equity,oecd-equity,Poland,16.38,exposure,14124.0,ded4f1948019500e
+Feb11|oecd-equity,oecdequityagent,oecd-equity,Czech Republic,9.69,exposure,21120.0,b6705f498a67f4e1
+Oct04|oecd-equity,oecdequityagent,oecd-equity,Hungary,9.9,exposure,256215.0,d3f75679853c2a5b
+Mar30|oecd-equity,oecdequityagent,oecd-equity,Poland,16.38,exposure,14375.0,12f80b0097ddc444
+Oct04|oecd-equity,Feb23|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,256895.0,3e699ee071d1ad40
+Mar30|oecd-equity,Feb23|oecd-equity,oecd-equity,Hungary,9.91,exposure,15055.0,1ef91e152a023af2
+Mar30|oecd-equity,Sep19|oecd-equity,oecd-equity,Poland,16.38,exposure,15312.0,e34a37f7212c52b8
+Feb11|oecd-equity,Sep19|oecd-equity,oecd-equity,Czech Republic,9.69,exposure,22057.0,8d67d8767d28e0a4
+Mar30|oecd-equity,Sep19|oecd-equity,oecd-equity,Hungary,9.91,exposure,15312.0,3c07de10c1484882
+Oct04|oecd-equity,Apr26|oecd-equity,oecd-equity,Hungary,9.9,exposure,257288.0,a70a41b36901d6d1
+Mar30|oecd-equity,Apr26|oecd-equity,oecd-equity,Poland,16.38,exposure,15448.0,f3ec6c3aeaf46108
+Mar30|oecd-equity,maytwoobserverfreshx,oecd-equity,Poland,16.38,exposure,15490.0,fc895bfe9fbc79b6
+Mar30|oecd-equity,Jul14|oecd-equity,oecd-equity,Poland,16.38,exposure,15689.0,05ba5b207ac93156
+Mar30|oecd-equity,Jan10|oecd-equity,oecd-equity,Hungary,9.91,exposure,15758.0,c1aa0a40469348cd
+Mar30|oecd-equity,Oct22|oecd-equity,oecd-equity,Poland,16.38,exposure,16523.0,2feb0144dbc66dae
+Feb11|oecd-equity,Oct07|oecd-equity,oecd-equity,Czech Republic,9.69,exposure,23283.0,385bc83bfd33feab
+Mar30|oecd-equity,Oct07|oecd-equity,oecd-equity,Poland,16.38,exposure,16538.0,b19f058ab7f5e149
+Oct04|oecd-equity,Oct07|oecd-equity,oecd-equity,Hungary,9.9,exposure,258378.0,fae507392400d65c
+Mar30|oecd-equity,Sep17|oecd-equity,oecd-equity,Hungary,9.91,exposure,16692.0,e9763f4a26cfb2f8
+Mar30|oecd-equity,Nov12|oecd-equity,oecd-equity,Hungary,9.91,exposure,16919.0,8a0c7c7d9fed0619
+Mar30|oecd-equity,Mar16|oecd-equity,oecd-equity,Hungary,9.91,exposure,17184.0,751c403855b896bd
+Mar30|oecd-equity,Oct24|oecd-equity,oecd-equity,Hungary,9.91,exposure,17680.0,1286f4195c968fb0
+Oct04|oecd-equity,Oct24|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,259520.0,1c04a28e6806eae6
+Mar30|oecd-equity,May03|oecd-equity,oecd-equity,Hungary,9.91,exposure,17892.0,44af4eea44cde6e2
+Oct04|oecd-equity,May03|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,259732.0,2b5ff181c50c9e3b
+Feb11|oecd-equity,Feb22|oecd-equity,oecd-equity,Czech Republic,9.69,exposure,24798.0,7787fe4c135ff428
+Mar30|oecd-equity,Feb22|oecd-equity,oecd-equity,Hungary,9.91,exposure,18053.0,5b6effee5504c4fc
+Mar30|oecd-equity,Feb22|oecd-equity,oecd-equity,Poland,16.38,exposure,18053.0,f0a8536f4df38557
+Mar30|oecd-equity,Jun06|oecd-equity,oecd-equity,Hungary,9.91,exposure,18129.0,b503a85326f8901d
+Sep17|uefa-pass-accuracy,Mar21|uefa-pass-accuracy,uefa-pass-accuracy,Italy,81,exposure,2255.0,c37cdb1ec642223a
+Mar30|oecd-equity,Apr28|oecd-equity,oecd-equity,Poland,16.38,exposure,18708.0,6a332337dd4243c5
+Mar30|oecd-equity,Apr06|oecd-equity,oecd-equity,Hungary,9.91,exposure,19292.0,2aef7fd7224b6b1b
+Mar30|oecd-equity,Aug10|oecd-equity,oecd-equity,Poland,16.38,exposure,19356.0,6acc0a28ad221c66
+Mar30|oecd-equity,Aug02|oecd-equity,oecd-equity,Hungary,9.91,exposure,19916.0,aa42a47f39cc774e
+Mar30|oecd-equity,Nov23|oecd-equity,oecd-equity,Poland,16.38,exposure,20128.0,8b9423708aadf551
+Mar30|oecd-equity,Feb07|oecd-equity,oecd-equity,Poland,16.38,exposure,20516.0,cfe6799db7de5808
+Mar30|oecd-equity,Feb19|oecd-equity,oecd-equity,Hungary,9.91,exposure,20617.0,cabbb156cf647439
+Mar30|oecd-equity,Feb19|oecd-equity,oecd-equity,Poland,16.38,exposure,20617.0,2275f60c127de74a
+Feb11|oecd-equity,Feb19|oecd-equity,oecd-equity,Czech Republic,9.69,exposure,27362.0,ddf63a41ef91b7e6
+Mar30|oecd-equity,May14|oecd-equity,oecd-equity,Poland,16.38,exposure,20943.0,85e0c7430f4bb011
+Mar30|oecd-equity,Dec02|oecd-equity,oecd-equity,Hungary,9.91,exposure,22393.0,381859538db6035c
+Mar30|oecd-equity,Sep17|oecd-equity,oecd-equity,Poland,16.38,exposure,23227.0,afcc6c0698f2d9c9
+Mar30|oecd-equity,observertmpy,oecd-equity,Poland,16.38,exposure,23928.0,bfd56c20395503d2
+Mar16|uefa-pass-accuracy,Apr04|uefa-pass-accuracy,uefa-pass-accuracy,Romania,81,exposure,5247.0,cbef53c508018e56
+Mar16|uefa-pass-accuracy,Oct18|uefa-pass-accuracy,uefa-pass-accuracy,Romania,81,exposure,5248.0,39cf565cd81f8274
+Mar30|oecd-equity,Jul24|oecd-equity,oecd-equity,Poland,16.38,exposure,25706.0,132c5656ce9fc1ea
+Oct04|oecd-equity,Jun26|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,267732.0,d2aa7369e0b61b48
+Mar30|oecd-equity,Jun26|oecd-equity,oecd-equity,Hungary,9.91,exposure,25892.0,0aed9010929b6bf2
+Mar30|oecd-equity,Jun26|oecd-equity,oecd-equity,Poland,16.38,exposure,25892.0,2be5ff5c094dd904
+Mar30|oecd-equity,Apr06|oecd-equity,oecd-equity,Poland,16.38,exposure,26125.0,fd42c3de7be8c329
+Mar30|oecd-equity,Jun06|oecd-equity,oecd-equity,Poland,16.38,exposure,26251.0,e3a81c0df70917d5
+Mar30|oecd-equity,Mar16|oecd-equity,oecd-equity,Poland,16.38,exposure,26308.0,af302950d38eb144
+Mar16|uefa-pass-accuracy,Oct18|uefa-pass-accuracy,uefa-pass-accuracy,Slovenia,69,exposure,5711.0,073da4a8d9a7f182
+Mar30|oecd-equity,Aug02|oecd-equity,oecd-equity,Poland,16.38,exposure,28220.0,90e70c69f07fc27c
+Mar30|oecd-equity,Feb28|oecd-equity,oecd-equity,Poland,16.38,exposure,29691.0,39b87dde9091c66a
+Oct18|uefa-pass-accuracy,Apr04|uefa-pass-accuracy,uefa-pass-accuracy,Slovenia,69,exposure,23163.0,2f93a2246d6fa1e9
+Oct04|oecd-equity,Nov18|oecd-equity,oecd-equity,Czech Republic,9.7,exposure,272924.0,b157d534064cd9c6
+Mar30|oecd-equity,Nov18|oecd-equity,oecd-equity,Poland,16.38,exposure,31084.0,129e8be9c84c6f03
+Mar30|oecd-equity,Apr14|oecd-equity,oecd-equity,Hungary,9.91,exposure,34126.0,0550ae36bcbac773
+May28|datausa-cashiers-masters,Feb13|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,369373.0,a9275d3112c49ea0
+May28|datausa-cashiers-masters,Feb13|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,370724.0,dac9f8cef79cec0c
+May28|datausa-cashiers-masters,Feb13|datausa-cashiers-masters,datausa-cashiers-masters,Education,5432,exposure,375117.0,f59788381b72b3b0
+May28|datausa-cashiers-masters,Feb13|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,372251.0,3b797f3cdf7a2ac4
+mcvsavexbkuuqpyagent,Aug11|ihme-mcv2,ihme-mcv2,Algeria,93.96,exposure,41832.0,f93699d8cf32b865
+Mar30|oecd-equity,Apr18|oecd-equity,oecd-equity,Poland,16.38,exposure,67228.0,39628174f6508db8
+May28|datausa-cashiers-masters,Jan06|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,399610.0,55db841cfb1cc967
+May28|datausa-cashiers-masters,Jan06|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,398259.0,3260d37eb170e677
+Dec15|ihme-cvd-deaths,Jan14|ihme-cvd-deaths,ihme-cvd-deaths,Turkmenistan,70,exposure,220334.0,a8fb7dc0abd4104f
+Dec15|ihme-cvd-deaths,Aug15|ihme-cvd-deaths,ihme-cvd-deaths,Turkmenistan,70,exposure,220970.0,9fc370ecdb4e6cf8
+Dec15|ihme-cvd-deaths,Feb26|ihme-cvd-deaths,ihme-cvd-deaths,Turkmenistan,70,exposure,221024.0,0a725a1adc0d8b07
+Dec15|ihme-cvd-deaths,Nov16|ihme-cvd-deaths,ihme-cvd-deaths,Turkmenistan,70,exposure,221943.0,ddfa9483b18ee7e0
+Dec15|ihme-cvd-deaths,Nov28|ihme-cvd-deaths,ihme-cvd-deaths,Turkmenistan,70,exposure,222393.0,f5674199d8d99e9a
+Apr04|ihme-cvd-deaths,Apr23|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,203711.0,4a7d1655c50c3c2c
+Apr04|ihme-cvd-deaths,Aug09|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,204005.0,0ca4ad389dedb35b
+Dec15|ihme-cvd-deaths,Aug09|ihme-cvd-deaths,ihme-cvd-deaths,Turkmenistan,70,exposure,232473.0,75501df68aa61222
+Apr04|ihme-cvd-deaths,Aug24|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,205638.0,38e13ef8f509e470
+Apr04|ihme-cvd-deaths,Nov16|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,208041.0,59321d7005a12f05
+Apr04|ihme-cvd-deaths,May26|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,208423.0,a20b0d7f4113167f
+Apr04|ihme-cvd-deaths,Jan14|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,208747.0,3e60ec65b24afdad
+Apr04|ihme-cvd-deaths,Oct03|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,210074.0,9cf80b7646e0e7e6
+Apr04|ihme-cvd-deaths,Oct25|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,210228.0,59612c2db9d0b082
+Apr04|ihme-cvd-deaths,Apr30|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,210546.0,d4d04b5591f95d81
+Apr04|ihme-cvd-deaths,Feb26|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,210902.0,9e8c6ab3b898481f
+Apr04|ihme-cvd-deaths,Sep24|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,211331.0,cae16342b9a0f4ef
+Apr04|ihme-cvd-deaths,Mar25|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,211635.0,957ebd4ea0686f70
+Apr04|ihme-cvd-deaths,Mar10|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,211661.0,bddc1ef6b1839651
+Apr04|ihme-cvd-deaths,Jan18|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,211786.0,92df3af06c94bfaa
+Apr04|ihme-cvd-deaths,May02|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,212693.0,a09e807a092455e3
+Apr04|ihme-cvd-deaths,Dec30|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,212775.0,157f052bbc0e6147
+Apr04|ihme-cvd-deaths,Jun30|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,213823.0,61acae37469b3f9e
+Apr04|ihme-cvd-deaths,Sep22|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,213915.0,145a34d920ec127d
+Apr04|ihme-cvd-deaths,May19|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,216782.0,570734c2e49ac30f
+Apr04|ihme-cvd-deaths,Jul09|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,217013.0,24b614b53717f202
+Apr04|ihme-cvd-deaths,Oct29|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,217675.0,b047f11677b3dc4b
+Apr04|ihme-cvd-deaths,Oct22|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,218450.0,5de8cce6ec4e3a1f
+Apr04|ihme-cvd-deaths,Jan02|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,218943.0,680a468acd8d1815
+Mar31|ihme-family-planning,Sep05|ihme-family-planning,ihme-family-planning,Croatia,41.78,exposure,85338.0,25b2923d5e683afd
+Mar31|ihme-family-planning,Dec13|ihme-family-planning,ihme-family-planning,Croatia,41.78,exposure,86555.0,4ed3aad4454fda0a
+Mar31|ihme-family-planning,Sep05|ihme-family-planning,ihme-family-planning,Albania,13.46,exposure,86868.0,0e8b5a6ac4b7c1ed
+Mar31|ihme-family-planning,Nov27|ihme-family-planning,ihme-family-planning,Albania,13.46,exposure,88139.0,275171f08c67e1fa
+Mar31|ihme-family-planning,Nov27|ihme-family-planning,ihme-family-planning,Cyprus,85.59,exposure,77538.0,b821343ea5a3e169
+Mar31|ihme-family-planning,Sep05|ihme-family-planning,ihme-family-planning,Cyprus,85.59,exposure,78440.0,109865de4879b28e
+Mar31|ihme-family-planning,Jul20|ihme-family-planning,ihme-family-planning,Albania,13.46,exposure,90310.0,f65c9a57b0fea449
+Mar31|ihme-family-planning,Jul20|ihme-family-planning,ihme-family-planning,Cyprus,85.59,exposure,80501.0,794889ddb943d512
+Mar31|ihme-family-planning,Feb07|ihme-family-planning,ihme-family-planning,Croatia,41.78,exposure,91821.0,f0db138de8968fef
+Mar31|ihme-family-planning,Feb07|ihme-family-planning,ihme-family-planning,Albania,13.46,exposure,92932.0,a6ef46027cb99ab6
+Mar31|ihme-family-planning,Sep09|ihme-family-planning,ihme-family-planning,Albania,13.46,exposure,93633.0,a5a6b023b11ea736
+Mar31|ihme-family-planning,Nov01|ihme-family-planning,ihme-family-planning,Albania,13.46,exposure,93828.0,cc6567c4d0811d3f
+Mar31|ihme-family-planning,Feb07|ihme-family-planning,ihme-family-planning,Cyprus,85.59,exposure,83222.0,b66d7dad94cbb375
+Mar31|ihme-family-planning,Nov01|ihme-family-planning,ihme-family-planning,Cyprus,85.59,exposure,84311.0,a99ed27c79d24587
+Mar31|ihme-family-planning,Apr26|ihme-family-planning,ihme-family-planning,Croatia,41.78,exposure,95218.0,025fee4f69f4557c
+Mar31|ihme-family-planning,Apr26|ihme-family-planning,ihme-family-planning,Albania,13.46,exposure,95218.0,5838ab8720a6c151
+Mar31|ihme-family-planning,Jun30|ihme-family-planning,ihme-family-planning,Cyprus,85.59,exposure,84746.0,2ce9eda463cc3068
+Mar31|ihme-family-planning,Jun30|ihme-family-planning,ihme-family-planning,Albania,13.46,exposure,95644.0,bfd4995908b356ef
+Mar31|ihme-family-planning,Apr26|ihme-family-planning,ihme-family-planning,Cyprus,85.59,exposure,85460.0,4dec0fd3445f2c69
+Mar31|ihme-family-planning,May04|ihme-family-planning,ihme-family-planning,Croatia,41.78,exposure,97619.0,d86493d47b77c666
+Mar31|ihme-family-planning,May04|ihme-family-planning,ihme-family-planning,Cyprus,85.59,exposure,86721.0,1fd01c67a3ce323b
+Jan01|fuel-poverty-ni,Nov30|fuel-poverty-ni,fuel-poverty-ni,Mid Ulster,15880,exposure,6620.0,fa16f715fb08b1cb
+Mar31|ihme-family-planning,Jan26|ihme-family-planning,ihme-family-planning,Albania,13.46,exposure,99771.0,8b1ba6c782f20c28
+Mar31|ihme-family-planning,Jan26|ihme-family-planning,ihme-family-planning,Cyprus,85.59,exposure,88873.0,d333b5188eeb6a93
+Mar31|ihme-family-planning,Oct28|ihme-family-planning,ihme-family-planning,Cyprus,85.59,exposure,90097.0,3b2c84cac572b693
+Jun27|sdg-index-score,Feb15|oecd-regional-co2,oecd-regional-co2,Italy,393.46,exposure,1366.0,409a21637f32c6c3
+Mar31|ihme-family-planning,Mar12|ihme-family-planning,ihme-family-planning,Cyprus,85.59,exposure,93119.0,b2934528e4038dfb
+May01|datausa-poverty-state,Jul01|datausa-poverty-state,datausa-poverty-state,Alabama,18.6/15.7,exposure,10297.0,56bec9bba3a9e306
+Mar31|ihme-family-planning,Dec13|ihme-family-planning,ihme-family-planning,Albania,13.46,exposure,106980.0,735b4d9cdffefb3c
+Mar31|ihme-family-planning,Dec13|ihme-family-planning,ihme-family-planning,Cyprus,85.59,exposure,96082.0,550a3a56b42999b1
+Feb21|datausa-enrollment-asian,Sep18|datausa-enrollment-asian,datausa-enrollment-asian,Capella,432/446/507,exposure,181805.0,6964469fd9ef3b41
+Mar31|ihme-family-planning,Dec24|ihme-family-planning,ihme-family-planning,Croatia,41.78,exposure,110417.0,55e8fe1b151ee350
+Feb21|datausa-enrollment-asian,Sep23|datausa-enrollment-asian,datausa-enrollment-asian,Capella,432/446/507,exposure,181968.0,f20d4e16ec9225db
+agenttestxyz,Feb09|datausa-enrollment-asian,datausa-enrollment-asian,Utah,1465/1502/1590,exposure,160009.0,44bfcf2a68971f5a
+agenttestxyz,Dec14|datausa-enrollment-asian,datausa-enrollment-asian,Utah,1465,exposure,160801.0,3cbeec3d850fac29
+Mar31|ihme-family-planning,Aug02|ihme-family-planning,ihme-family-planning,Cyprus,85.59,exposure,103115.0,6f049d1758ec5d0f
+Mar31|ihme-family-planning,Aug19|ihme-family-planning,ihme-family-planning,Albania,13.46,exposure,114196.0,e1decfcc2c6e6cd8
+Mar31|ihme-family-planning,Aug19|ihme-family-planning,ihme-family-planning,Cyprus,85.59,exposure,103298.0,67d0f2bd4b1f8494
+Mar31|ihme-family-planning,Mar04|ihme-family-planning,ihme-family-planning,Albania,13.46,exposure,114994.0,0e48bc6ccd254ae3
+agenttestxyz,Sep09|datausa-enrollment-asian,datausa-enrollment-asian,Utah,1465/1502/1590,exposure,164084.0,edafddaef02108d8
+agenttestxyz,Sep18|datausa-enrollment-asian,datausa-enrollment-asian,Utah,1465/1502/1590,exposure,166436.0,96ba26c0581d2e92
+May01|datausa-poverty-state,Oct11|datausa-poverty-state,datausa-poverty-state,Alabama,18.6/15.7,exposure,24013.0,7a52410436b9a155
+Mar14|datausa-occupation-salary-61-62,Feb03|datausa-occupation-salary-61-62,datausa-occupation-salary-61-62,Medical transcriptionists,25841,exposure,4940.0,f5a4689ff3dfdc87
+Mar31|ihme-family-planning,Mar04|ihme-family-planning,ihme-family-planning,Cyprus,85.59,exposure,108795.0,13b7227bfdef8cff
+Mar14|datausa-occupation-salary-61-62,Feb17|datausa-occupation-salary-61-62,datausa-occupation-salary-61-62,Medical transcriptionists,25841,exposure,7929.0,291f594a390603db
+Mar14|datausa-occupation-salary-61-62,Apr30|datausa-occupation-salary-61-62,datausa-occupation-salary-61-62,Medical transcriptionists,25841,exposure,8258.0,023ff1111c2063eb
+Jan04|oecd-regional-co2,Oct23|oecd-regional-co2,oecd-regional-co2,Poland,690.42,exposure,2242.0,6d9a459abefd83d3
+Mar14|datausa-occupation-salary-61-62,Apr10|datausa-occupation-salary-61-62,datausa-occupation-salary-61-62,Medical transcriptionists,25841,exposure,8594.0,2a777bdd60d52b36
+May01|datausa-poverty-state,Jul01|datausa-poverty-state,datausa-poverty-state,Georgia,18.2/13.5,exposure,9786.0,45923d186a089e79
+Jun27|sdg-index-score,Jun28|oecd-regional-co2,oecd-regional-co2,Italy,393.46,exposure,23662.0,04cdd57fbe7f24f2
+Jun27|sdg-index-score,Nov09|oecd-regional-co2,oecd-regional-co2,Italy,393.46,exposure,23713.0,b1891a1dc72078db
+Jan04|oecd-regional-co2,Jun09|oecd-regional-co2,oecd-regional-co2,Poland,690.42,exposure,3552.0,94afa24aa6a52a90
+Jan04|oecd-regional-co2,Mar13|oecd-regional-co2,oecd-regional-co2,Poland,690.42,exposure,3665.0,8609eac750d0c1df
+Mar14|datausa-occupation-salary-61-62,Apr01|datausa-occupation-salary-61-62,datausa-occupation-salary-61-62,Medical transcriptionists,25841,exposure,11160.0,2cbecf9e78c31021
+Jun27|sdg-index-score,Mar05|oecd-regional-co2,oecd-regional-co2,Italy,393.46,exposure,25519.0,0ffadc0fac8e2cfa
+Aug09|datausa-occupation-salary-61-62,Feb17|datausa-occupation-salary-61-62,datausa-occupation-salary-61-62,Maids and housekeeping cleaners,24924,exposure,8829.0,e9ab56aff986996f
+Mar14|datausa-occupation-salary-61-62,Jun20|datausa-occupation-salary-61-62,datausa-occupation-salary-61-62,Medical transcriptionists,25841,exposure,11631.0,9fd5a766cfcf18b3
+Mar13|oecd-regional-co2,Jan04|oecd-regional-co2,oecd-regional-co2,Poland,690.42,exposure,3952.0,6482de55312b9967
+Jun27|sdg-index-score,Jan04|oecd-regional-co2,oecd-regional-co2,Italy,393.46,exposure,26311.0,dfdb8a0df255a648
+Jun27|sdg-index-score,Oct23|oecd-regional-co2,oecd-regional-co2,Italy,393.46,exposure,27409.0,92d9b03ddfde8a09
+Mar31|ihme-family-planning,Mar13|ihme-family-planning,ihme-family-planning,Albania,13.46,exposure,127406.0,5c48601267ec2619
+Aug09|datausa-occupation-salary-61-62,Apr30|datausa-occupation-salary-61-62,datausa-occupation-salary-61-62,Maids and housekeeping cleaners,24924,exposure,10624.0,8ac9b84e812c1214
+Jun27|sdg-index-score,Mar13|oecd-regional-co2,oecd-regional-co2,Italy,393.46,exposure,27788.0,decc8c2451a9ddf0
+Jun27|sdg-index-score,Sep30|oecd-regional-co2,oecd-regional-co2,Italy,393.46,exposure,28512.0,12467aa5181423ce
+May01|datausa-poverty-state,Oct11|datausa-poverty-state,datausa-poverty-state,Georgia,18.2/13.5,exposure,16076.0,e9547c401bb801d3
+Jun27|sdg-index-score,Jan18|oecd-regional-co2,oecd-regional-co2,Italy,393.46,exposure,30564.0,25fba3060c4f078e
+Jun27|sdg-index-score,Jan01|oecd-regional-co2,oecd-regional-co2,Italy,393.46,exposure,35174.0,8937c1415a65d067
+Jun27|sdg-index-score,Apr01|oecd-regional-co2,oecd-regional-co2,Italy,393.46,exposure,36512.0,c5a12f09b37262d4
+Mar31|ihme-family-planning,Feb14|ihme-family-planning,ihme-family-planning,Croatia,41.78,exposure,139436.0,f48b6797f982ab4c
+Mar31|ihme-family-planning,Feb14|ihme-family-planning,ihme-family-planning,Albania,13.46,exposure,139436.0,9cf4eaf7339c9246
+Mar31|ihme-family-planning,Feb14|ihme-family-planning,ihme-family-planning,Cyprus,85.59,exposure,128538.0,8aa701920857fdf2
+Mar13|datausa-grocery-workforce,Apr27|datausa-grocery-workforce,datausa-grocery-workforce,,,citation,,4182e050821b98ce
+Mar13|datausa-grocery-workforce,Sep21|datausa-grocery-workforce,datausa-grocery-workforce,,,citation,,b20722d5c4eb5a80
+Jan31|datausa-grocery-workforce,Sep21|datausa-grocery-workforce,datausa-grocery-workforce,,,citation,,caa299d7b57b0934
+Jan31|datausa-grocery-workforce,Mar13|datausa-grocery-workforce,datausa-grocery-workforce,,,citation,,21ec226a48e15322
+Sep21|datausa-grocery-workforce,Mar13|datausa-grocery-workforce,datausa-grocery-workforce,,,citation,,6d044eb0eae3be1a
+Mar13|datausa-grocery-workforce,Sep21|datausa-grocery-workforce,datausa-grocery-workforce,,,citation,,28fc104289732066
+Feb08|datausa-clothing-workforce,May24|datausa-clothing-workforce,datausa-clothing-workforce,,,citation,,f665ff36964c00f2
+agentopenairesearch,May31|datausa-grocery-workforce,datausa-grocery-workforce,,,citation,,a071dda6a65908fd
+Mar26|datausa-grocery-workforce,Dec05|datausa-grocery-workforce,datausa-grocery-workforce,,,citation,,c7f3400fb1b664ed
+May13|datausa-clothing-workforce,Aug01|datausa-clothing-workforce,datausa-clothing-workforce,,,citation,,702e2bedcd9737a7
+Jun05|datausa-clothing-workforce,Aug01|datausa-clothing-workforce,datausa-clothing-workforce,,,citation,,6ea69bd88ede0777
+Sep18|datausa-maids-wage,Oct06|datausa-maids-wage,datausa-maids-wage,,,citation,,cc89d0928ab00d15
+Jan12|datausa-maids-wage,Jul17|datausa-maids-wage,datausa-maids-wage,,,citation,,a438627435404e99
+Jun11|datausa-clothing-workforce,Jul21|datausa-clothing-workforce,datausa-clothing-workforce,,,citation,,5600ed102c7a0c90
+Aug01|datausa-clothing-workforce,Jul21|datausa-clothing-workforce,datausa-clothing-workforce,,,citation,,468bcd50f702f395
+Nov13|datausa-clothing-workforce,Nov13|datausa-language-french,datausa-clothing-workforce,,,citation,,46affa4a68d7d565
+Aug01|datausa-clothing-workforce,Mar09|datausa-clothing-workforce,datausa-clothing-workforce,,,citation,,c509584074a28ec7
+Aug01|datausa-clothing-workforce,Mar09|datausa-clothing-workforce,datausa-clothing-workforce,,,citation,,f0eba50c0099d5ea
+Aug19|datausa-clothing-workforce,Jun28|datausa-clothing-workforce,datausa-clothing-workforce,,,citation,,3c2c1cbb4e3267d8
+May15|datausa-grocery-workforce,relayreader,datausa-grocery-workforce,,,citation,,afc67290217706f7
+Oct25|datausa-clothing-workforce,Sep05|datausa-clothing-workforce,datausa-clothing-workforce,,,citation,,a9d8234b3aaf041d
+Mar19|datausa-clothing-workforce,Sep30|datausa-clothing-workforce,datausa-clothing-workforce,,,citation,,ccf4942820022697
+Sep26|datausa-clothing-workforce,Sep30|datausa-clothing-workforce,datausa-clothing-workforce,,,citation,,ccf4942820022697
+May31|datausa-maids-wage,Jul03|datausa-maids-wage,datausa-maids-wage,,,citation,,41f81a081003677c
+Mar03|datausa-maids-wage,Oct11|datausa-maids-wage,datausa-maids-wage,,,citation,,784ee8d5cb7f1062
+May31|datausa-maids-wage,Jan06|datausa-maids-wage,datausa-maids-wage,,,citation,,48d902097aba1187
+Mar19|datausa-clothing-workforce,Jan14|datausa-clothing-workforce,datausa-clothing-workforce,,,citation,,29e6d4bcc00c562a
+Mar19|datausa-clothing-workforce,Sep07|datausa-clothing-workforce,datausa-clothing-workforce,,,citation,,9faf2f7a91cbbbca
+Aug08|datausa-clothing-workforce,Jan14|datausa-clothing-workforce,datausa-clothing-workforce,,,citation,,371df8e2a4f78db9
+Aug25|datausa-clothing-workforce,Oct01|datausa-clothing-workforce,datausa-clothing-workforce,,,citation,,a9f7b4fb3b571283
+Mar19|datausa-clothing-workforce,Aug27|datausa-clothing-workforce,datausa-clothing-workforce,,,citation,,0d64f77ddf20df9a
+May08|datausa-clothing-workforce,Aug27|datausa-clothing-workforce,datausa-clothing-workforce,,,citation,,59d0e7e12527ab83
+Sep30|datausa-clothing-workforce,Aug08|datausa-clothing-workforce,datausa-clothing-workforce,,,citation,,d930caa9946f7b0d
+Jan01|datausa-clothing-workforce,Jul09|datausa-clothing-workforce,datausa-clothing-workforce,,,citation,,63d88a4e5fe33cc8
+Mar19|datausa-grocery-workforce,Jul17|datausa-grocery-workforce,datausa-grocery-workforce,,,citation,,be7fcf8e010c4357
+Sep23|datausa-language-french,Jun21|datausa-language-french,datausa-language-french,,,citation,,929ba6a464c8b04c
+Mar25|datausa-grocery-workforce,Dec27|datausa-grocery-workforce,datausa-grocery-workforce,,,citation,,eba1fcea0110cdcb
+May31|datausa-grocery-workforce,Aug09|datausa-grocery-workforce,datausa-grocery-workforce,,,citation,,533b75ab234509a0
+Oct16|datausa-maids-wage,Jul03|datausa-maids-wage,datausa-maids-wage,,,citation,,ab416b0b8643e0ef
+Mar25|datausa-grocery-workforce,Aug09|datausa-grocery-workforce,datausa-grocery-workforce,,,citation,,5f958766b0d60488
+Jan06|datausa-maids-wage,May31|datausa-maids-wage,datausa-maids-wage,,,citation,,f901a7c36db542ba
+Apr15|datausa-maids-wage,May31|datausa-maids-wage,datausa-maids-wage,,,citation,,e94aa42711bc5624
+Apr15|datausa-maids-wage,Mar22|datausa-maids-wage,datausa-maids-wage,,,citation,,55533443a863ca24
+Jan06|datausa-maids-wage,Mar22|datausa-maids-wage,datausa-maids-wage,,,citation,,9c59c8577887304c
+Aug23|datausa-sector61-state,Jun27|datausa-transport-production,datausa-sector61-state,,,citation,,e106d3db24087611
+Oct16|datausa-maids-wage,Jan06|datausa-maids-wage,datausa-maids-wage,,,citation,,a5eab82c098e9a24
+Jan06|datausa-maids-wage,Mar22|datausa-maids-wage,datausa-maids-wage,,,citation,,868d535e33543d0c
+Jul17|datausa-grocery-workforce,Feb28|datausa-grocery-workforce,datausa-grocery-workforce,,,citation,,d15d2ce1ad3b91df
+Feb28|datausa-grocery-workforce,Sep21|datausa-grocery-workforce,datausa-grocery-workforce,,,citation,,2c27c36ced074b7a
+Jul17|datausa-grocery-workforce,Sep21|datausa-grocery-workforce,datausa-grocery-workforce,,,citation,,2c27c36ced074b7a
+Sep10|datausa-grocery-workforce,Sep21|datausa-grocery-workforce,datausa-grocery-workforce,,,citation,,2c27c36ced074b7a
+Jan06|datausa-maids-wage,Oct30|datausa-maids-wage,datausa-maids-wage,,,citation,,63101d0114968601
+Apr15|datausa-maids-wage,Jul03|datausa-maids-wage,datausa-maids-wage,,,citation,,36c6fbba0d4ac1fa
+May31|datausa-maids-wage,Jul03|datausa-maids-wage,datausa-maids-wage,,,citation,,6266f056110ac97d
+Oct30|datausa-maids-wage,Jul03|datausa-maids-wage,datausa-maids-wage,,,citation,,6266f056110ac97d
+Oct16|datausa-maids-wage,Mar22|datausa-maids-wage,datausa-maids-wage,,,citation,,15075aff83933b14
+Apr15|datausa-maids-wage,Mar22|datausa-maids-wage,datausa-maids-wage,,,citation,,3c999819f5b537b7
+Jul23|datausa-clothing-workforce,Aug27|datausa-clothing-workforce,datausa-clothing-workforce,,,citation,,ade3aed7e7eb2f49
+Jul23|datausa-clothing-workforce,Nov24|datausa-clothing-workforce,datausa-clothing-workforce,,,citation,,15d856fb27102aef
+Jan06|datausa-maids-wage,Jul03|datausa-maids-wage,datausa-maids-wage,,,citation,,e7977bc0e9eec48d
+Jan06|datausa-maids-wage,Jul03|datausa-maids-wage,,,,citation,,e4e66f4160a6a148
+alphabeta,Sep30|datausa-clothing-workforce,datausa-clothing-workforce,,,citation,,be6a3ee443b7dd07
+aliceresearcher,Aug09|datausa-grocery-workforce,datausa-grocery-workforce,,,citation,,ef8b0d8ad10a3a9e
+Jan06|datausa-maids-wage,Apr15|datausa-maids-wage,,,,citation,,31589ad805333c9d
+Oct19|datausa-grocery-workforce,Jul17|datausa-grocery-workforce,datausa-grocery-workforce,,,citation,,44ea220f633e2e70
+Apr20|datausa-grocery-workforce,Jul09|datausa-grocery-workforce,datausa-grocery-workforce,,,citation,,8b3443adeccd5342
+Apr17|datausa-maids-wage,May31|datausa-maids-wage,datausa-maids-wage,,,citation,,e1215d224a6db126
+Feb14|datausa-maids-wage,May31|datausa-maids-wage,,,,citation,,16b79768dbbba970
+aliceresearcher,Jul14|datausa-grocery-workforce,datausa-grocery-workforce,,,citation,,142f43179d01c359
+Jan06|datausa-maids-wage,May31|datausa-maids-wage,,,,citation,,7224433f4878ca45
+Jul03|datausa-maids-wage,May31|datausa-maids-wage,,,,citation,,68e892d137e3c614
+Apr20|datausa-grocery-workforce,Feb28|datausa-grocery-workforce,datausa-grocery-workforce,,,citation,,715e50fdf5885e95
+Feb28|datausa-grocery-workforce,Jul14|datausa-grocery-workforce,datausa-grocery-workforce,,,citation,,01a7a95d923b3ddc
+Apr20|datausa-grocery-workforce,Sep21|datausa-grocery-workforce,datausa-grocery-workforce,,,citation,,34449d3724b21e65
+Apr20|datausa-grocery-workforce,Aug02|datausa-grocery-workforce,datausa-grocery-workforce,,,citation,,80c95ced3ea708f4
+Apr20|datausa-grocery-workforce,Nov22|datausa-sector61-state,datausa-grocery-workforce,,,citation,,72479508b064eeca
+Aug14|datausa-clothing-workforce,Jan19|datausa-clothing-workforce,datausa-clothing-workforce,,,citation,,1a900bdb3da8362f
+Aug14|datausa-clothing-workforce,Nov11|datausa-clothing-workforce,datausa-clothing-workforce,,,citation,,b7972c4f6f5ecdb3
+May31|datausa-maids-wage,Jul03|datausa-maids-wage,,,,citation,,3b4589f4c7c6afa7
+Jul27|datausa-clothing-workforce,Dec10|datausa-clothing-workforce,datausa-clothing-workforce,,,citation,,7c1a417c7677003c
+Jul27|datausa-clothing-workforce,Aug14|datausa-clothing-workforce,datausa-clothing-workforce,,,citation,,d361f65f631f1aa6
+Aug14|datausa-clothing-workforce,Jul27|datausa-clothing-workforce,datausa-clothing-workforce,,,citation,,4f5fcf8f0b69175f
+Aug14|datausa-clothing-workforce,Jul27|datausa-clothing-workforce,datausa-clothing-workforce,,,citation,,60baafb839278ae2
+Jan06|datausa-maids-wage,Apr15|datausa-maids-wage,,,,citation,,a50603832bdc78bd
+Jan06|datausa-maids-wage,Apr15|datausa-maids-wage,,,,citation,,16633c190260ae4a
+Nov24|datausa-clothing-workforce,Apr15|datausa-maids-wage,datausa-clothing-workforce,,,citation,,9f678e057415851f
+Apr17|datausa-maids-wage,Apr15|datausa-maids-wage,datausa-maids-wage,,,citation,,3a01d6a02f06db01
+Sep04|datausa-clothing-workforce,Nov12|datausa-language-french,datausa-clothing-workforce,,,citation,,edd3f0d586025f4c
+Sep04|datausa-clothing-workforce,Apr18|datausa-clothing-workforce,datausa-clothing-workforce,,,citation,,a9d8993a578723e4
+Feb14|datausa-maids-wage,Apr15|datausa-maids-wage,,,,citation,,23bd1d9c74d2e1dd
+Apr20|datausa-grocery-workforce,Jan08|datausa-grocery-workforce,datausa-grocery-workforce,,,citation,,21a161a3790136a1
+Oct16|datausa-maids-wage,Apr15|datausa-maids-wage,datausa-maids-wage,,,citation,,af3cdb293221232f
+Oct16|datausa-maids-wage,Oct30|datausa-maids-wage,datausa-maids-wage,,,citation,,93a44b264d4e96fc
+Mar14|datausa-clothing-workforce,Apr18|datausa-clothing-workforce,datausa-clothing-workforce,,,citation,,7f82bed1e9e9230b
+Dec29|datausa-language-french,Apr10|datausa-language-french,datausa-language-french,,,citation,,89ad2adeffcfaf46
+Sep01|datausa-language-french,Apr10|datausa-language-french,datausa-language-french,,,citation,,89ad2adeffcfaf46
+Apr17|datausa-maids-wage,Oct30|datausa-maids-wage,datausa-maids-wage,,,citation,,06f93e81599b863b
+Apr15|datausa-maids-wage,Oct30|datausa-maids-wage,datausa-maids-wage,,,citation,,f95f90c879470cda
+Nov09|datausa-construction-workforce,Mar08|datausa-construction-workforce,datausa-construction-workforce,,,citation,,88545aaf199135ef
+Sep17|datausa-language-french,Jun13|datausa-language-french,datausa-language-french,,,citation,,f04a10261b071412
+Jun29|datausa-construction-workforce,Mar08|datausa-construction-workforce,datausa-construction-workforce,,,citation,,cf705a55763fed9a
+Apr20|datausa-grocery-workforce,May25|datausa-grocery-workforce,datausa-grocery-workforce,,,citation,,1ee000d67ab1400b
+Sep01|datausa-grocery-workforce,Jun15|datausa-grocery-workforce,datausa-grocery-workforce,,,citation,,e0e5212cb7e5b4ed
+Jun03|datausa-construction-workforce,Nov08|datausa-construction-workforce,datausa-construction-workforce,,,citation,,6a7c80a54912f02b
+agentconstructionnycatxfl20270603,Jun29|datausa-construction-workforce,datausa-construction-workforce,,,citation,,f194177b2e10a922
+Mar08|datausa-construction-workforce,Jun29|datausa-construction-workforce,datausa-construction-workforce,,,citation,,f194177b2e10a922
+Nov09|datausa-construction-workforce,Jun29|datausa-construction-workforce,datausa-construction-workforce,,,citation,,f194177b2e10a922
+agentconstructionnycatxfl20270603,Mar08|datausa-construction-workforce,datausa-construction-workforce,,,citation,,7da20c0a0366612b
+Nov26|datausa-poverty-county,Aug11|datausa-poverty-county,datausa-poverty-county,,,citation,,9959ff9aa5ce4604
+Dec30|datausa-construction-workforce,Nov08|datausa-construction-workforce,datausa-construction-workforce,,,citation,,bd2a183d1db7e922
+Jun03|datausa-construction-workforce,Mar08|datausa-construction-workforce,datausa-construction-workforce,,,citation,,f036d2a77151b894
+Dec30|datausa-construction-workforce,Apr02|datausa-construction-workforce,datausa-construction-workforce,,,citation,,8df2d5ec88ab6989
+Mar18|datausa-poverty-county,Nov26|datausa-poverty-county,datausa-poverty-county,,,citation,,5b91e7725b86ab33
+Aug11|datausa-construction-workforce,Mar08|datausa-construction-workforce,datausa-construction-workforce,,,citation,,92868f7aa72a2f0c
+Aug11|datausa-construction-workforce,Mar08|datausa-construction-workforce,datausa-construction-workforce,,,citation,,1b3ee5bb66057c10
+Aug11|datausa-construction-workforce,Nov08|datausa-construction-workforce,datausa-construction-workforce,,,citation,,d11f4e5bfd0a40bc
+openairesearcherjuly,Sep13|datausa-poverty-county,datausa-poverty-county,,,citation,,077e5a1f302d3979
+Aug11|datausa-construction-workforce,Jan20|datausa-construction-workforce,datausa-construction-workforce,,,citation,,f7ad0b5b8fa542f1
+Jan20|datausa-construction-workforce,Nov08|datausa-construction-workforce,datausa-construction-workforce,,,citation,,12f7e47a23c73d64
+Dec02|datausa-cashiers-masters,Nov22|datausa-sector61-state,datausa-cashiers-masters,,,citation,,c2501f1eb71528ac
+Aug21|datausa-construction-workforce,Nov08|datausa-construction-workforce,datausa-construction-workforce,,,citation,,cc829e7a3bd4da49
+Apr02|datausa-construction-workforce,Nov08|datausa-construction-workforce,datausa-construction-workforce,,,citation,,2d47c99c5f21d32a
+Apr09|datausa-poverty-county,Sep13|datausa-poverty-county,datausa-poverty-county,,,citation,,cad52ef075c5564e
+Apr27|datausa-poverty-county,Sep13|datausa-poverty-county,datausa-poverty-county,,,citation,,9de33f5a17e06b14
+Dec17|datausa-construction-workforce,Aug21|datausa-construction-workforce,datausa-construction-workforce,,,citation,,cc7f52152b2ebd40
+Feb20|datausa-grocery-workforce,Feb11|datausa-poverty-county,datausa-poverty-county,,,citation,,6e19b7f809c1a924
+Jan01|datausa-construction-workforce,Dec27|datausa-construction-workforce,datausa-construction-workforce,,,citation,,937d65562ce131e1
+Oct07|datausa-construction-workforce,Nov05|datausa-construction-workforce,datausa-construction-workforce,,,citation,,2ce814c0c8c71ac0
+Nov05|datausa-construction-workforce,Feb26|datausa-construction-workforce,datausa-construction-workforce,,,citation,,b489c758207491e4
+Feb26|datausa-construction-workforce,Mar19|datausa-construction-workforce,datausa-construction-workforce,,,citation,,ae7f35a735d3b716
+Apr12|datausa-construction-workforce,Mar07|datausa-construction-workforce,datausa-construction-workforce,,,citation,,7592856ae9a5f696
+Jun15|datausa-construction-workforce,Mar07|datausa-construction-workforce,datausa-construction-workforce,,,citation,,7592856ae9a5f696
+Apr09|datausa-police-wage-age,Mar10|datausa-police-wage-age,datausa-police-wage-age,,,citation,,19d566c15b43772c
+Mar10|datausa-police-wage-age,Apr09|datausa-police-wage-age,datausa-police-wage-age,,,citation,,2e097c6668e89e2c
+Apr07|datausa-clothing-workforce,Jan06|datausa-construction-workforce,datausa-construction-workforce,,,citation,,4d23000f1dab63b3
+Mar13|datausa-police-wage-age,Jul03|datausa-police-wage-age,datausa-police-wage-age,,,citation,,f19e131ca5a775eb
+Mar31|datausa-police-wage-age,Jul03|datausa-police-wage-age,datausa-police-wage-age,,,citation,,f19e131ca5a775eb
+Mar27|datausa-police-wage-age,Jul03|datausa-police-wage-age,datausa-police-wage-age,,,citation,,528bd3550d3bf3d1
+Mar13|datausa-police-wage-age,Jul03|datausa-police-wage-age,datausa-police-wage-age,,,citation,,6d5ffe5e6d3070c0
+Mar27|datausa-police-wage-age,Jul03|datausa-police-wage-age,datausa-police-wage-age,,,citation,,4c27abfb24bb6fb8
+Mar27|datausa-police-wage-age,Mar31|datausa-police-wage-age,datausa-police-wage-age,,,citation,,1626cfce7223c62d
+Apr04|ihme-cvd-deaths,Dec15|ihme-cvd-deaths,ihme-cvd-deaths,,,citation,,bb6d9bcdec5b91a5
+Aug16|ihme-cvd-deaths,cvdresearchaug16,,,,citation,,7e0de9b6576df170
+Mar13|datausa-police-wage-age,Jul03|datausa-police-wage-age,datausa-police-wage-age,,,citation,,f33f4c33a2bbb1aa
+Mar27|datausa-police-wage-age,Jul03|datausa-police-wage-age,datausa-police-wage-age,,,citation,,f33f4c33a2bbb1aa
+Mar31|datausa-police-wage-age,Jul03|datausa-police-wage-age,datausa-police-wage-age,,,citation,,f33f4c33a2bbb1aa
+Jul08|datausa-production-share,Mar20|datausa-production-share,datausa-production-share,,,citation,,f94e2b3a09e9eb69
+researchhelperx928,Mar20|datausa-production-share,,,,citation,,8ec96d4b60926cd8
+Mar20|datausa-production-share,Jul08|datausa-production-share,datausa-production-share,,,citation,,6b8334e40c84bfa7
+Mar20|datausa-production-share,Jul08|datausa-production-share,datausa-production-share,,,citation,,0d4bfaed27d46efb
+Jul08|datausa-production-share,Mar20|datausa-production-share,datausa-production-share,,,citation,,33d3c25ef5e0409b
+Mar20|datausa-production-share,Jul08|datausa-production-share,datausa-production-share,,,citation,,5e1be737b676148e
+Jul08|datausa-production-share,Mar20|datausa-production-share,datausa-production-share,,,citation,,035d00902afe8e96
+Mar20|datausa-production-share,Jul08|datausa-production-share,datausa-production-share,,,citation,,2f89c301844ecc6f
+Mar20|datausa-production-share,Jul08|datausa-production-share,datausa-production-share,,,citation,,777799e46bcb60e5
+Mar20|datausa-production-share,Aug21|datausa-production-share,datausa-production-share,,,citation,,dbc5dc400fb113f7
+Aug21|datausa-production-share,Mar20|datausa-production-share,datausa-production-share,,,citation,,a4777f99a0b7ac51
+Jul08|datausa-production-share,Mar20|datausa-production-share,datausa-production-share,,,citation,,a4777f99a0b7ac51
+Mar20|datausa-production-share,Jul08|datausa-production-share,datausa-production-share,,,citation,,df4c29544a962d7b
+Jul08|datausa-production-share,Mar20|datausa-production-share,datausa-production-share,,,citation,,caa23093238a410d
+Feb23|datausa-construction-workforce,Sep18|datausa-construction-workforce,datausa-construction-workforce,,,citation,,dcc0f1a0d6b08202
+Jul08|datausa-production-share,Aug21|datausa-production-share,datausa-production-share,,,citation,,18ad0a0a4e34cbd5
+Jul08|datausa-production-share,Aug21|datausa-production-share,datausa-production-share,,,citation,,2a8e1e9f34247716
+Aug02|datausa-police-wage-age,Jul31|datausa-police-wage-age,datausa-police-wage-age,,,citation,,33d7486cfc92b554
+Aug02|datausa-police-wage-age,Nov23|datausa-police-wage-age,datausa-police-wage-age,,,citation,,2fc0c358ffda85b9
+Nov23|datausa-police-wage-age,Aug02|datausa-police-wage-age,datausa-police-wage-age,,,citation,,84d229da617e9381
+Aug02|datausa-police-wage-age,Jan27|datausa-police-wage-age,datausa-police-wage-age,,,citation,,ba872456ad3eab1b
+Jul31|datausa-police-wage-age,Jan27|datausa-police-wage-age,datausa-police-wage-age,,,citation,,ba872456ad3eab1b
+Mar13|datausa-police-wage-age,Dec23|datausa-police-wage-age,datausa-police-wage-age,,,citation,,1a81adf87c232c36
+Dec10|datausa-enrollment-asian,agenttestxyz,datausa-enrollment-asian,,,citation,,29ee393e699fad2c
+openairesearchtempx,agenttestxyz,datausa-enrollment-asian,,,citation,,29ee393e699fad2c
+Jan21|oecd-equity,Jul21|oecd-equity,oecd-equity,,,citation,,9e29360e44250432
+Feb21|datausa-enrollment-asian,Dec10|datausa-enrollment-asian,datausa-enrollment-asian,,,citation,,3d57451bea67675f
+May30|oecd-equity,Apr24|oecd-equity,oecd-equity,,,citation,,f43d72fc8d9c6121
+May30|oecd-equity,Feb28|oecd-equity,oecd-equity,,,citation,,c3b4f4cc4e1ed79a
+May30|oecd-equity,Mar26|oecd-equity,oecd-equity,,,citation,,c11bd5e1d95806de
+Mar27|datausa-police-wage-age,Mar31|datausa-police-wage-age,datausa-police-wage-age,,,citation,,2dcb4beeaca547c2
+Mar27|datausa-police-wage-age,Jul03|datausa-police-wage-age,datausa-police-wage-age,,,citation,,e0ca8cfac4e38691
+Mar13|datausa-police-wage-age,Jul03|datausa-police-wage-age,datausa-police-wage-age,,,citation,,b2a7b59f4398a97d
+Mar27|datausa-police-wage-age,Jul03|datausa-police-wage-age,datausa-police-wage-age,,,citation,,b2a7b59f4398a97d
+Mar31|datausa-police-wage-age,Jul03|datausa-police-wage-age,datausa-police-wage-age,,,citation,,b2a7b59f4398a97d
+Mar15|oecd-equity,Dec30|oecd-equity,oecd-equity,,,citation,,4616a7128073ee99
+Dec30|oecd-equity,Sep19|oecd-equity,oecd-equity,,,citation,,590cde4c2059c9e4
+Jul23|oecd-equity,Dec19|oecd-equity,oecd-equity,,,citation,,65b8912c80fb728a
+Mar16|uefa-pass-accuracy,Oct18|uefa-pass-accuracy,uefa-pass-accuracy,,,citation,,aa37c81c5a41b6c2
+Mar16|uefa-pass-accuracy,Oct29|uefa-pass-accuracy,uefa-pass-accuracy,,,citation,,d38f87a5cca114b2
+Mar16|uefa-pass-accuracy,Oct18|uefa-pass-accuracy,uefa-pass-accuracy,,,citation,,badc455653ac588b
+Mar16|uefa-pass-accuracy,Oct29|uefa-pass-accuracy,uefa-pass-accuracy,,,citation,,76c369dec386eb77
+Oct18|uefa-pass-accuracy,Oct29|uefa-pass-accuracy,uefa-pass-accuracy,,,citation,,356dbb8b435608b8
+Apr04|uefa-pass-accuracy,Oct18|uefa-pass-accuracy,uefa-pass-accuracy,,,citation,,0513b490a1f63048
+Dec21|datausa-police-wage-age,Jun20|ihme-cvd-deaths,ihme-cvd-deaths,,,citation,,e419dc9de8b6242b
+Apr04|uefa-pass-accuracy,Oct18|uefa-pass-accuracy,uefa-pass-accuracy,,,citation,,01dedaaa4bdfc839
+Mar21|uefa-pass-accuracy,Oct18|uefa-pass-accuracy,uefa-pass-accuracy,,,citation,,d7f438e5d0d7a458
+openaiaug27cvd,Jun20|ihme-cvd-deaths,,,,citation,,d63ecab7ffe5d169
+Oct29|uefa-pass-accuracy,Oct18|uefa-pass-accuracy,uefa-pass-accuracy,,,citation,,37d0e5bbe1e8b269
+Mar21|uefa-pass-accuracy,Oct18|uefa-pass-accuracy,uefa-pass-accuracy,,,citation,,ad3fa69a35da5f2c
+Oct29|uefa-pass-accuracy,Oct18|uefa-pass-accuracy,uefa-pass-accuracy,,,citation,,ad3fa69a35da5f2c
+openaiaug27cvd,Jun20|ihme-cvd-deaths,,,,citation,,5319e061a4ec8422
+Mar21|uefa-pass-accuracy,Oct29|uefa-pass-accuracy,uefa-pass-accuracy,,,citation,,d3e95ffd50c75801
+Oct18|uefa-pass-accuracy,Oct29|uefa-pass-accuracy,uefa-pass-accuracy,,,citation,,d3e95ffd50c75801
+Mar21|uefa-pass-accuracy,Oct18|uefa-pass-accuracy,uefa-pass-accuracy,,,citation,,f898cdc530bf4916
+Oct29|uefa-pass-accuracy,Oct18|uefa-pass-accuracy,uefa-pass-accuracy,,,citation,,f898cdc530bf4916
+Mar21|uefa-pass-accuracy,Oct18|uefa-pass-accuracy,uefa-pass-accuracy,,,citation,,144df297973223a7
+Oct29|uefa-pass-accuracy,Oct18|uefa-pass-accuracy,uefa-pass-accuracy,,,citation,,144df297973223a7
+Jun24|datausa-production-share,openaijul06x,,,,citation,,e1bcdd0359d38269
+openaijunefast,openaijul06x,,,,citation,,aac3e3de31a698ee
+openaijunefast,Jun24|datausa-production-share,,,,citation,,9db9204414f5debf
+openaijunefast,oaiproddec22scout,,,,citation,,b2c57709929155ea
+openaijul06x,openaijunefast,,,,citation,,27f25227c1a16cf1
+Aug17|ihme-cvd-deaths,Mar25|ihme-cvd-deaths,ihme-cvd-deaths,,,citation,,75242eb8aeb8e754
+Nov27|ihme-family-planning,Sep05|ihme-family-planning,ihme-family-planning,,,citation,,4cd8fa3305139501
+agentthreescout,Oct30|oecd-regional-co2,oecd-regional-co2,,,citation,,640a4e57de983e28
+Jan13|datausa-enrollment-asian,Sep23|datausa-enrollment-asian,datausa-enrollment-asian,,,citation,,9bd39f11a2705631
+May22|datausa-enrollment-asian,Feb09|datausa-enrollment-asian,datausa-enrollment-asian,,,citation,,7bc9897f0df5bfe8
+Sep23|datausa-enrollment-asian,Jan13|datausa-enrollment-asian,datausa-enrollment-asian,,,citation,,b9083b21d585e1a3
+May22|datausa-enrollment-asian,Jan13|datausa-enrollment-asian,datausa-enrollment-asian,,,citation,,b9083b21d585e1a3
+May22|datausa-enrollment-asian,Sep23|datausa-enrollment-asian,datausa-enrollment-asian,,,citation,,03c252de45953a80
+May22|datausa-enrollment-asian,Feb09|datausa-enrollment-asian,datausa-enrollment-asian,,,citation,,c69898b707137832
+Feb09|datausa-enrollment-asian,Dec14|datausa-enrollment-asian,datausa-enrollment-asian,,,citation,,dcfef362e4a52082
+Dec14|datausa-enrollment-asian,Jan27|datausa-enrollment-asian,datausa-enrollment-asian,,,citation,,5269bcf7c493dc06
+Feb09|datausa-enrollment-asian,Jan27|datausa-enrollment-asian,datausa-enrollment-asian,,,citation,,5269bcf7c493dc06
+Jan13|datausa-enrollment-asian,Dec14|datausa-enrollment-asian,datausa-enrollment-asian,,,citation,,70de8f4265c1395e
+Sep09|datausa-enrollment-asian,Dec14|datausa-enrollment-asian,datausa-enrollment-asian,,,citation,,0cc93368ba09726d
+Oct23|oecd-regional-co2,a4archivereader1781993,oecd-regional-co2,,,citation,,dd45b4da412d08fd
+Dec14|datausa-enrollment-asian,Feb09|datausa-enrollment-asian,datausa-enrollment-asian,,,citation,,f13e2b437202ee00
+Jul18|datausa-occupation-salary-61-62,Aug09|datausa-occupation-salary-61-62,datausa-occupation-salary-61-62,,,citation,,b37ee0316e3a5a4d
+Feb09|datausa-enrollment-asian,Dec14|datausa-enrollment-asian,datausa-enrollment-asian,,,citation,,8fbd3fe5164d1ab0

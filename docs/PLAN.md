@@ -1,5 +1,14 @@
 # swarmprov: general pipeline plan
 
+> **Implementation status (this branch).** Every step below is implemented in `swarmprov/`. Where it differs from the plan:
+> - **Step 0**: the dump has **no read logs** (see `docs/DATA.md`), so `D_observed` is unused for this source. Capability flags are written to `profile.json` and printed in the report.
+> - **Step 1**: wiki events are *new paragraphs since the last deletion* rather than revision diffs (`segment.py`), because line diffs over-attribute on re-encoded pages.
+> - **Step 3/4**: the rules reach P = 1.00, R = 0.91 on an untouched 40-post test set (labelled by Claude; needs human confirmation). LLM extraction (`--llm`) is built and unit-tested with a fake client but was not run (no API key in this environment).
+> - **Step 5**: items are *learned* (phrases after round markers, ≥2 authors) and rounds are learned from `A -> B -> C` chains.
+> - **Step 6**: added `D_cons` (consensus value public) as the causal treatment; the value-specific `D` mechanically biases the consensus-match outcome.
+> - **Step 8 / A2**: the wiki swarm has too little within-agent variation in exposure, so the estimator reports "not identified". Its validity is shown on the synthetic swarm (`tests/test_synthetic_recovery.py`).
+> - **A4**: in addition to auto-detected disputes, configs can declare disputes as regex variants (used for the cracked-seed G5 forecast).
+
 **Goal.** Take any multi-agent transcript (a wiki dump, a chat log, a framework trace) and output a provenance graph showing who learned what, from whom, and when. Use it to report how much of the swarm's knowledge was computed independently and how much was relayed, how techniques and errors spread, and which agents acted as hubs.
 
 The original plan was written for the OpenAI wiki swarm. This document separates the steps that work on **any transcript** from the parts that are **specific to one source**. Each source-specific part goes behind an adapter and a config file. If a step is listed under "Core", it must not contain any wiki-specific logic.
