@@ -20,6 +20,7 @@ class Capabilities:
     has_lifecycle: bool = False
     has_threading: bool = False
     has_episodes: bool = False  # explicit round / turn boundaries as fields
+    has_activity: bool = False  # presence log: when each agent was running
 
     def as_dict(self) -> dict[str, bool]:
         return dict(self.__dict__)
@@ -122,6 +123,7 @@ class Bundle:
     roster: pd.DataFrame | None = None
     directory: pd.DataFrame | None = None
     channels: pd.DataFrame | None = None
+    activity: pd.DataFrame | None = None
     capabilities: Capabilities = field(default_factory=Capabilities)
     notes: dict = field(default_factory=dict)
 

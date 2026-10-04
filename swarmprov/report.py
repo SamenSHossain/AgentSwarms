@@ -54,7 +54,9 @@ def _village_block(run: RunDir, prof: dict, summary: dict) -> list[str]:
     directory = run.read("directory") if run.has("directory") else None
     channels = _lists(run.read("channels")) if run.has("channels") else None
     ev = run.read("events") if prof["n_events"] else None
-    s = village_mod.summary(directory, channels, ev)
+    activity = run.read("activity") if run.has("activity") else None
+    roster = run.read("roster") if run.has("roster") else None
+    s = village_mod.summary(directory, channels, ev, activity, roster, prof.get("notes", {}).get("unrecognised"))
     summary["village"] = {k: v for k, v in s.items() if not isinstance(v, pd.DataFrame)}
     return village_mod.section(s, md_table)
 
@@ -102,6 +104,7 @@ def build(run: RunDir, mapping: str = "merged") -> str:
         "has_lifecycle": "deletions are tracked (content stops being visible)",
         "has_threading": "reply links usable as explicit edges",
         "has_episodes": "rounds are fields; otherwise parsed from text",
+        "has_activity": "a presence log says when each agent was running",
     }
     for k, v in caps.items():
         L.append(f"| {k} | {'yes' if v else 'no'} | {conseq.get(k, '')} |")

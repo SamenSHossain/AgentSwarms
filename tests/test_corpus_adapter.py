@@ -178,7 +178,7 @@ def test_load_records(corpus_dir: Path):
     # capabilities + notes
     caps = b.capabilities.as_dict()
     assert caps == {"has_wall_clock": True, "has_explicit_author": False, "has_reads": False,
-                    "has_lifecycle": False, "has_threading": False, "has_episodes": False}
+                    "has_lifecycle": False, "has_threading": False, "has_episodes": False, "has_activity": False}
     n = b.notes
     assert n["n_records"] == 4 and n["n_origins"] == 14
     assert n["n_origins_with_time"] == 9          # 2 + 4 + 1 + 2

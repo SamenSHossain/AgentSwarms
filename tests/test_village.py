@@ -23,7 +23,8 @@ GEMINI31 = "f69b132c-d4bd-49d5-b2a5-cef3f60f2246"   # twitterati
 def test_tables_are_recognised_by_columns():
     found = discover(RAW)
     assert {k: v.name for k, v in found.items()} == {
-        "goals": "agent_goals.jsonl.gz", "agents": "agents.jsonl.gz", "rooms": "chat_rooms.jsonl.gz"}
+        "goals": "agent_goals.jsonl.gz", "agents": "agents.jsonl.gz", "rooms": "chat_rooms.jsonl.gz",
+        "sessions": "claude_code_sessions.jsonl.gz"}
     assert adapters.detect(RAW).name == "village"
     assert adapters.detect(RAW / "agents.jsonl.gz").name == "village"
     assert adapters.detect(RAW / "chat_rooms.jsonl.gz").name == "village"
@@ -123,3 +124,34 @@ def test_audience_unit():
     closed = exposure.build(rounds, mentions, {("f", "Utah"): "73.74"}, "agent_merged", audience={"best": {"A"}})
     assert open_["D"].iloc[0] == 1 and open_["D_cons"].iloc[0] == 1
     assert closed["D"].iloc[0] == 0 and closed["D_cons"].iloc[0] == 0
+
+
+# --- presence log (claude_code_sessions) -------------------------------------------------
+
+def test_sessions_table_is_an_activity_log(bundle):
+    act = bundle.activity
+    assert len(act) == 303 and act["agent_id"].nunique() == 1
+    assert set(act["agent_name"]) == {"Opus 4.5 (Claude Code)"} and set(act["kind"]) == {"session"}
+    assert act["ref"].nunique() == 42                                        # sdk session ids, one resumed 260 times
+    assert bundle.capabilities.has_activity
+    assert adapters.detect(RAW / "claude_code_sessions.jsonl.gz").name == "village"
+
+
+def test_activity_overlap_is_reported_honestly(bundle):
+    s = village.activity_summary(bundle.activity, bundle.roster, None)
+    assert s["agents_in_roster"] == 0 and s["rows_in_goal_window"] == 0
+    assert s["span"] == "2026-01-26 → 2026-03-31" and s["weekend_share"] == 0
+    text = "\n".join(village.section(village.summary(bundle.directory, bundle.channels, None, bundle.activity, bundle.roster),
+                                     lambda df, **k: ""))
+    assert "covers none of the agents under study" in text
+
+
+def test_unrecognised_files_are_listed(tmp_path):
+    for f in RAW.glob("*.jsonl.gz"):
+        shutil.copy(f, tmp_path / f.name)
+    (tmp_path / "mystery.jsonl").write_text(json.dumps({"foo": 1, "bar": "x"}) + "\n")
+    run = pipeline.run_all(tmp_path, tmp_path / "run")
+    prof = json.loads((run.path / "profile.json").read_text())
+    assert prof["notes"]["unrecognised"] == ["mystery.jsonl"]
+    assert "`mystery.jsonl`" in (run.path / "report.md").read_text()
+    assert len(run.read("activity")) == 303

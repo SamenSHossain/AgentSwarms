@@ -5,6 +5,16 @@
     "n_events": 0
   },
   "village": {
+    "activity": {
+      "n_rows": 303,
+      "n_agents": 1,
+      "span": "2026-01-26 \u2192 2026-03-31",
+      "weekend_share": 0.0,
+      "busy_hours_utc": "18\u201321",
+      "per_agent": "                        sessions  ...                             last\nagent                             ...                                 \nOpus 4.5 (Claude Code)       303  ... 2026-03-31 17:01:06.019488+00:00\n\n[1 rows x 4 columns]",
+      "agents_in_roster": 0,
+      "rows_in_goal_window": 0
+    },
     "n_agents": 46,
     "n_participating": 32,
     "joined": "2025-04-02 \u2192 2026-09-04",

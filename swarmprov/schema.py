@@ -42,6 +42,8 @@ TABLES: dict[str, list[str]] = {
     "directory": ["agent_id", "name", "model", "vendor", "joined", "last_seen", "participating"],
     # Channel table (AI Village ``chat_rooms``): lifetime and audience restrictions (lists of agent names).
     "channels": ["channel", "channel_id", "created", "deleted", "allow", "deny"],
+    # Activity log (AI Village ``claude_code_sessions`` and the like): when an agent was running.
+    "activity": ["agent_id", "agent_name", "ts", "kind", "ref"],
     # Identity resolution result: one row per author_raw.
     # ``roster_agent`` is the roster id when a roster identified the author, else None.
     "agents": ["author_raw", "agent_strict", "agent_merged", "cohort", "n_events", "roster_agent"],

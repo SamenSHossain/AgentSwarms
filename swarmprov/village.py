@@ -26,11 +26,12 @@ import pandas as pd
 
 from .schema import conform
 
-# table kind -> columns that identify it
+# table kind -> columns that identify it (checked in order)
 SIGNATURES = {
     "goals": {"agent_id", "start_time"},
     "agents": {"id", "name", "model_string"},
     "rooms": {"id", "name", "deleted_at"},
+    "sessions": {"agent_id", "created_at"},   # a presence log: one row per session start
 }
 TEXT_KEYS = {"content", "text", "message", "body", "msg"}
 VENDORS = [("claude", "Anthropic"), ("gpt", "OpenAI"), ("o1", "OpenAI"), ("o3", "OpenAI"), ("o4", "OpenAI"),
@@ -49,6 +50,44 @@ def classify(rows: list[dict]) -> str | None:
         if sig <= keys and (kind != "goals" or ("short_name" in keys or "name" in keys)):
             return kind
     return None
+
+
+def normalize_activity(rows: list[dict], directory: pd.DataFrame | None = None, kind: str = "session") -> pd.DataFrame:
+    names = dict(zip(directory["agent_id"], directory["name"])) if directory is not None else {}
+    ref_key = next((k for k in ("sdk_session_id", "session_id", "id") if rows and k in rows[0]), None)
+    out = [{"agent_id": str(r["agent_id"]), "agent_name": names.get(str(r["agent_id"])),
+            "ts": _ts(r.get("created_at")), "kind": kind, "ref": str(r.get(ref_key, "")) if ref_key else ""}
+           for r in rows if isinstance(r, dict) and r.get("agent_id")]
+    return conform(pd.DataFrame(out).sort_values("ts").reset_index(drop=True), "activity")
+
+
+def activity_summary(act: pd.DataFrame, roster: pd.DataFrame | None, events: pd.DataFrame | None) -> dict:
+    """Who the presence log covers, and whether it touches the goals or the transcript."""
+    a = act.assign(agent=act["agent_name"].where(act["agent_name"].notna(), act["agent_id"]))
+    per = (a.groupby("agent").agg(sessions=("ts", "size"), distinct_ids=("ref", "nunique"),
+                                  first=("ts", "min"), last=("ts", "max"))
+           .sort_values("sessions", ascending=False))
+    hours = a["ts"].dt.hour.value_counts().sort_index()
+    busy = hours[hours >= hours.max() * 0.25].index
+    s = {"n_rows": int(len(a)), "n_agents": int(a["agent_id"].nunique()),
+         "span": f"{a['ts'].min():%Y-%m-%d} → {a['ts'].max():%Y-%m-%d}",
+         "weekend_share": float(a["ts"].dt.dayofweek.ge(5).mean()),
+         "busy_hours_utc": f"{int(busy.min()):02d}–{int(busy.max()):02d}" if len(busy) else "",
+         "per_agent": per}
+    if roster is not None and len(roster):
+        in_goal = 0
+        for aid, g in a.groupby("agent_id"):
+            w = roster[roster["agent_id"] == aid]
+            for ts in g["ts"]:
+                if ((w["start"].isna() | (w["start"] <= ts)) & (w["end"].isna() | (ts < w["end"]))).any():
+                    in_goal += 1
+        s["agents_in_roster"] = int(a.loc[a["agent_id"].isin(set(roster["agent_id"])), "agent_id"].nunique())
+        s["rows_in_goal_window"] = in_goal
+    if events is not None and len(events):
+        authors = set(events["author_raw"].str.lower()) | set(events["author_alt"].astype(str))
+        s["agents_in_transcript"] = int(sum(1 for aid, nm in zip(a["agent_id"].unique(), a.drop_duplicates("agent_id")["agent_name"])
+                                            if aid in authors or (isinstance(nm, str) and nm.lower() in authors)))
+    return s
 
 
 def _ts(v):
@@ -131,8 +170,14 @@ def audience(channels: pd.DataFrame, agents: pd.DataFrame, agent_col: str,
     return out
 
 
-def summary(directory: pd.DataFrame | None, channels: pd.DataFrame | None, events: pd.DataFrame | None = None) -> dict:
+def summary(directory: pd.DataFrame | None, channels: pd.DataFrame | None, events: pd.DataFrame | None = None,
+            activity: pd.DataFrame | None = None, roster: pd.DataFrame | None = None,
+            unrecognised: list[str] | None = None) -> dict:
     s: dict = {}
+    if unrecognised:
+        s["unrecognised"] = list(unrecognised)
+    if activity is not None and len(activity):
+        s["activity"] = activity_summary(activity, roster, events)
     if directory is not None and len(directory):
         d = directory
         s["n_agents"] = int(len(d))
@@ -174,4 +219,24 @@ def section(s: dict, md_table) -> list[str]:
             L.append(f"{s['posts_in_restricted']:,} transcript posts are in restricted rooms"
                      + (f"; channels not in the room table: {', '.join(s['unknown_channels'])}" if s["unknown_channels"] else "") + ".\n")
         L.append(md_table(s["rooms"], index=False, floatfmt="{:.1f}"))
+    if "activity" in s:
+        a = s["activity"]
+        L.append(f"\nActivity log: {a['n_rows']:,} session starts by {a['n_agents']} agent(s), {a['span']}, "
+                 f"busiest {a['busy_hours_utc']} UTC, {a['weekend_share']:.0%} at weekends. ")
+        notes = []
+        if "agents_in_roster" in a:
+            notes.append(f"{a['agents_in_roster']} of these agents hold a goal in the roster and "
+                         f"{a['rows_in_goal_window']:,} session starts fall inside a goal window")
+        if "agents_in_transcript" in a:
+            notes.append(f"{a['agents_in_transcript']} of them post in the transcript")
+        if notes:
+            L.append("; ".join(notes) + ". ")
+        if a.get("agents_in_roster") == 0 and "agents_in_transcript" not in a:
+            L.append("The log covers none of the agents under study, so it cannot bound when they could have read anything; "
+                     "it is kept as the `activity` table and otherwise ignored.")
+        L.append("\n")
+        L.append(md_table(a["per_agent"]))
+    if "unrecognised" in s:
+        L.append("\nFiles in the source directory no adapter recognised (not used): "
+                 + ", ".join(f"`{f}`" for f in s["unrecognised"]) + "\n")
     return L

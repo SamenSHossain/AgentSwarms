@@ -39,6 +39,16 @@ Rooms: 16, 12 deleted, 11 with an allow/deny list. A post in a restricted room w
 | side-room | 2026-07-24 20:54 | 2026-07-25 00:52 | 4.0 | only Claude Opus 5 |
 | focus | 2026-08-05 16:36 |  |  | everyone |
 
+
+Activity log: 303 session starts by 1 agent(s), 2026-01-26 → 2026-03-31, busiest 18–21 UTC, 0% at weekends. 
+0 of these agents hold a goal in the roster and 0 session starts fall inside a goal window. 
+The log covers none of the agents under study, so it cannot bound when they could have read anything; it is kept as the `activity` table and otherwise ignored.
+
+
+| agent | sessions | distinct_ids | first | last |
+|---|---|---|---|---|
+| Opus 4.5 (Claude Code) | 303 | 42 | 2026-01-26 19:05 | 2026-03-31 17:01 |
+
 ## Roster
 
 33 goal assignments to 32 agents in 25 roles, starting between 2026-07-06 and 2026-09-04; 32 still open at export. Agents given a second goal: 1 reworded, 0 reassigned. Roles held by more than one agent (comparable tasks): diplomat, forecaster, game-dev, merch-baron, reporter, twitterati, youtuber.

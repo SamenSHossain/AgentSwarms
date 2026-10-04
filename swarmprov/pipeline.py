@@ -57,7 +57,7 @@ def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | N
         ros, roster_notes = rb.roster, rb.notes
     if ros is not None:
         run.write("roster", ros)
-    for name in ("directory", "channels"):
+    for name in ("directory", "channels", "activity"):
         if getattr(b, name) is not None:
             run.write(name, getattr(b, name))
     has_ts = len(ev) and ev["ts"].notna().any()

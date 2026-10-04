@@ -34,6 +34,8 @@ def discover(path: Path) -> dict[str, Path]:
             kind = None
         if kind and kind not in found:
             found[kind] = p
+        elif path.is_dir():
+            found.setdefault("_unrecognised", []).append(p.name)  # type: ignore[arg-type]
     return found
 
 
@@ -44,8 +46,8 @@ class VillageAdapter(Adapter):
         path = Path(path)
         found = discover(path)
         if path.is_dir():
-            return bool(found.keys() & {"goals", "agents", "rooms"})
-        return bool(found.keys() & {"agents", "rooms"})   # a lone goals file is the roster adapter's
+            return bool(found.keys() & {"goals", "agents", "rooms", "sessions"})
+        return bool(found.keys() & {"agents", "rooms", "sessions"})   # a lone goals file is the roster adapter's
 
     def load(self, path: Path) -> Bundle:
         path = Path(path)
@@ -53,8 +55,10 @@ class VillageAdapter(Adapter):
         directory = village_mod.normalize_directory(read_rows(found["agents"])) if "agents" in found else None
         channels = village_mod.normalize_channels(read_rows(found["rooms"])) if "rooms" in found else None
         lifecycle = village_mod.lifecycle_from_channels(channels) if channels is not None else None
-        roster = notes = None
-        notes = {"tables": {k: v.name for k, v in found.items()}}
+        roster = None
+        unrecognised = found.pop("_unrecognised", [])
+        notes = {"tables": {k: v.name for k, v in found.items()}, "unrecognised": unrecognised}
+        activity = village_mod.normalize_activity(read_rows(found["sessions"]), directory) if "sessions" in found else None
         if "goals" in found:
             rows = read_rows(found["goals"])
             roster = roster_mod.normalize(rows)
@@ -65,10 +69,12 @@ class VillageAdapter(Adapter):
                 roster["model"] = roster["agent_id"].map(d["model"])
         events, caps = empty("events"), Capabilities(has_wall_clock=True, has_explicit_author=True,
                                                      has_lifecycle=channels is not None)
+        caps.has_activity = activity is not None
         if "messages" in found:
             b = ChatAdapter().load(found["messages"])
             events, caps = b.events, b.capabilities
             caps.has_lifecycle = channels is not None
+            caps.has_activity = activity is not None
             if directory is not None:  # ids -> names
                 names = dict(zip(directory["agent_id"], directory["name"]))
                 alt = events["author_alt"].map(names)
@@ -81,6 +87,7 @@ class VillageAdapter(Adapter):
             notes.update(b.notes)
         notes.update({"n_agents": 0 if directory is None else int(len(directory)),
                       "n_rooms": 0 if channels is None else int(len(channels)),
-                      "n_goals": 0 if roster is None else int(len(roster))})
+                      "n_goals": 0 if roster is None else int(len(roster)),
+                      "n_activity": 0 if activity is None else int(len(activity))})
         return Bundle(events=events, lifecycle=lifecycle, roster=roster, directory=directory,
-                      channels=channels, capabilities=caps, notes=notes)
+                      channels=channels, activity=activity, capabilities=caps, notes=notes)
