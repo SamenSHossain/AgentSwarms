@@ -22,6 +22,7 @@ class Capabilities:
     has_episodes: bool = False  # explicit round / turn boundaries as fields
     has_activity: bool = False  # presence log: when each agent was running
     has_request_log: bool = False  # request-level rows exist (here: script-injection probes only; no page views)
+    derived_text: bool = False  # posts are an LLM digest of what agents did, not the agents' own words
 
     def as_dict(self) -> dict[str, bool]:
         return dict(self.__dict__)
@@ -74,6 +75,9 @@ class AdapterConfig:
     # IANA zone of the village's operating schedule (the export does not state it); when set, the
     # report counts posts outside the schedule's windows
     schedule_tz: str | None = None
+    # with no primary message table, run the pipeline on the digest parsed from LLM-written daily
+    # summaries (derived text: timing and names are second-hand, specific values unreliable)
+    digest_as_posts: bool = False
 
     @classmethod
     def from_dict(cls, d: dict, base: "AdapterConfig | None" = None) -> "AdapterConfig":
@@ -130,6 +134,8 @@ class Bundle:
     activity: pd.DataFrame | None = None
     probes: pd.DataFrame | None = None
     eras: pd.DataFrame | None = None
+    summaries: pd.DataFrame | None = None
+    digest: pd.DataFrame | None = None
     capabilities: Capabilities = field(default_factory=Capabilities)
     notes: dict = field(default_factory=dict)
 

@@ -5,6 +5,57 @@
     "n_events": 0
   },
   "village": {
+    "summaries": {
+      "n": 939,
+      "n_latest": 517,
+      "n_superseded": 422,
+      "by_type": {
+        "daily": 396,
+        "goal": 70,
+        "agent": 43,
+        "goal-checkpoint": 3,
+        "agent_daily": 2,
+        "watch_narrative_v2": 2,
+        "watch_narrative": 1
+      },
+      "generators": {
+        "claude-3-7-sonnet-20250219": 417,
+        "claude-sonnet-4-5-20250929": 300,
+        "claude-sonnet-4-6": 116,
+        "claude-sonnet-5": 106
+      },
+      "created": "2025-05-13 \u2192 2026-09-18",
+      "daily": {
+        "n": 396,
+        "first": "2025-04-02 00:00:00+00:00",
+        "last": "2026-09-18 00:00:00+00:00",
+        "day_first": 1,
+        "day_last": 513
+      },
+      "digest": {
+        "n_events": 10939,
+        "n_named": 8562,
+        "by_kind": {
+          "event": 9353,
+          "note": 1244,
+          "quote": 342
+        },
+        "n_actors": 42,
+        "top_actors": {
+          "o3": 1998,
+          "Claude 3.7 Sonnet": 1561,
+          "Gemini 2.5 Pro": 1465,
+          "Claude Opus 4": 1005,
+          "Claude Opus 4.1": 661,
+          "GPT-5": 249,
+          "Claude Sonnet 4.5": 249,
+          "Claude Haiku 4.5": 237
+        },
+        "n_bad_ts": 0,
+        "span": "2025-04-02 \u2192 2026-09-18"
+      }
+    },
+    "schedule_tz_inferred": true,
     "meta": {
       "village_id": "00ebc425-074c-466f-ab2d-5aa2efa445aa",
       "name": "actual-launch-1",
@@ -32,7 +83,7 @@
       "active_agent": "Claude 3.7 Sonnet",
       "turn_id": null,
       "legacy_goal": "Collaboratively choose a charity and raise as much money as you can for it",
-      "schedule_tz": null
+      "schedule_tz": "America/Los_Angeles"
     },
     "eras": {
       "n": 51,

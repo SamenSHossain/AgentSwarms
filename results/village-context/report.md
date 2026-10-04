@@ -4,7 +4,7 @@ Source: `data/raw_village` (adapter `village`) holds no posts, so there is no pr
 
 ## Village
 
-Village `actual-launch-1`, created 2025-04-02T17:45 UTC, exported 2026-09-19T00:00 UTC (the export cut: open goals, rooms and windows are measured to it). Operating schedule: mon–fri 09:00–17:00 (40 h/week), timezone not stated in the export (set `schedule_tz` in the config to check posts against it). The village runs one agent at a time; at export the turn was held by Claude 3.7 Sonnet and chat was closed. Turn boundaries are not exported, so timing stays on the wall clock. The row's `village_goal` field still reads "Collaboratively choose a charity and raise as much money as you can for it", the first shared goal, not the current one.
+Village `actual-launch-1`, created 2025-04-02T17:45 UTC, exported 2026-09-19T00:00 UTC (the export cut: open goals, rooms and windows are measured to it). Operating schedule: mon–fri 09:00–17:00 (40 h/week), timezone America/Los_Angeles, inferred from the daily digests' PT stamps. The village runs one agent at a time; at export the turn was held by Claude 3.7 Sonnet and chat was closed. Turn boundaries are not exported, so timing stays on the wall clock. The row's `village_goal` field still reads "Collaboratively choose a charity and raise as much money as you can for it", the first shared goal, not the current one.
 
 Directory: 46 agents (32 participating at export), joined 2025-04-02 → 2026-09-04.
 
@@ -97,6 +97,12 @@ Shared goals: 51 windows from 2025-04-02 to 2026-07-06 (last start), median 7.0 
 | e49-beat-hardest-game | 2026-06-23 14:38 | Beat the hardest game you can! | 5.8 |
 | e50-compete-best-ai | 2026-06-29 09:22 | Compete to be the best AI Assistant! | 7.3 |
 | e51-maximize-assigned-goal | 2026-07-06 15:59 | Each agent: Maximize your assigned goal! | 74.3 |
+
+
+Summaries: 939 LLM-written summaries (422 superseded regenerations; latest versions: daily 396, goal 70, agent 43, goal-checkpoint 3, agent_daily 2, watch_narrative_v2 2, watch_narrative 1), written 2025-05-13 → 2026-09-18 by claude-3-7-sonnet-20250219 417, claude-sonnet-4-5-20250929 300, claude-sonnet-4-6 116, claude-sonnet-5 106.
+ Daily digests cover 396 village days, 2025-04-02 → 2026-09-18 (Day 1 → Day 513).
+ Their timestamped lines give a derived timeline of 10,939 entries (9,353 events, 1,244 notes, 342 quotes; 2025-04-02 → 2026-09-18, stamped PT and read as America/Los_Angeles; 0 unparseable); 8,562 name a directory agent (42 agents: o3 1,998, Claude 3.7 Sonnet 1,561, Gemini 2.5 Pro 1,465, Claude Opus 4 1,005, Claude Opus 4.1 661, GPT-5 249, Claude Sonnet 4.5 249, Claude Haiku 4.5 237). Events and notes are an LLM's account of what agents did, quotes are their words as the summariser quoted them: fit for who-did-what-when and technique mentions, not for the provenance of specific values. Set `digest_as_posts` in the config to run the pipeline on it.
+
 
 
 Activity log: 303 session starts by 1 agent(s), 2026-01-26 → 2026-03-31, busiest 18–21 UTC, 0% at weekends. 

@@ -56,6 +56,13 @@ TABLES: dict[str, list[str]] = {
     # Shared goals (AI Village ``village_goals``): one window per goal everyone was given; ``label``
     # is the short family name used for posts no agent-specific goal covers.
     "eras": ["era_id", "label", "goal", "start", "end", "created", "updated"],
+    # LLM-written summaries (AI Village ``summaries``): daily digests, goal and agent narratives.
+    # ``latest`` marks the newest version of a (type, target, date); ``day`` is the village day number.
+    "summaries": ["summary_id", "type", "target", "date", "day", "generated_by", "created", "updated", "latest",
+                  "n_events", "chars", "content"],
+    # Timestamped event lines parsed from the latest daily digests: a *derived* timeline (an LLM's account
+    # of what agents did, not the agents' words).  ``actor`` is the directory name the line opens with.
+    "digest": ["event_id", "ts", "kind", "actor", "actor_id", "text", "summary_id", "day", "generated_by"],
     # Identity resolution result: one row per author_raw.
     # ``roster_agent`` is the roster id when a roster identified the author, else None.
     "agents": ["author_raw", "agent_strict", "agent_merged", "cohort", "n_events", "roster_agent"],
@@ -130,3 +137,14 @@ class RunDir:
 
     def figure(self, name: str) -> Path:
         return self.path / "figures" / name
+
+    STAGE_OUTPUTS = ("agents", "claims", "tags", "mentions", "exposures_merged", "exposures_strict", "edges_merged",
+                     "edges_strict", "chains_merged", "chains_strict", "roster_events", "lifecycle", "reads", "roster",
+                     "directory", "channels", "activity", "probes", "eras", "summaries", "digest")
+
+    def clear(self) -> None:
+        """Remove every table a previous run left behind, so a re-ingest cannot mix runs."""
+        for name in self.STAGE_OUTPUTS:
+            self.table_path(name).unlink(missing_ok=True)
+        for f in ("items.json", "report.md", "summary.json", "provenance_merged.graphml"):
+            (self.path / f).unlink(missing_ok=True)

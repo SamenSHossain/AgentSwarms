@@ -113,10 +113,10 @@ def deletion_summary(lifecycle: pd.DataFrame, events: pd.DataFrame | None, check
         gaps = [(t - dts[str(e)]).total_seconds() / 3600 for e, t in zip(recs["related_event_id"], recs["ts"]) if str(e) in dts]
         s["recreate_gap_median_h"] = float(pd.Series(gaps).median()) if gaps else None
     if events is not None and len(events):
-        last_write = events["ts"].max()
+        last_write = pd.to_datetime(events["ts"], utc=True).max()
         s["last_write"] = last_write
-        s["deleted_before_last_write"] = int((dels["ts"] <= last_write).sum())
-        vu = events["visible_until"]
+        s["deleted_before_last_write"] = int((pd.to_datetime(dels["ts"], utc=True) <= last_write).sum())
+        vu = pd.to_datetime(events["visible_until"], utc=True, errors="coerce")
         s["posts"] = int(len(events))
         s["posts_on_deleted_pages"] = int(vu.notna().sum())
         s["posts_deleted_while_writing"] = int((vu <= last_write).sum())

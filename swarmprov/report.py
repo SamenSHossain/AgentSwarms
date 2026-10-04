@@ -62,8 +62,10 @@ def _village_block(run: RunDir, prof: dict, summary: dict) -> list[str]:
         era_ann = run.read("roster_events")
     from .pipeline import load_config
     notes = prof.get("notes", {})
+    summaries = run.read("summaries") if run.has("summaries") else None
+    digest = run.read("digest") if run.has("digest") else None
     s = village_mod.summary(directory, channels, ev, activity, roster, notes.get("unrecognised"), eras, era_ann,
-                            notes.get("village"), load_config(run).schedule_tz)
+                            notes.get("village"), load_config(run).schedule_tz, summaries, digest)
     summary["village"] = {k: v for k, v in s.items() if not isinstance(v, pd.DataFrame)}
     return village_mod.section(s, md_table)
 
@@ -110,6 +112,7 @@ def build(run: RunDir, mapping: str = "merged") -> str:
         "has_reads": "exposure is *observed*; otherwise it is inferred from what was public",
         "has_lifecycle": "deletions are recorded, posts carry visible_until, and A1 reports D_visible beside D",
         "has_request_log": "request-level rows exist (script-injection probes only); still no page views",
+        "derived_text": "posts are an LLM digest of what agents did, not their words: values and quotes are second-hand",
         "has_threading": "reply links usable as explicit edges",
         "has_episodes": "rounds are fields; otherwise parsed from text",
         "has_activity": "a presence log says when each agent was running",
@@ -126,7 +129,9 @@ def build(run: RunDir, mapping: str = "merged") -> str:
         L += _roster_block(run, prof, summary)
     if run.has("lifecycle"):
         lc = run.read("lifecycle")
-        if len(lc) and (lc["action"] == "delete").any():
+        dels = lc[lc["action"] == "delete"] if len(lc) else lc
+        # page-level deletions (the wiki dump records each with an event id); room deletions are covered in the Village block
+        if len(dels) and "event_id" in dels and dels["event_id"].notna().any():
             ds = lifecycle_mod.deletion_summary(lc, run.read("events"), notes.get("recreation_check"))
             summary["deletions"] = {k: v for k, v in ds.items() if k != "check"} | {"check": {k: v for k, v in (ds.get("check") or {}).items() if k != "restored_event_ids"}}
             L += lifecycle_mod.deletion_section(ds, _pct)
@@ -234,10 +239,12 @@ def build(run: RunDir, mapping: str = "merged") -> str:
                  f"({r5['n_relay_edges']:,} same-page relay hops, {r5['n_xchannel_edges']:,} cross-page hops attributed to the originator, "
                  f"{r5['n_exposure_edges']:,} first-source exposures, "
                  f"{r5['n_citation_edges']:,} explicit citations). "
-                 f"{r5['exposure_sources']} agents were the first public source for someone's answer; "
-                 f"the top 10 supplied **{_pct(r5['top10_share_exposure'])}** of all exposed answers "
-                 f"(out-degree Gini {r5['gini_exposure_outdegree']:.2f}). "
-                 f"Facts carried by ≥2 agents travelled {r5['mean_chain_depth']:.1f} hops on average.\n")
+                 + (f"{r5['exposure_sources']} agents were the first public source for someone's answer; "
+                    f"the top 10 supplied **{_pct(r5['top10_share_exposure'])}** of all exposed answers "
+                    f"(out-degree Gini {r5['gini_exposure_outdegree']:.2f}). " if r5.get("n_exposure_edges") else
+                    "No answer had a first public source here, so there is no exposure concentration to report. ")
+                 + (f"Facts carried by ≥2 agents travelled {r5['mean_chain_depth']:.1f} hops on average.\n"
+                    if r5.get("mean_chain_depth") == r5.get("mean_chain_depth") else "No fact was carried by two or more agents.\n"))
         if figs["structure"]:
             L.append(f"![structure](figures/{run.figure('a5_structure.png').name})\n")
         L.append("Top first-sources (answers they were first public source for):\n")
@@ -294,7 +301,10 @@ def build(run: RunDir, mapping: str = "merged") -> str:
                 "an agent that read it earlier, or a copy on an uncaptured surface, is not affected, so D stays the headline.\n"
                 if "D_visible" in ex and len(ex) else "")
              + ("- **The request log is narrow.** Only script-injection probe rows are included, with no page views, so exposure "
-                "remains inferred.\n" if run.has("probes") else ""))
+                "remains inferred.\n" if run.has("probes") else "")
+             + ("- **Derived text.** The posts are an LLM's daily digest of what agents did (one line per event, Pacific time), "
+                "not the agents' own messages: who-did-what-when and technique mentions are plausible, the provenance of specific "
+                "values is not, and anything the digest's author chose to omit is invisible.\n" if caps.get("derived_text") else ""))
     return _write(run, L, summary)
 
 

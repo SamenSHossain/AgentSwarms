@@ -38,12 +38,18 @@ def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | N
     a = adapters.detect(path) if adapter == "auto" else adapters.get(adapter)
     _log(f"ingest {path} with adapter '{a.name}'")
     b = a.load(Path(path))
-    ev = b.events.sort_values("ts").reset_index(drop=True)
     cfg = a.config()
     if config:
         cfg = adapters.AdapterConfig.from_file(config, base=cfg)
+    if cfg.digest_as_posts and b.digest is not None and not len(b.events):
+        _log(f"  no message table: using the {len(b.digest):,}-event digest parsed from the daily summaries as posts (derived text)")
+        b.events = village.digest_to_events(b.digest)
+        b.capabilities.derived_text = True
+        b.capabilities.has_explicit_author = True
+    ev = b.events.sort_values("ts").reset_index(drop=True)
     if cfg.ignore_authors:
         ev = ev[~ev["author_raw"].isin(cfg.ignore_authors)].reset_index(drop=True)
+    run.clear()  # stage outputs of an earlier run in this directory would otherwise survive a re-ingest
     run.write("events", conform(ev, "events"))
     if b.lifecycle is not None:
         run.write("lifecycle", b.lifecycle)
@@ -57,7 +63,7 @@ def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | N
         ros, roster_notes = rb.roster, rb.notes
     if ros is not None:
         run.write("roster", ros)
-    for name in ("directory", "channels", "activity", "probes", "eras"):
+    for name in ("directory", "channels", "activity", "probes", "eras", "summaries", "digest"):
         if getattr(b, name) is not None:
             run.write(name, getattr(b, name))
     has_ts = len(ev) and ev["ts"].notna().any()

@@ -46,8 +46,8 @@ class VillageAdapter(Adapter):
         path = Path(path)
         found = discover(path)
         if path.is_dir():
-            return bool(found.keys() & {"goals", "agents", "rooms", "sessions", "eras", "meta"})
-        return bool(found.keys() & {"agents", "rooms", "sessions", "eras", "meta"})   # a lone goals file is the roster adapter's
+            return bool(found.keys() & {"goals", "agents", "rooms", "sessions", "eras", "meta", "summaries"})
+        return bool(found.keys() & {"agents", "rooms", "sessions", "eras", "meta", "summaries"})   # a lone goals file is the roster adapter's
 
     def load(self, path: Path) -> Bundle:
         path = Path(path)
@@ -62,6 +62,12 @@ class VillageAdapter(Adapter):
         eras = village_mod.normalize_eras(read_rows(found["eras"])) if "eras" in found else None
         if "meta" in found:
             notes["village"] = village_mod.normalize_meta(read_rows(found["meta"]), directory)
+        summaries = digest = None
+        if "summaries" in found:
+            summaries = village_mod.normalize_summaries(read_rows(found["summaries"]))
+            digest = village_mod.parse_digest(summaries, directory)
+            notes["summaries"] = {"n": int(len(summaries)), "n_digest_events": int(len(digest)),
+                                  "schedule_tz_inferred": village_mod.DIGEST_TZ if len(digest) else None}
         if "goals" in found:
             rows = read_rows(found["goals"])
             roster = roster_mod.normalize(rows)
@@ -94,4 +100,5 @@ class VillageAdapter(Adapter):
                       "n_activity": 0 if activity is None else int(len(activity)),
                       "n_eras": 0 if eras is None else int(len(eras))})
         return Bundle(events=events, lifecycle=lifecycle, roster=roster, directory=directory,
-                      channels=channels, activity=activity, eras=eras, capabilities=caps, notes=notes)
+                      channels=channels, activity=activity, eras=eras, summaries=summaries,
+                      digest=digest if digest is not None and len(digest) else None, capabilities=caps, notes=notes)

@@ -15,6 +15,11 @@ carry context the provenance pipeline needs and a transcript alone lacks:
                     was given (weekly, contiguous).  A shared goal is a task
                     family for everyone, so a post that no agent-specific goal
                     covers takes the era it falls in;
+* ``summaries``   - LLM-written digests (daily, per goal, per agent).  The daily
+                    ones list timestamped events in Pacific time naming the
+                    agents; the latest version of each day is parsed into a
+                    *derived* timeline, kept apart from real posts unless the
+                    config asks for ``digest_as_posts``;
 * ``villages``    - one row of metadata: the export cut (``updated_at``), the
                     operating schedule (daily windows, timezone not stated),
                     whether chat was open, and which agent held the turn.  The
@@ -57,6 +62,8 @@ def classify(rows: list[dict]) -> str | None:
     if not rows or not all(isinstance(r, dict) for r in rows[:20]):
         return None
     keys = set().union(*(r.keys() for r in rows[:20]))
+    if {"type", "summary_target", "content"} <= keys:   # LLM digests carry text but are not messages
+        return "summaries"
     if keys & TEXT_KEYS:
         return "messages"
     if {"id", "name"} <= keys and keys & {"schedule", "village_goal", "is_chat_open"}:
@@ -68,6 +75,125 @@ def classify(rows: list[dict]) -> str | None:
 
 
 DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+DIGEST_TZ = "America/Los_Angeles"   # the digests stamp events "PT"
+EVENT_RX = re.compile(r"^\s*\d+\.\s*\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}(?::\d{2})?)\s*(PT|PST|PDT|UTC)?\]\s*(.+?)\s*$", re.M)
+STAMP_RX = re.compile(r"\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}(?::\d{2})?)\s*(PT|PST|PDT|UTC)?\]")
+BULLET_RX = re.compile(r"^\s*[-*•]\s+(.*\S)\s*$", re.M)
+QUOTE_RX = re.compile(r"<quote[^>]*>(.*?)</quote>", re.S)
+
+
+def normalize_summaries(rows: list[dict]) -> pd.DataFrame:
+    out = []
+    for r in rows:
+        if not isinstance(r, dict) or not r.get("content"):
+            continue
+        target = r.get("summary_target")
+        day = int(target) if isinstance(target, str) and target.isdigit() else None
+        content = str(r["content"])
+        out.append({"summary_id": str(r.get("id")), "type": str(r.get("type") or ""), "target": target,
+                    "date": _ts(r.get("summary_date")), "day": day, "generated_by": r.get("generated_by"),
+                    "created": _ts(r.get("created_at")), "updated": _ts(r.get("updated_at")),
+                    "n_events": len(EVENT_RX.findall(content)), "chars": len(content), "content": content})
+    if not out:
+        raise ValueError("no summary rows with content")
+    df = pd.DataFrame(out).sort_values("created").reset_index(drop=True)
+    date = pd.to_datetime(df["date"], utc=True, errors="coerce").dt.strftime("%Y-%m-%d").fillna("")
+    key = [f"{t}|{g or ''}|{d}" for t, g, d in zip(df["type"], df["target"], date)]   # plain strings: no NA keys
+    df["latest"] = ~pd.Series(key, index=df.index).duplicated(keep="last")   # the newest regeneration wins
+    return conform(df, "summaries")
+
+
+def _actor(text: str, names: list[str]) -> str | None:
+    t = STAMP_RX.sub("", text).lstrip("*_\"' :-")   # a leading stamp or bold marker is not part of the name
+    return next((n for n in names if t.startswith(n) and (len(t) == len(n) or not t[len(n)].isalnum())), None)
+
+
+def parse_digest(summaries: pd.DataFrame, directory: pd.DataFrame | None = None) -> pd.DataFrame:
+    """Timestamped lines of the latest summaries, in UTC, with the named actor.
+
+    Three layouts occur: numbered event lines (``1. [2025-06-30 11:01:40 PT] o3 ...``,
+    kind ``event``), narrative bullets with an inline stamp (kind ``note``), and
+    ``<quote>`` blocks (``Speaker: words [stamp]``, kind ``quote``: the agent's
+    own words as the summariser quoted them).  Only the latest version of each
+    summary is read, so regenerated days are not counted twice."""
+    names = sorted(directory["name"].astype(str), key=len, reverse=True) if directory is not None else []
+    ids = dict(zip(directory["name"].astype(str), directory["agent_id"])) if directory is not None else {}
+    rows = []
+    latest = summaries[summaries["latest"].astype(bool)]
+    for s in latest.itertuples(index=False):
+        content, i = str(s.content), 0
+        body = QUOTE_RX.sub(" ", content)          # quotes are parsed separately
+        if s.type == "daily":
+            events = EVENT_RX.findall(body)
+            if events:
+                for stamp, tz, text in events:
+                    rows.append({"event_id": f"{s.summary_id}:{i}", "kind": "event", "stamp": stamp, "tz": tz or "PT",
+                                 "actor": _actor(text, names), "text": text, "summary_id": s.summary_id, "day": s.day,
+                                 "generated_by": s.generated_by}); i += 1
+            else:
+                for text in BULLET_RX.findall(body):
+                    m = STAMP_RX.search(text)
+                    if not m:
+                        continue
+                    rows.append({"event_id": f"{s.summary_id}:{i}", "kind": "note", "stamp": m.group(1), "tz": m.group(2) or "PT",
+                                 "actor": _actor(text, names), "text": text, "summary_id": s.summary_id, "day": s.day,
+                                 "generated_by": s.generated_by}); i += 1
+        for q in QUOTE_RX.findall(content):
+            m = STAMP_RX.search(q)
+            if not m:
+                continue
+            q = q.strip()
+            speaker = q.split(":", 1)[0].strip().strip("*_\"' ") if ":" in q else ""
+            actor = speaker if speaker in ids else _actor(q, names)
+            rows.append({"event_id": f"{s.summary_id}:{i}", "kind": "quote", "stamp": m.group(1), "tz": m.group(2) or "PT",
+                         "actor": actor, "text": STAMP_RX.sub("", q).strip(), "summary_id": s.summary_id, "day": s.day,
+                         "generated_by": s.generated_by}); i += 1
+    if not rows:
+        return conform(pd.DataFrame(), "digest")
+    d = pd.DataFrame(rows)
+    local = pd.to_datetime(d["stamp"], format="mixed", errors="coerce")
+    d["ts"] = local.dt.tz_localize(DIGEST_TZ, ambiguous="NaT", nonexistent="shift_forward").dt.tz_convert("UTC")
+    utc = d["tz"].eq("UTC")
+    if utc.any():
+        d.loc[utc, "ts"] = local[utc].dt.tz_localize("UTC")
+    d["actor_id"] = d["actor"].map(ids)
+    return conform(d.sort_values(["ts", "event_id"]).reset_index(drop=True), "digest")
+
+
+def digest_to_events(digest: pd.DataFrame) -> pd.DataFrame:
+    """The digest as an events table, so the pipeline can run on it (derived text)."""
+    d = digest[digest["ts"].notna()]
+    return pd.DataFrame({
+        "event_id": "digest:" + d["event_id"].astype(str), "ts": d["ts"], "channel": "digest",
+        "author_raw": d["actor"].fillna("narrator"), "author_alt": d["actor_id"].fillna(""), "text": d["text"],
+        "parent_id": d["summary_id"], "visible_until": pd.Series(pd.NaT, index=d.index, dtype="datetime64[ns, UTC]"),
+        "channel_family": "", "source_ref": d["event_id"], "site": "summaries", "source_kind": "digest_" + d["kind"].astype(str),
+    }).reset_index(drop=True)
+
+
+def summaries_summary(summaries: pd.DataFrame, digest: pd.DataFrame | None, directory: pd.DataFrame | None = None) -> dict:
+    s = summaries
+    latest = s[s["latest"].astype(bool)]
+    daily = latest[latest["type"] == "daily"]
+    out = {"n": int(len(s)), "n_latest": int(len(latest)), "n_superseded": int(len(s) - len(latest)),
+           "by_type": latest["type"].value_counts().to_dict(),
+           "generators": s["generated_by"].value_counts().to_dict(),
+           "created": f"{s['created'].min():%Y-%m-%d} → {s['created'].max():%Y-%m-%d}"}
+    if len(daily):
+        dates = daily["date"].dropna()
+        out["daily"] = {"n": int(len(daily)), "first": dates.min(), "last": dates.max(),
+                        "day_first": int(daily["day"].min()) if daily["day"].notna().any() else None,
+                        "day_last": int(daily["day"].max()) if daily["day"].notna().any() else None}
+    if digest is not None and len(digest):
+        named = digest["actor"].notna()
+        out["digest"] = {"n_events": int(len(digest)), "n_named": int(named.sum()),
+                         "by_kind": digest["kind"].value_counts().to_dict(),
+                         "n_actors": int(digest["actor"].nunique()),
+                         "top_actors": digest["actor"].value_counts().head(8).to_dict(),
+                         "n_bad_ts": int(digest["ts"].isna().sum()),
+                         "span": f"{digest['ts'].min():%Y-%m-%d} → {digest['ts'].max():%Y-%m-%d}"}
+    return out
+
 
 
 def _hhmm(s: str) -> float:
@@ -292,9 +418,15 @@ def audience(channels: pd.DataFrame, agents: pd.DataFrame, agent_col: str,
 def summary(directory: pd.DataFrame | None, channels: pd.DataFrame | None, events: pd.DataFrame | None = None,
             activity: pd.DataFrame | None = None, roster: pd.DataFrame | None = None,
             unrecognised: list[str] | None = None, eras: pd.DataFrame | None = None,
-            era_ann: pd.DataFrame | None = None, meta: dict | None = None, schedule_tz: str | None = None) -> dict:
+            era_ann: pd.DataFrame | None = None, meta: dict | None = None, schedule_tz: str | None = None,
+            summaries: pd.DataFrame | None = None, digest: pd.DataFrame | None = None) -> dict:
     s: dict = {}
     cut = pd.Timestamp(meta["export_cut"]) if meta and meta.get("export_cut") else None
+    if summaries is not None and len(summaries):
+        s["summaries"] = summaries_summary(summaries, digest, directory)
+        if schedule_tz is None and digest is not None and len(digest):
+            schedule_tz = DIGEST_TZ          # the digests stamp events in PT: evidence for the schedule's zone
+            s["schedule_tz_inferred"] = True
     if meta:
         s["meta"] = dict(meta)
         s["meta"]["schedule_tz"] = schedule_tz
@@ -355,8 +487,10 @@ def section(s: dict, md_table) -> list[str]:
         L.append(f"Village `{m['name']}`, created {m['created'][:16] if m.get('created') else '?'} UTC, exported "
                  f"{m['export_cut'][:16] if m.get('export_cut') else '?'} UTC (the export cut: open goals, rooms and windows are measured to it). "
                  f"Operating schedule: {_schedule_text(m['schedule'])} ({m['schedule']['open_hours_per_week']:.0f} h/week), "
-                 + (f"read in {tz}: {m['posts_outside_schedule']:,} of {m['posts']:,} posts fall outside it. " if "posts_outside_schedule" in m
-                    else "timezone not stated in the export (set `schedule_tz` in the config to check posts against it). ")
+                 + (f"read in {tz}{' (inferred: the daily digests stamp events in PT)' if s.get('schedule_tz_inferred') else ''}: "
+                    f"{m['posts_outside_schedule']:,} of {m['posts']:,} posts fall outside it. " if "posts_outside_schedule" in m
+                    else (f"timezone {tz}, inferred from the daily digests' PT stamps. " if s.get("schedule_tz_inferred")
+                          else "timezone not stated in the export (set `schedule_tz` in the config to check posts against it). "))
                  + "The village runs one agent at a time"
                  + (f"; at export the turn was held by {m['active_agent']}" if m.get("active_agent") else "")
                  + f" and chat was {'open' if m.get('is_chat_open') else 'closed'}. Turn boundaries are not exported, so timing stays on the wall clock."
@@ -383,6 +517,26 @@ def section(s: dict, md_table) -> list[str]:
                     f"(\"{e['handover']['goal']}\"), the minute the first per-agent goal starts." if e.get("handover") else "")
                  + (f" {e['posts_outside']:,} of {e['posts']:,} posts fall outside every window." if "posts" in e else "") + "\n")
         L.append(md_table(e["table"], index=False, floatfmt="{:.1f}"))
+    if "summaries" in s:
+        u = s["summaries"]
+        types = ", ".join(f"{k} {v}" for k, v in sorted(u["by_type"].items(), key=lambda kv: -kv[1]))
+        gens = ", ".join(f"{k} {v}" for k, v in u["generators"].items())
+        L.append(f"\nSummaries: {u['n']:,} LLM-written summaries ({u['n_superseded']:,} superseded regenerations; latest versions: {types}), "
+                 f"written {u['created']} by {gens}.")
+        if "daily" in u:
+            d = u["daily"]
+            L.append(f" Daily digests cover {d['n']} village days, {d['first']:%Y-%m-%d} → {d['last']:%Y-%m-%d}"
+                     + (f" (Day {d['day_first']} → Day {d['day_last']})" if d.get("day_first") is not None else "") + ".")
+        if "digest" in u:
+            g = u["digest"]
+            top = ", ".join(f"{k} {v:,}" for k, v in g["top_actors"].items())
+            kinds = ", ".join(f"{v:,} {k}s" for k, v in g["by_kind"].items())
+            L.append(f" Their timestamped lines give a derived timeline of {g['n_events']:,} entries ({kinds}; {g['span']}, stamped PT and read as "
+                     f"{DIGEST_TZ}; {g['n_bad_ts']} unparseable); {g['n_named']:,} name a directory agent ({g['n_actors']} agents: {top}). "
+                     "Events and notes are an LLM's account of what agents did, quotes are their words as the summariser quoted them: "
+                     "fit for who-did-what-when and technique mentions, not for the provenance of specific values. "
+                     "Set `digest_as_posts` in the config to run the pipeline on it.")
+        L.append("\n")
     if "activity" in s:
         a = s["activity"]
         L.append(f"\nActivity log: {a['n_rows']:,} session starts by {a['n_agents']} agent(s), {a['span']}, "

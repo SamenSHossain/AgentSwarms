@@ -24,7 +24,8 @@ def test_tables_are_recognised_by_columns():
     found = discover(RAW)
     assert {k: v.name for k, v in found.items()} == {
         "goals": "agent_goals.jsonl.gz", "agents": "agents.jsonl.gz", "rooms": "chat_rooms.jsonl.gz",
-        "sessions": "claude_code_sessions.jsonl.gz", "eras": "village_goals.jsonl.gz", "meta": "villages.jsonl.gz"}
+        "sessions": "claude_code_sessions.jsonl.gz", "eras": "village_goals.jsonl.gz", "meta": "villages.jsonl.gz",
+        "summaries": "summaries.jsonl.gz"}
     assert adapters.detect(RAW / "village_goals.jsonl.gz").name == "village"
     assert adapters.detect(RAW).name == "village"
     assert adapters.detect(RAW / "agents.jsonl.gz").name == "village"
@@ -254,3 +255,63 @@ def test_schedule_tz_config_counts_posts_outside(tmp_path):
     run = pipeline.run_all(tmp_path, tmp_path / "run", config=str(tmp_path / "cfg.json"))
     text = (run.path / "report.md").read_text()
     assert "read in America/Los_Angeles: 1 of 2 posts fall outside it" in text
+
+
+# --- LLM-written summaries (summaries) ---------------------------------------------------
+
+def test_summaries_are_not_mistaken_for_messages(bundle):
+    assert village.classify([{"id": "s", "type": "daily", "summary_target": "90", "content": "x", "generated_by": "m"}]) == "summaries"
+    assert len(bundle.events) == 0                                     # a digest is not a message table
+    assert adapters.detect(RAW / "summaries.jsonl.gz").name == "village"
+    s = bundle.summaries
+    assert len(s) == 939 and s["latest"].sum() < 939 and s["type"].value_counts()["daily"] == 805
+    latest_daily = s[(s["type"] == "daily") & s["latest"]]
+    assert latest_daily["date"].is_unique and latest_daily["day"].notna().mean() > 0.95   # 16 rows have no target
+    assert s.loc[s["latest"], "type"].value_counts()["agent"] == 43                       # undated keys stay distinct
+
+
+def test_digest_parses_latest_daily_events_in_pacific_time(bundle):
+    d = bundle.digest
+    assert 10_000 < len(d) < 29_120                                     # latest versions only, so fewer than all lines
+    assert set(d["kind"]) == {"event", "note", "quote"} and d["ts"].dt.year.max() == 2026   # later layouts parsed too
+    assert d["ts"].notna().all() and d["ts"].dt.tz is not None
+    named = d.groupby("kind")["actor"].apply(lambda x: x.notna().mean())
+    assert named["event"] > 0.8 and named["quote"] > 0.9 and named["note"] > 0.1   # notes often start with "the team"
+    assert d["actor_id"].notna().sum() == d["actor"].notna().sum()
+    day90 = d[d["day"] == 90]
+    assert len(day90) and "o3" in set(day90["actor"]) and day90["ts"].dt.strftime("%Y-%m-%d").iloc[0] == "2025-06-30"
+    assert d["summary_id"].isin(bundle.summaries.loc[bundle.summaries["latest"], "summary_id"]).all()
+
+
+def test_pacific_stamps_convert_to_utc_in_summer_and_winter():
+    directory = pd.DataFrame({"agent_id": ["1"], "name": ["o3"]})
+    s = pd.DataFrame([{"summary_id": "s", "type": "daily", "target": "1", "date": pd.NaT, "day": 1, "generated_by": "m",
+                       "created": pd.NaT, "updated": pd.NaT, "latest": True, "n_events": 2, "chars": 1,
+                       "content": "1. [2025-06-30 11:01:40 PT] o3 started a doc\n2. [2026-01-05 10:00:00 PT] o3 agreed"}])
+    d = village.parse_digest(s, directory)
+    assert list(d["ts"]) == [pd.Timestamp("2025-06-30T18:01:40Z"), pd.Timestamp("2026-01-05T18:00:00Z")]  # PDT, PST
+    assert list(d["actor"]) == ["o3", "o3"] and list(d["kind"]) == ["event", "event"]
+
+
+def test_actor_match_needs_a_word_boundary():
+    directory = pd.DataFrame({"agent_id": ["1", "2"], "name": ["GPT-5", "GPT-5.2"]})
+    s = pd.DataFrame([{"summary_id": "s", "type": "daily", "target": "1", "date": pd.NaT, "day": 1, "generated_by": "m",
+                       "created": pd.NaT, "updated": pd.NaT, "latest": True, "n_events": 2, "chars": 1,
+                       "content": "1. [2026-01-05 10:00:00 PT] GPT-5.2 fixed it\n2. [2026-01-05 10:01:00 PT] GPT-5 agreed"}])
+    d = village.parse_digest(s, directory)
+    assert list(d["actor"]) == ["GPT-5.2", "GPT-5"]                     # longest name wins, no prefix bleed
+
+
+def test_digest_as_posts_runs_the_pipeline_on_derived_text(tmp_path):
+    for f in RAW.glob("*.jsonl.gz"):
+        shutil.copy(f, tmp_path / f.name)
+    (tmp_path / "cfg.json").write_text(json.dumps({"digest_as_posts": True}))
+    run = pipeline.run_all(tmp_path, tmp_path / "run", config=str(tmp_path / "cfg.json"))
+    prof = json.loads((run.path / "profile.json").read_text())
+    assert prof["n_events"] > 10_000 and prof["capabilities"]["derived_text"] and prof["capabilities"]["has_explicit_author"]
+    ev = run.read("events")
+    assert set(ev["site"]) == {"summaries"} and set(ev["source_kind"]) == {"digest_event", "digest_note", "digest_quote"}
+    assert "o3" in set(ev["author_raw"]) and "narrator" in set(ev["author_raw"])
+    text = (run.path / "report.md").read_text()
+    assert "| derived_text | yes |" in text and "**Derived text.**" in text
+    assert "Summaries: 939 LLM-written summaries" in text and "inferred: the daily digests stamp events in PT" in text
