@@ -1,0 +1,348 @@
+"""AI Village side tables (agents, chat_rooms, agent_goals): detection, assembly, and
+audience-aware exposure when a message table sits next to them."""
+
+import json
+import shutil
+from pathlib import Path
+
+import pandas as pd
+import pytest
+
+from swarmprov import adapters, exposure, pipeline, village
+from swarmprov.adapters.village import discover
+
+RAW = Path(__file__).resolve().parents[1] / "data" / "raw_village"
+BEST = "d45ec7c6-6adb-49cb-8c40-dc5d18c37d84"       # room "best": whitelisted agents only
+GENERAL = "18a3b2fb-9d2e-4ce7-b9b1-52e09c5408a8"
+GPT55 = "6365764a-b6e2-4dfa-94cd-2d1aef5b54f7"      # game-dev, in "best"
+OPUS47 = "78f39924-1ced-4be5-94a6-e7bbf0c90d66"     # game-dev, not in "best"
+SONNET45 = "169ea37e-c664-4012-acba-cb583aaab1f3"   # twitterati
+GEMINI31 = "f69b132c-d4bd-49d5-b2a5-cef3f60f2246"   # twitterati
+
+
+def test_tables_are_recognised_by_columns():
+    found = discover(RAW)
+    assert {k: v.name for k, v in found.items()} == {
+        "goals": "agent_goals.jsonl.gz", "agents": "agents.jsonl.gz", "rooms": "chat_rooms.jsonl.gz",
+        "sessions": "claude_code_sessions.jsonl.gz", "eras": "village_goals.jsonl.gz", "meta": "villages.jsonl.gz",
+        "summaries": "summaries.jsonl.gz"}
+    assert adapters.detect(RAW / "village_goals.jsonl.gz").name == "village"
+    assert adapters.detect(RAW).name == "village"
+    assert adapters.detect(RAW / "agents.jsonl.gz").name == "village"
+    assert adapters.detect(RAW / "chat_rooms.jsonl.gz").name == "village"
+    assert adapters.detect(RAW / "agent_goals.jsonl.gz").name == "roster"    # a lone roster stays a roster
+
+
+@pytest.fixture(scope="module")
+def bundle():
+    return adapters.get("village").load(RAW)
+
+
+def test_directory_roster_and_channels(bundle):
+    d, r, c = bundle.directory, bundle.roster, bundle.channels
+    assert len(d) == 46 and d["participating"].sum() == 32
+    assert d.set_index("agent_id").loc[SONNET45, "name"] == "Claude Sonnet 4.5"
+    assert d["vendor"].value_counts()["Anthropic"] == 16
+    assert len(r) == 33 and r["agent_name"].notna().all()                   # every goal's agent is in the directory
+    assert r.set_index("agent_id").loc[OPUS47, "agent_name"] == "Claude Opus 4.7"
+    assert len(c) == 16 and c["deleted"].notna().sum() == 12 and len(village.restricted(c)) == 11
+    best = c.set_index("channel").loc["best"]
+    assert "Kimi K2.6" in best["allow"] and "GPT-5.5" in best["allow"] and "Claude Opus 4.7" not in best["allow"]
+    assert set(c.set_index("channel").loc["rest", "deny"]) == set(best["allow"])
+    assert len(bundle.lifecycle) == 16 + 12 and bundle.capabilities.has_lifecycle
+    assert len(bundle.events) == 0
+
+
+def test_room_lists_name_known_agents(bundle):
+    names = set(bundle.directory["name"])
+    listed = {n for lst in list(bundle.channels["allow"]) + list(bundle.channels["deny"]) for n in lst}
+    assert listed <= names
+
+
+def _post(i, agent_id, room, t, text):
+    return {"id": f"m{i}", "agent_id": agent_id, "chat_room_id": room, "created_at": t.isoformat(), "content": text}
+
+
+@pytest.fixture(scope="module")
+def village_run(tmp_path_factory):
+    """Real side tables + a synthetic message table shaped like chat_messages
+    (agent_id and chat_room_id, no names): answers for a known round."""
+    d = tmp_path_factory.mktemp("village")
+    for f in RAW.glob("*.jsonl.gz"):
+        shutil.copy(f, d / f.name)
+    t0 = pd.Timestamp("2026-07-07T10:00:00Z")
+    m = pd.Timedelta(minutes=1)
+    msgs = [
+        # game-dev: GPT-5.5 answers first, but in "best", which Claude Opus 4.7 cannot read
+        _post(0, GPT55, BEST, t0, "R1 CONFIRMED: Utah arrived 09:58:00, 14s timer; answered 73.74 at +30s."),
+        _post(1, OPUS47, GENERAL, t0 + 30 * m, "R1 CONFIRMED: Utah arrived 10:28:00, 14s timer; answered 73.74 at +2s."),
+        # twitterati: same pattern in the public room -> exposed
+        _post(2, SONNET45, GENERAL, t0, "R1 CONFIRMED: Utah arrived 09:58:00, 14s timer; answered 73.74 at +30s."),
+        _post(3, GEMINI31, GENERAL, t0 + 30 * m, "R1 CONFIRMED: Utah arrived 10:28:00, 14s timer; answered 73.74 at +2s."),
+    ]
+    # second round so items/rounds are learned from more than one post per agent
+    for k, (aid, room) in enumerate([(GPT55, BEST), (OPUS47, GENERAL), (SONNET45, GENERAL), (GEMINI31, GENERAL)]):
+        msgs.append(_post(10 + k, aid, room, t0 + (60 + 5 * k) * m,
+                          "R2 CONFIRMED: Idaho arrived 11:00:00, 14s timer; answered 41.2 at +35s."))
+    (d / "chat_messages.jsonl").write_text("\n".join(json.dumps(x) for x in msgs))
+    return pipeline.run_all(d, d / "run")
+
+
+def test_messages_get_names_rooms_and_families(village_run):
+    ev = village_run.read("events")
+    assert set(ev["author_raw"]) == {"GPT-5.5", "Claude Opus 4.7", "Claude Sonnet 4.5", "Gemini 3.1 Pro"}
+    assert set(ev["channel"]) == {"best", "general"}
+    fam = ev.set_index("author_raw")["family"]
+    assert set(fam["GPT-5.5"]) == {"game-dev"} and set(fam["Gemini 3.1 Pro"]) == {"twitterati"}
+    agents = village_run.read("agents").set_index("author_raw")
+    assert agents.loc["Claude Opus 4.7", "agent_merged"] == f"Jul03|game-dev"
+    assert agents.loc["GPT-5.5", "agent_merged"] == "Jul03b|game-dev"
+    assert agents.loc["Claude Sonnet 4.5", "agent_merged"] == f"Jul03b|twitterati|{SONNET45[:8]}"
+
+
+def test_exposure_respects_room_audience(village_run):
+    ex = village_run.read("exposures_merged").set_index(["agent", "item"])
+    # public room: Gemini's Utah answer was already posted by Sonnet -> exposed
+    assert ex.loc[(f"Jul03b|twitterati|{GEMINI31[:8]}", "Utah"), "D"] == 1
+    # restricted room: GPT-5.5's answer sat in "best", unreadable to Claude Opus 4.7 -> independent
+    assert ex.loc[("Jul03|game-dev", "Utah"), "D"] == 0
+    assert ex.loc[("Jul03b|game-dev", "Utah"), "D"] == 0                   # first poster, nothing before it
+
+
+def test_report_has_village_block(village_run):
+    text = (village_run.path / "report.md").read_text()
+    assert "## Village" in text and "## Roster" in text
+    assert "2 transcript posts are in restricted rooms" in text
+    assert "only Kimi K2.6, GPT-5.5" in text
+
+
+def test_audience_unit():
+    rounds = pd.DataFrame([{"claim_id": "c", "agent": "B", "family": "f", "episode": 1, "item": "Utah",
+                            "value_norm": "73.74", "t_report": pd.Timestamp("2026-07-07T11:00Z"),
+                            "latency_class": None, "wrong_flag": False, "correct_flag": False}])
+    mentions = pd.DataFrame([{"event_id": "e", "ts": pd.Timestamp("2026-07-07T10:00Z"), "agent_merged": "A",
+                              "channel": "best", "family": "f", "item": "Utah", "value_norm": "73.74", "value_key": "73.74"}])
+    open_ = exposure.build(rounds, mentions, {("f", "Utah"): "73.74"}, "agent_merged")
+    closed = exposure.build(rounds, mentions, {("f", "Utah"): "73.74"}, "agent_merged", audience={"best": {"A"}})
+    assert open_["D"].iloc[0] == 1 and open_["D_cons"].iloc[0] == 1
+    assert closed["D"].iloc[0] == 0 and closed["D_cons"].iloc[0] == 0
+
+
+# --- presence log (claude_code_sessions) -------------------------------------------------
+
+def test_sessions_table_is_an_activity_log(bundle):
+    act = bundle.activity
+    assert len(act) == 303 and act["agent_id"].nunique() == 1
+    assert set(act["agent_name"]) == {"Opus 4.5 (Claude Code)"} and set(act["kind"]) == {"session"}
+    assert act["ref"].nunique() == 42                                        # sdk session ids, one resumed 260 times
+    assert bundle.capabilities.has_activity
+    assert adapters.detect(RAW / "claude_code_sessions.jsonl.gz").name == "village"
+
+
+def test_activity_overlap_is_reported_honestly(bundle):
+    s = village.activity_summary(bundle.activity, bundle.roster, None)
+    assert s["agents_in_roster"] == 0 and s["rows_in_goal_window"] == 0
+    assert s["span"] == "2026-01-26 → 2026-03-31" and s["weekend_share"] == 0
+    text = "\n".join(village.section(village.summary(bundle.directory, bundle.channels, None, bundle.activity, bundle.roster),
+                                     lambda df, **k: ""))
+    assert "covers none of the agents under study" in text
+
+
+def test_unrecognised_files_are_listed(tmp_path):
+    for f in RAW.glob("*.jsonl.gz"):
+        shutil.copy(f, tmp_path / f.name)
+    (tmp_path / "mystery.jsonl").write_text(json.dumps({"foo": 1, "bar": "x"}) + "\n")
+    run = pipeline.run_all(tmp_path, tmp_path / "run")
+    prof = json.loads((run.path / "profile.json").read_text())
+    assert prof["notes"]["unrecognised"] == ["mystery.jsonl"]
+    assert "`mystery.jsonl`" in (run.path / "report.md").read_text()
+    assert len(run.read("activity")) == 303
+
+
+# --- shared goals (village_goals) ------------------------------------------------------
+
+def test_shared_goals_become_eras(bundle):
+    e = bundle.eras
+    assert len(e) == 51 and e["start"].notna().all() and e["end"].isna().sum() == 1       # no NaT from mixed formats
+    e = e.sort_values("start").reset_index(drop=True)
+    assert ((e["start"].shift(-1) - e["end"]).dt.total_seconds().abs().dropna() == 0).all()  # contiguous windows
+    assert e["label"].is_unique and e["label"].iloc[0].startswith("e01-")
+    assert e.iloc[-1]["goal"].startswith("Each agent: Maximize your assigned goal")
+    assert e.iloc[-1]["start"] == bundle.roster["start"].min()                            # handover to per-agent goals
+
+
+def test_era_label_is_short_and_stable():
+    assert village.era_label(17, "Form two teams and debate each other, while one agent judges. Choose your teammates wisely!") == "e17-form-two-teams"
+    assert village.era_label(3, "Holiday: do whatever you like! Next goal will begin soon") == "e03-holiday-goal-begin"
+    assert village.era_label(5, "???") == "e05-goal"
+
+
+def test_eras_summary_counts_gaps_and_overlaps_separately():
+    t0 = pd.Timestamp("2026-01-01T00:00:00Z")
+    d = pd.Timedelta(days=1)
+    e = pd.DataFrame({"era_id": list("abcd"), "label": ["e1-a", "e2-b", "e3-c", "e4-d"], "goal": list("abcd"),
+                      "start": [t0, t0 + 7 * d, t0 + 13 * d, t0 + 21 * d],                 # c starts a day before b ends
+                      "end": [t0 + 7 * d, t0 + 14 * d, t0 + 20 * d, pd.NaT],              # a day's gap before d
+                      "created": pd.NaT, "updated": pd.NaT})
+    s = village.eras_summary(e, None, None, None, cut=t0 + 30 * d)
+    assert (s["n_gaps"], s["n_overlaps"], s["n_open"]) == (1, 1, 0 + 1)
+    assert s["table"]["days"].iloc[-1] == 9.0                                            # open window measured to the cut
+
+
+def test_annotate_eras_picks_the_window(bundle):
+    e = bundle.eras
+    ev = pd.DataFrame({"ts": pd.to_datetime(["2026-06-16T12:00:00Z", "2025-01-01T00:00:00Z", "2026-09-01T00:00:00Z"], utc=True)})
+    a = village.annotate_eras(ev, e)
+    assert a["era"].iloc[0] == e.set_index("goal").loc["Reduce global suffering as much as you can!", "label"]
+    assert a["era"].iloc[1] is None                                                       # before the first window
+    assert a["era"].iloc[2] == e.sort_values("start")["label"].iloc[-1]                   # the open window runs on
+
+
+def _strings(obj):
+    if isinstance(obj, str):
+        yield obj
+    elif isinstance(obj, dict):
+        for v in obj.values():
+            yield from _strings(v)
+    elif isinstance(obj, list):
+        for v in obj:
+            yield from _strings(v)
+
+
+def test_family_precedence_agent_goal_then_era(tmp_path):
+    """A post inside the author's own goal window takes the role; a post by the same author
+    before that window, or by an unknown author, takes the shared goal of its time."""
+    for f in RAW.glob("*.jsonl.gz"):
+        shutil.copy(f, tmp_path / f.name)
+    msgs = [
+        _post(0, SONNET45, GENERAL, pd.Timestamp("2026-07-07T10:00:00Z"), "R1 CONFIRMED: Utah arrived 09:58:00; answered 73.74"),
+        _post(1, SONNET45, GENERAL, pd.Timestamp("2026-06-16T12:00:00Z"), "Working on suffering reduction, 12 ideas"),
+        _post(2, "", GENERAL, pd.Timestamp("2026-06-16T13:00:00Z"), "Observer note 1"),
+        _post(3, "", GENERAL, pd.Timestamp("2026-06-16T13:30:00Z"), "Fundraiser update: donations at 40%"),   # a configured text family
+    ]
+    (tmp_path / "chat_messages.jsonl").write_text("\n".join(json.dumps(m) for m in msgs))
+    (tmp_path / "cfg.json").write_text(json.dumps({"families": {"fundraiser": "donat|fundrais"}}))
+    run = pipeline.run_all(tmp_path, tmp_path / "run", config=str(tmp_path / "cfg.json"))
+    ev = run.read("events").set_index("event_id")
+    eras = run.read("eras").set_index("goal")
+    suffering = eras.loc["Reduce global suffering as much as you can!", "label"]
+    assert ev.loc["m0", "family"] == "twitterati"
+    assert ev.loc["m1", "family"] == suffering                       # not the nearest agent goal: it was not in force yet
+    assert ev.loc["m2", "family"] == suffering
+    assert ev.loc["m3", "family"] == "fundraiser"                    # a configured text family beats the era
+    summ = json.loads((run.path / "summary.json").read_text())
+    assert isinstance(summ["village"]["eras"]["table"], list) and isinstance(summ["roster"]["roles"], list)
+    assert not any(" rows x " in v or v.startswith("Empty DataFrame") for v in _strings(summ))   # no DataFrame repr leaked
+    report_text = (run.path / "report.md").read_text()
+    assert "control the computers of other agents via: Claude Fable 5" in report_text            # multi-line cell kept on one row
+    re_ = run.read("roster_events")
+    assert {"roster_agent", "role", "in_window", "era_id", "era"} <= set(re_.columns)
+    text = (run.path / "report.md").read_text()
+    assert "Shared goals: 51 windows" in text and "switched from shared to individual goals on 2026-07-06 15:59" in text
+
+
+# --- village metadata (villages) -------------------------------------------------------
+
+def test_village_row_becomes_metadata(bundle):
+    m = bundle.notes["village"]
+    assert m["name"] == "actual-launch-1" and m["export_cut"].startswith("2026-09-19T00:00:16")
+    assert m["created"].startswith("2025-04-02T17:45:08")
+    assert m["schedule"] == {"windows": [{"days": ["mon", "tue", "wed", "thu", "fri"], "start": "09:00", "end": "17:00"}],
+                             "open_hours_per_week": 40.0}
+    assert m["is_chat_open"] is False and m["active_agent"] == "Claude 3.7 Sonnet"
+    assert m["legacy_goal"].startswith("Collaboratively choose a charity")
+    assert adapters.detect(RAW / "villages.jsonl.gz").name == "village"
+    assert village.classify([{"id": "x", "name": "r", "deleted_at": None}]) == "rooms"       # rooms are not metadata
+
+
+def test_export_cut_measures_open_rooms_and_the_open_era(bundle):
+    s = village.summary(bundle.directory, bundle.channels, None, None, bundle.roster, None, bundle.eras, None,
+                        bundle.notes["village"], None)
+    rooms = s["rooms"].set_index("channel")
+    assert s["lifetime_to_cut"] and rooms.loc["general", "lifetime_h"] > 12_000 and rooms.loc["focus", "lifetime_h"] > 1000
+    assert rooms.loc["side-room", "lifetime_h"] == 4.0                                          # deleted rooms unchanged
+    last = s["eras"]["table"].iloc[-1]
+    assert last["label"].startswith("e51-") and 70 < last["days"] < 80                           # 2026-07-06 -> 2026-09-19
+    text = "\n".join(village.section(s, lambda df, **k: ""))
+    assert "mon–fri 09:00–17:00 (40 h/week)" in text and "timezone not stated" in text and "turn was held by Claude 3.7 Sonnet" in text
+
+
+def test_in_schedule_with_a_timezone():
+    ts = pd.Series(pd.to_datetime(["2026-07-07T17:00:00Z",    # Tue 10:00 Los Angeles -> inside
+                                   "2026-07-07T15:30:00Z",    # Tue 08:30 -> before opening
+                                   "2026-07-11T18:00:00Z",    # Sat -> outside
+                                   None], utc=True))
+    w = [{"days": ["mon", "tue", "wed", "thu", "fri"], "start": "09:00", "end": "17:00"}]
+    assert list(village.in_schedule(ts, w, "America/Los_Angeles")) == [True, False, False, False]
+
+
+def test_schedule_tz_config_counts_posts_outside(tmp_path):
+    for f in RAW.glob("*.jsonl.gz"):
+        shutil.copy(f, tmp_path / f.name)
+    msgs = [_post(0, SONNET45, GENERAL, pd.Timestamp("2026-07-07T17:00:00Z"), "R1 CONFIRMED: Utah arrived; answered 73.74"),
+            _post(1, SONNET45, GENERAL, pd.Timestamp("2026-07-11T18:00:00Z"), "weekend note")]
+    (tmp_path / "chat_messages.jsonl").write_text("\n".join(json.dumps(m) for m in msgs))
+    (tmp_path / "cfg.json").write_text(json.dumps({"schedule_tz": "America/Los_Angeles"}))
+    run = pipeline.run_all(tmp_path, tmp_path / "run", config=str(tmp_path / "cfg.json"))
+    text = (run.path / "report.md").read_text()
+    assert "read in America/Los_Angeles: 1 of 2 posts fall outside it" in text
+
+
+# --- LLM-written summaries (summaries) ---------------------------------------------------
+
+def test_summaries_are_not_mistaken_for_messages(bundle):
+    assert village.classify([{"id": "s", "type": "daily", "summary_target": "90", "content": "x", "generated_by": "m"}]) == "summaries"
+    assert len(bundle.events) == 0                                     # a digest is not a message table
+    assert adapters.detect(RAW / "summaries.jsonl.gz").name == "village"
+    s = bundle.summaries
+    assert len(s) == 939 and s["latest"].sum() < 939 and s["type"].value_counts()["daily"] == 805
+    latest_daily = s[(s["type"] == "daily") & s["latest"]]
+    assert latest_daily["date"].is_unique and latest_daily["day"].notna().mean() > 0.95   # 16 rows have no target
+    assert s.loc[s["latest"], "type"].value_counts()["agent"] == 43                       # undated keys stay distinct
+
+
+def test_digest_parses_latest_daily_events_in_pacific_time(bundle):
+    d = bundle.digest
+    assert 10_000 < len(d) < 29_120                                     # latest versions only, so fewer than all lines
+    assert set(d["kind"]) == {"event", "note", "quote"} and d["ts"].dt.year.max() == 2026   # later layouts parsed too
+    assert d["ts"].notna().all() and d["ts"].dt.tz is not None
+    named = d.groupby("kind")["actor"].apply(lambda x: x.notna().mean())
+    assert named["event"] > 0.8 and named["quote"] > 0.9 and named["note"] > 0.1   # notes often start with "the team"
+    assert d["actor_id"].notna().sum() == d["actor"].notna().sum()
+    day90 = d[d["day"] == 90]
+    assert len(day90) and "o3" in set(day90["actor"]) and day90["ts"].dt.strftime("%Y-%m-%d").iloc[0] == "2025-06-30"
+    assert d["summary_id"].isin(bundle.summaries.loc[bundle.summaries["latest"], "summary_id"]).all()
+
+
+def test_pacific_stamps_convert_to_utc_in_summer_and_winter():
+    directory = pd.DataFrame({"agent_id": ["1"], "name": ["o3"]})
+    s = pd.DataFrame([{"summary_id": "s", "type": "daily", "target": "1", "date": pd.NaT, "day": 1, "generated_by": "m",
+                       "created": pd.NaT, "updated": pd.NaT, "latest": True, "n_events": 2, "chars": 1,
+                       "content": "1. [2025-06-30 11:01:40 PT] o3 started a doc\n2. [2026-01-05 10:00:00 PT] o3 agreed"}])
+    d = village.parse_digest(s, directory)
+    assert list(d["ts"]) == [pd.Timestamp("2025-06-30T18:01:40Z"), pd.Timestamp("2026-01-05T18:00:00Z")]  # PDT, PST
+    assert list(d["actor"]) == ["o3", "o3"] and list(d["kind"]) == ["event", "event"]
+
+
+def test_actor_match_needs_a_word_boundary():
+    directory = pd.DataFrame({"agent_id": ["1", "2"], "name": ["GPT-5", "GPT-5.2"]})
+    s = pd.DataFrame([{"summary_id": "s", "type": "daily", "target": "1", "date": pd.NaT, "day": 1, "generated_by": "m",
+                       "created": pd.NaT, "updated": pd.NaT, "latest": True, "n_events": 2, "chars": 1,
+                       "content": "1. [2026-01-05 10:00:00 PT] GPT-5.2 fixed it\n2. [2026-01-05 10:01:00 PT] GPT-5 agreed"}])
+    d = village.parse_digest(s, directory)
+    assert list(d["actor"]) == ["GPT-5.2", "GPT-5"]                     # longest name wins, no prefix bleed
+
+
+def test_digest_as_posts_runs_the_pipeline_on_derived_text(tmp_path):
+    for f in RAW.glob("*.jsonl.gz"):
+        shutil.copy(f, tmp_path / f.name)
+    (tmp_path / "cfg.json").write_text(json.dumps({"digest_as_posts": True}))
+    run = pipeline.run_all(tmp_path, tmp_path / "run", config=str(tmp_path / "cfg.json"))
+    prof = json.loads((run.path / "profile.json").read_text())
+    assert prof["n_events"] > 10_000 and prof["capabilities"]["derived_text"] and prof["capabilities"]["has_explicit_author"]
+    ev = run.read("events")
+    assert set(ev["site"]) == {"summaries"} and set(ev["source_kind"]) == {"digest_event", "digest_note", "digest_quote"}
+    assert "o3" in set(ev["author_raw"]) and "narrator" in set(ev["author_raw"])
+    text = (run.path / "report.md").read_text()
+    assert "| derived_text | yes |" in text and "**Derived text.**" in text
+    assert "Summaries: 939 LLM-written summaries" in text and "inferred: the daily digests stamp events in PT" in text

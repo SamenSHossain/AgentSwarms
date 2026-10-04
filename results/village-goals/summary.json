@@ -1,0 +1,29 @@
+{
+  "profile": {
+    "adapter": "roster",
+    "source": "data/village/agent_goals.jsonl",
+    "n_events": 0
+  },
+  "roster": {
+    "n_goals": 33,
+    "n_agents": 32,
+    "n_roles": 25,
+    "n_open": 32,
+    "first_start": "2026-07-06 15:59:00+00:00",
+    "last_start": "2026-09-04 19:47:39.357000+00:00",
+    "last_end": "2026-09-01 23:42:37.070000+00:00",
+    "changes": {
+      "first": 32,
+      "reworded": 1
+    },
+    "shared_roles": [
+      "diplomat",
+      "forecaster",
+      "game-dev",
+      "merch-baron",
+      "reporter",
+      "twitterati",
+      "youtuber"
+    ]
+  }
+}

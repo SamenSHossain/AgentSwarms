@@ -1,0 +1,299 @@
+{
+  "n_events": 16858,
+  "n_sites": 17,
+  "corpus_notes": {
+    "n_records": 13703,
+    "n_origins": 15806,
+    "n_origins_with_time": 11840,
+    "n_dropped_no_time": 3966,
+    "n_dropped_late": 4,
+    "n_dropped_excluded_sites": 10899,
+    "origins_per_site": {
+      "prowiki.org/dse": 10899,
+      "vanderbi.lt": 2721,
+      "uoft.me": 479,
+      "goto.unm.edu": 368,
+      "paste.linuxiarz.pl": 304,
+      "wikiservice.at/probier": 289,
+      "wikiservice.at/fractal": 133,
+      "prowiki.org/wiki4d": 112,
+      "rubygems.org": 81,
+      "url.popcat.xyz": 76,
+      "anna.fyi": 55,
+      "is.gd": 46,
+      "tinyurl.com": 38,
+      "tmcleod.org/apchem": 37,
+      "ludism.org": 34,
+      "v.gd": 25,
+      "wikiservice.at/user/milk": 21,
+      "pastebin.k4be.pl": 20,
+      "jsonhero.io": 13,
+      "da.gd": 12,
+      "u.ethz.ch": 9,
+      "paste.probyte.ee": 5,
+      "pastebin.tarcseh.me": 5,
+      "wikiservice.at/dict/sm": 4,
+      "infinitypaste.club": 3,
+      "jotspot.io": 3,
+      "dorfwiki.org": 3,
+      "html.cafe": 2,
+      "wikiservice.at": 2,
+      "paste.flashrom.org": 2,
+      "wikiservice.at/demo": 1,
+      "bitily.in": 1,
+      "bitily.in/MYLABI": 1,
+      "wikiservice.at/gruender": 1,
+      "texteditors.org": 1
+    },
+    "no_time_literals": {
+      "": 3831,
+      "current": 126,
+      "99": 4,
+      "prior cache decoded offline": 2,
+      "9.9.9": 2,
+      "9": 1
+    },
+    "n_dropped_duplicates": 216,
+    "shortener": {
+      "n_links": 499,
+      "clicks_total": 16825,
+      "clicks_median": 32.0,
+      "date_min": "2026-05-26",
+      "date_max": "2026-06-21"
+    },
+    "other_wikis": {
+      "n_pages": 8,
+      "n_revisions": 90,
+      "n_revisions_with_lines": 76
+    },
+    "n_links": 23877,
+    "top_link_hosts": {
+      "wikiservice.at": 8723,
+      "jqp.vercel.app": 4602,
+      "api.datausa.io": 2217,
+      "sec.gov": 1648,
+      "md.succ.ai": 1434,
+      "markdown.new": 665,
+      "allorigins.hexlet.app": 479,
+      "jsonhero.io": 357,
+      "investor.gov": 311,
+      "pure.md": 262,
+      "r.jina.ai": 246,
+      "api-la.datausa.io": 240,
+      "cors.bwa.workers.dev": 185,
+      "proxymule.com": 183,
+      "prowiki.org": 145
+    },
+    "coverage": {
+      "n_sites": 143,
+      "n_gap_rows": 110,
+      "by_category": {
+        "pastebins": {
+          "sites": 37,
+          "gaps": 30
+        },
+        "wikis": {
+          "sites": 30,
+          "gaps": 18
+        },
+        "shorteners": {
+          "sites": 23,
+          "gaps": 13
+        },
+        "relays": {
+          "sites": 23,
+          "gaps": 23
+        },
+        "documents": {
+          "sites": 13,
+          "gaps": 11
+        },
+        "hosting": {
+          "sites": 9,
+          "gaps": 8
+        },
+        "new_discord_posting_surface": {
+          "sites": 8,
+          "gaps": 7
+        }
+      }
+    },
+    "n_events": 1296,
+    "events_per_site": {
+      "rmn.re": 499,
+      "wikiservice.at/probier": 289,
+      "paste.linuxiarz.pl": 141,
+      "wikiservice.at/fractal": 133,
+      "publictestwiki": 58,
+      "anna.fyi": 54,
+      "prowiki.org/wiki4d": 49,
+      "pastebin.k4be.pl": 19,
+      "uncyclopedia": 17,
+      "tmcleod.org/apchem": 10,
+      "wikiservice.at/user/milk": 9,
+      "ludism.org": 9,
+      "pastebin.tarcseh.me": 4,
+      "dorfwiki.org": 3,
+      "usemod": 1,
+      "texteditors.org": 1
+    },
+    "events_per_source_kind": {
+      "shortener_link": 499,
+      "revision_addition": 425,
+      "paste_candidate": 208,
+      "investigator_public_revision_export": 78,
+      "wiki_revision_lines": 76,
+      "wayback_capture": 10
+    },
+    "ip16_overlap_note": "ip16 prefixes on shortener / other-wiki rows were not matched against the primary wiki dump (data/raw/revisions.jsonl is not read by this adapter); join on author_raw 'ip16:*' against the wiki bundle's author_alt downstream if needed."
+  },
+  "technique_site_summary": [
+    {
+      "technique": "proxy-jina",
+      "origin_site": "publictestwiki",
+      "first_seen": "2026-05-17 21:30:24+00:00",
+      "n_sites_adopted": 6,
+      "n_sites_at_risk": 14,
+      "median_hours_to_site_adoption": 732.2016666666667,
+      "sites_within_24h": 0,
+      "n_posts": 603
+    },
+    {
+      "technique": "proxy-markdown-new",
+      "origin_site": "dse",
+      "first_seen": "2026-05-26 09:50:02+00:00",
+      "n_sites_adopted": 8,
+      "n_sites_at_risk": 13,
+      "median_hours_to_site_adoption": 5.769444444444445,
+      "sites_within_24h": 6,
+      "n_posts": 909
+    },
+    {
+      "technique": "proxy-pure-md",
+      "origin_site": "dse",
+      "first_seen": "2026-05-26 13:25:33+00:00",
+      "n_sites_adopted": 3,
+      "n_sites_at_risk": 13,
+      "median_hours_to_site_adoption": 349.94083333333333,
+      "sites_within_24h": 0,
+      "n_posts": 342
+    },
+    {
+      "technique": "proxy-allorigins",
+      "origin_site": "paste.linuxiarz.pl",
+      "first_seen": "2026-05-26 15:16:26+00:00",
+      "n_sites_adopted": 7,
+      "n_sites_at_risk": 12,
+      "median_hours_to_site_adoption": 548.2518055555556,
+      "sites_within_24h": 0,
+      "n_posts": 775
+    },
+    {
+      "technique": "proxy-jqp",
+      "origin_site": "dse",
+      "first_seen": "2026-05-28 13:03:06+00:00",
+      "n_sites_adopted": 5,
+      "n_sites_at_risk": 8,
+      "median_hours_to_site_adoption": 509.7591666666667,
+      "sites_within_24h": 0,
+      "n_posts": 2234
+    },
+    {
+      "technique": "proxy-md-succ",
+      "origin_site": "dse",
+      "first_seen": "2026-05-29 22:28:50+00:00",
+      "n_sites_adopted": 3,
+      "n_sites_at_risk": 8,
+      "median_hours_to_site_adoption": 472.9740277777778,
+      "sites_within_24h": 0,
+      "n_posts": 1503
+    },
+    {
+      "technique": "zzz-backup-pages",
+      "origin_site": "dse",
+      "first_seen": "2026-05-31 00:23:58+00:00",
+      "n_sites_adopted": 1,
+      "n_sites_at_risk": 8,
+      "median_hours_to_site_adoption": NaN,
+      "sites_within_24h": 0,
+      "n_posts": 78
+    },
+    {
+      "technique": "shortener-da-gd",
+      "origin_site": "dse",
+      "first_seen": "2026-06-04 17:30:39+00:00",
+      "n_sites_adopted": 4,
+      "n_sites_at_risk": 8,
+      "median_hours_to_site_adoption": 332.7761111111111,
+      "sites_within_24h": 0,
+      "n_posts": 26
+    },
+    {
+      "technique": "rng-seed-crack",
+      "origin_site": "dse",
+      "first_seen": "2026-06-16 09:47:08+00:00",
+      "n_sites_adopted": 1,
+      "n_sites_at_risk": 8,
+      "median_hours_to_site_adoption": NaN,
+      "sites_within_24h": 0,
+      "n_posts": 51
+    },
+    {
+      "technique": "clock-wait-fastforward",
+      "origin_site": "dse",
+      "first_seen": "2026-06-16 11:06:46+00:00",
+      "n_sites_adopted": 1,
+      "n_sites_at_risk": 8,
+      "median_hours_to_site_adoption": NaN,
+      "sites_within_24h": 0,
+      "n_posts": 195
+    },
+    {
+      "technique": "heartbeat-beacon",
+      "origin_site": "dse",
+      "first_seen": "2026-06-17 00:19:12+00:00",
+      "n_sites_adopted": 1,
+      "n_sites_at_risk": 8,
+      "median_hours_to_site_adoption": NaN,
+      "sites_within_24h": 0,
+      "n_posts": 199
+    },
+    {
+      "technique": "live-tooltip-value",
+      "origin_site": "dse",
+      "first_seen": "2026-06-20 04:44:39+00:00",
+      "n_sites_adopted": 1,
+      "n_sites_at_risk": 7,
+      "median_hours_to_site_adoption": NaN,
+      "sites_within_24h": 0,
+      "n_posts": 50
+    },
+    {
+      "technique": "blob-hostname-bypass",
+      "origin_site": "dse",
+      "first_seen": "2026-06-20 05:10:21+00:00",
+      "n_sites_adopted": 1,
+      "n_sites_at_risk": 7,
+      "median_hours_to_site_adoption": NaN,
+      "sites_within_24h": 0,
+      "n_posts": 24
+    }
+  ],
+  "coverage": {
+    "n_sites": 143,
+    "n_gap_rows": 58,
+    "n_unsearched": 76,
+    "relays_unvisited": 23,
+    "shorteners": 23,
+    "discord_urls": 491,
+    "shared_inventory_value": 427,
+    "shared_inventory_rows": 15,
+    "caveats": [
+      "15 rows share selected_distinct_texts = 427; that is a shared inventory count, not a per-site text count, so the column must not be summed.",
+      "relays and shorteners were deliberately not visited, so no read data exists (23 relays, 23 shorteners).",
+      "491 Discord-linked URLs but no Discord messages are in the corpus.",
+      "76 of 143 surfaces were never searched or yielded no agent text; absence there is not evidence of absence.",
+      "every row's scope is 'selected artifacts; whole-site completeness not established'."
+    ]
+  }
+}
