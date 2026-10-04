@@ -6,7 +6,17 @@ From that graph it measures:
 - how fast techniques and errors spread;
 - which agents were the hubs.
 
-The demo dataset is the OpenAI wiki swarm: 14,591 wiki revisions, which become 15,987 posts. Chat transcripts such as AI Village, and any JSON/JSONL message log, go through the same pipeline via the chat adapter.
+The demo dataset is the OpenAI wiki swarm (the German message board): 14,591 wiki revisions, which become 15,987 posts. Chat transcripts such as AI Village, and any JSON/JSONL message log, go through the same pipeline via the chat adapter.
+
+**What it found on the wiki swarm** (full report: [`results/openai-wiki/report.md`](results/openai-wiki/report.md); every number is computed from the dump, and every share is a floor because only captured surfaces are searched):
+
+| question | answer |
+|---|---|
+| How much was copied? | **93% of 1,108 answers were already public before the agent reported them**; at most 83 were independent lookups. Median head start 11.6 h; in 19% of rounds the agent had posted the answer itself before the question arrived. |
+| Who supplied it? | **The top 10 agents were first public source for 73% of exposed answers** (out-degree Gini 0.69). Facts repeated by two or more agents travelled 2.0 hops on average, up to 10. |
+| How fast did tricks spread? | The blob-hostname sandbox bypass reached **23% of at-risk OECD agents, a median 0.8 h after first exposure**; the `markdown.new` fetch proxy reached 6 other sites within a day (median 5.8 h to adoption), while every task-level trick stayed on one wiki. |
+| Did errors win? | The cracked-seed forecast **"Maryland" was carried by 30 agents before the observed "Montana" (9) appeared**; the padded `16.40` lost to the live `16.38` within the first 3 h bin, but `9.90` beat the correct `9.91` 69 agents to 17 and never lost. |
+| Does availability *cause* copying? | **Not identified in this swarm**: the answer was public before almost every report, so only 3–37 agents ever switch exposure status. On a synthetic swarm with known copying the same estimator recovers the true effect (0.70 vs 0.70), so the null is the data, not the method. |
 
 ```
 transcript ──adapter──▶ events ──rules/LLM──▶ claims ──▶ mentions ──▶ exposure table ──▶ A1–A6 + report
@@ -63,6 +73,18 @@ Stages can be rerun on their own; each one reads and writes Parquet tables in th
 | `swarmprov report RUN [--mapping strict]` | → `report.md`, `summary.json`, `figures/` |
 | `swarmprov sample-gold RUN -n 100` / `swarmprov validate RUN labels.jsonl` | hand-label sample / precision–recall |
 | `swarmprov crosssite WIKI_RUN CORPUS_DIR -o RUN` | combined events → `technique_spread`, `technique_site_summary`, timeline, coverage bounds |
+
+## Where the data comes from
+
+The raw inputs are git-ignored (they are large and carry their publishers' terms); fetch them into the paths below and every command above runs as written. Only the small AI Village side tables (`data/raw_village`) and the roster (`data/village`) are committed.
+
+| dataset | get it from | put it in | notes |
+|---|---|---|---|
+| OpenAI wiki swarm / German message board (`revisions`, `events`, `pages`, `labels`, `manifest`) | [collusion.wiki/explorer/download](https://collusion.wiki/explorer/download/) | `data/raw/` (or keep the `.zip`) | `SHA256SUMS` ships with it; `swarmprov run data/raw -o runs/wiki`. Redistribution rights unconfirmed, so do not commit it. |
+| Cross-site batch (`records`, `links`, `shortener-logs`, `other-wikis`, coverage CSVs) | same download page | `data/raw2/` | `swarmprov run data/raw2 -o runs/corpus`; `swarmprov crosssite runs/wiki data/raw2 -o runs/crosssite` |
+| AI Village transcript database (`chat_messages`, `agents`, `chat_rooms`, `agent_goals`, `village_goals`, `villages`, `claude_code_sessions`, `summaries`) | [huggingface.co/datasets/aidigestorg/ai-village](https://huggingface.co/datasets/aidigestorg/ai-village) (gated: request access, approved by hand) | `data/raw_village/` or read directly with `hf://datasets/aidigestorg/ai-village/<file>` | Research terms: no training, no re-identification, attribute AI Village. The side tables here are committed; the message table is not, so the committed Village reports are context reports. |
+| Swarm traces redacted payload release (`redacted.jsonl.gz`, 189,579 records) | [swarmtraces.org/viewer](https://swarmtraces.org/viewer/) → "Download dataset" (`/data/final/redacted.jsonl.gz`) | anywhere | A reconstruction corpus with no clock and no agent identity; `swarmprov run redacted.jsonl.gz -o runs/swarmtraces` writes a reconstruction report, not a provenance report. Check the viewer page for terms before redistributing. |
+| Synthetic swarm with known provenance | generated: `swarmprov synth -o data/synth/transcript.jsonl --agents 60 --seed 2` | `data/synth/` | writes `transcript.jsonl`, `truth.csv` and `config.json`; the tests build their own copy |
 
 ## Results on the OpenAI wiki swarm
 
@@ -157,4 +179,4 @@ data/raw_village/  AI Village side tables as exported: agents, chat_rooms, agent
 docs/         PLAN.md (general pipeline plan), DATA.md (what the dump actually contains)
 ```
 
-Run the tests with `python -m pytest -q` (125 tests, about 50 s). The wiki dump (`data/raw`), the corpus (`data/raw2`) and the run directories are git-ignored; the small AI Village exports in `data/raw_village` are committed and the village tests depend on them.
+Run the tests with `python -m pytest -q` (125 tests, about 50 s). The wiki dump (`data/raw`), the corpus (`data/raw2`) and the run directories are git-ignored (see *Where the data comes from* for the download links); the small AI Village exports in `data/raw_village` are committed and the village tests depend on them.
