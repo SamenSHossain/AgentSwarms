@@ -61,8 +61,21 @@ def _pick(r: dict, field: str):
     return None
 
 
+# a datetime string must carry a date: ISO, m/d/yy, or a 4-digit year somewhere
+DATE_RX = re.compile(r"\d{4}-\d{1,2}-\d{1,2}|\d{1,2}/\d{1,2}/\d{2,4}|\b(?:19|20)\d{2}\b")
+
+
 def _ts(v) -> pd.Timestamp:
-    return pd.NaT if v is None else pd.to_datetime(v, utc=True, errors="coerce")
+    """Parse a timestamp; a bare time of day (``37:49.4``, ``03:57.5``) is NaT, not today."""
+    if v is None:
+        return pd.NaT
+    if isinstance(v, (int, float)) and not isinstance(v, bool):
+        return pd.to_datetime(v, unit="ms" if v > 1e11 else "s", utc=True, errors="coerce")
+    if isinstance(v, pd.Timestamp):
+        return v.tz_convert("UTC") if v.tzinfo else v.tz_localize("UTC")
+    if not DATE_RX.search(str(v)):
+        return pd.NaT
+    return pd.to_datetime(str(v), utc=True, errors="coerce")
 
 
 def normalize(rows: list[dict]) -> pd.DataFrame:
@@ -88,6 +101,21 @@ def normalize(rows: list[dict]) -> pd.DataFrame:
     df = pd.DataFrame(out).sort_values(["start", "agent_id"], kind="stable").reset_index(drop=True)
     df["batch"] = batches(df)
     return conform(df, "roster")
+
+
+def timestamp_issues(rows: list[dict]) -> dict[str, dict]:
+    """Per time field: how many non-empty raw values did not parse, with examples.
+
+    Spreadsheet round-trips are the usual cause: Excel shows ``2026-07-03
+    14:37:49.37`` as ``37:49.4`` and exports that, so ``created_at`` is lost
+    and batches fall back to ``start``.  Reported rather than absorbed."""
+    out = {}
+    for field in ("start", "end", "created", "updated"):
+        raw = [str(_pick(r, field)) for r in rows if isinstance(r, dict) and _pick(r, field) is not None]
+        bad = [v for v in raw if pd.isna(_ts(v))]
+        if bad:
+            out[field] = {"n_values": len(raw), "n_unparsed": len(bad), "examples": sorted(set(bad))[:3]}
+    return out
 
 
 def batches(df: pd.DataFrame) -> pd.Series:
@@ -244,12 +272,20 @@ def summary(roster: pd.DataFrame, events: pd.DataFrame | None = None, ann: pd.Da
     return out
 
 
-def section(s: dict, md_table) -> list[str]:
+def section(s: dict, md_table, issues: dict | None = None) -> list[str]:
     """Markdown lines for the report's roster block."""
     L = ["## Roster\n"]
+    if issues:
+        parts = [f"`{f}`: {v['n_unparsed']}/{v['n_values']} values unreadable (e.g. "
+                 + ", ".join(f"`{e}`" for e in v["examples"]) + ")" for f, v in issues.items()]
+        L.append("**Timestamp problems in the roster export** — " + "; ".join(parts) + ". "
+                 "Values like `37:49.4` are what a spreadsheet shows for a datetime with the date hidden; "
+                 "re-export from the source (JSONL) to recover them. Unreadable starts count as open-ended windows; "
+                 "unreadable creation times make batches fall back to start times.\n")
     ch = s["changes"]
-    L.append(f"{s['n_goals']} goal assignments to {s['n_agents']} agents in {s['n_roles']} roles, "
-             f"starting between {s['first_start']:%Y-%m-%d} and {s['last_start']:%Y-%m-%d}; "
+    span = (f"starting between {s['first_start']:%Y-%m-%d} and {s['last_start']:%Y-%m-%d}"
+            if pd.notna(s["first_start"]) else "with no readable start times")
+    L.append(f"{s['n_goals']} goal assignments to {s['n_agents']} agents in {s['n_roles']} roles, {span}; "
              f"{s['n_open']} still open at export. Agents given a second goal: {ch.get('reworded', 0)} reworded, "
              f"{ch.get('reassigned', 0)} reassigned. Roles held by more than one agent (comparable tasks): "
              f"{', '.join(s['shared_roles']) or 'none'}.\n")

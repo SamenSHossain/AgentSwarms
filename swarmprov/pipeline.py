@@ -49,17 +49,19 @@ def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | N
         run.write("lifecycle", b.lifecycle)
     if b.reads is not None:
         run.write("reads", b.reads)
-    ros = b.roster
+    ros, roster_notes = b.roster, b.notes if b.roster is not None else {}
     if roster is not None:  # a roster attached to a transcript
         rpath = remote.resolve(roster)
         _log(f"roster {roster}")
-        ros = adapters.get("roster").load(Path(rpath)).roster
+        rb = adapters.get("roster").load(Path(rpath))
+        ros, roster_notes = rb.roster, rb.notes
     if ros is not None:
         run.write("roster", ros)
     has_ts = len(ev) and ev["ts"].notna().any()
     profile = {
         "adapter": a.name, "config": cfg.name, "source": source,
         "roster": str(roster) if roster is not None else (source if b.roster is not None else None),
+        "roster_notes": roster_notes,
         "config_path": str(Path(config).resolve()) if config else None,
         "capabilities": b.capabilities.as_dict(),
         "n_events": len(ev), "n_authors": int(ev["author_raw"].nunique()),

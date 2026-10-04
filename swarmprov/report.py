@@ -46,7 +46,7 @@ def _roster_block(run: RunDir, prof: dict, summary: dict) -> list[str]:
     ann = run.read("roster_events") if run.has("roster_events") else None
     s = roster_mod.summary(ros, ev, ann)
     summary["roster"] = {k: v for k, v in s.items() if not isinstance(v, pd.DataFrame)}
-    return roster_mod.section(s, md_table)
+    return roster_mod.section(s, md_table, prof.get("roster_notes", {}).get("timestamp_issues"))
 
 
 def _write(run: RunDir, L: list[str], summary: dict) -> str:

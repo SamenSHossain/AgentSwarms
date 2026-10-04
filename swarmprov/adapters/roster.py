@@ -18,11 +18,20 @@ from .base import Adapter, Bundle, Capabilities
 from .chat import _read_any
 
 
+TABULAR = (".csv", ".tsv", ".txt")
+
+
+def _is_tabular(path: Path) -> bool:
+    name = path.name[:-3] if path.suffix == ".gz" else path.name
+    return name.endswith(TABULAR)
+
+
 def read_rows(path: Path) -> list[dict]:
     path = Path(path)
-    if path.suffix == ".csv" or path.name.endswith(".csv.gz"):
-        df = pd.read_csv(path)
-        return df.where(df.notna(), None).to_dict("records")
+    if _is_tabular(path):
+        # a spreadsheet export: comma or tab separated, delimiter sniffed; everything read as text
+        df = pd.read_csv(path, sep=None, engine="python", dtype=str, keep_default_na=False)
+        return df.to_dict("records")
     obj = _read_any(path)
     if isinstance(obj, dict):  # {"goals": [...]} / {"data": [...]}
         lists = [v for v in obj.values() if isinstance(v, list)]
@@ -35,13 +44,15 @@ class RosterAdapter(Adapter):
 
     def sniff(self, path: Path) -> bool:
         path = Path(path)
-        if not path.is_file() or not path.name.endswith((".json", ".jsonl", ".gz", ".csv")):
+        if not path.is_file() or not (path.name.endswith((".json", ".jsonl", ".gz")) or _is_tabular(path)):
             return False
         return roster_mod.looks_like_roster(read_rows(path)[:50])
 
     def load(self, path: Path) -> Bundle:
-        ros = roster_mod.normalize(read_rows(Path(path)))
+        rows = read_rows(Path(path))
+        ros = roster_mod.normalize(rows)
         caps = Capabilities(has_wall_clock=True, has_explicit_author=True)
         notes = {"n_goals": int(len(ros)), "n_agents": int(ros["agent_id"].nunique()),
-                 "n_roles": int(ros["role"].nunique()), "n_open": int(ros["end"].isna().sum())}
+                 "n_roles": int(ros["role"].nunique()), "n_open": int(ros["end"].isna().sum()),
+                 "timestamp_issues": roster_mod.timestamp_issues(rows)}
         return Bundle(events=empty("events"), roster=ros, capabilities=caps, notes=notes)

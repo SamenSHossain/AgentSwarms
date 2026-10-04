@@ -132,3 +132,32 @@ def test_roster_from_csv_and_rejects_text_tables(tmp_path):
     chat = tmp_path / "chat.jsonl"
     chat.write_text(json.dumps({"agent_id": "a", "short_name": "x", "start_time": "2026-01-01", "content": "hi"}))
     assert adapters.detect(chat).name == "chat"
+
+
+SHEET = GOALS.parent / "agent_goals_sheet.tsv"   # the same table after a spreadsheet round-trip
+
+
+def test_sheet_export_is_detected_and_mangled_times_are_flagged():
+    assert adapters.detect(SHEET).name == "roster"
+    b = adapters.get("roster").load(SHEET)
+    ros, issues = b.roster, b.notes["timestamp_issues"]
+    assert len(ros) == 10 and ros["agent_id"].nunique() == 10
+    assert ros["start"].notna().sum() == 9                      # "26:37.1" is not a date
+    assert ros["created"].isna().all()                          # "03:57.5" is not 03:57 today either
+    assert issues["created"]["n_unparsed"] == 10 and issues["created"]["examples"] == ["03:57.5", "07:59.8", "26:37.3"]
+    assert issues["start"] == {"n_values": 10, "n_unparsed": 1, "examples": ["26:37.1"]}
+    assert set(ros["batch"]) == {"Jul06", "Jul09", "Jul10", ""}  # batches fall back to start times
+
+
+def test_sheet_report_warns(tmp_path):
+    run = pipeline.run_all(SHEET, tmp_path / "run")
+    text = (run.path / "report.md").read_text()
+    assert "Timestamp problems in the roster export" in text and "`26:37.1`" in text
+    assert "Oct" not in text                                    # no phantom batch dated today
+
+
+@pytest.mark.parametrize("raw,ok", [("2026-07-03 14:37:49.366903", True), ("7/6/26 15:59", True),
+                                    ("2026-07-06T15:59:00Z", True), ("37:49.4", False), ("15:59", False),
+                                    (1783000000, True), (None, False)])
+def test_ts_needs_a_date(raw, ok):
+    assert pd.notna(roster._ts(raw)) is ok

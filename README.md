@@ -114,7 +114,7 @@ All source-specific knowledge lives in one adapter plus an `AdapterConfig`, whic
 - **Capabilities are detected and reported**: wall clock, explicit authors, read logs, deletions, threading. An analysis that needs a missing capability is skipped or labelled.
 - **Items are learned from the transcript.** Phrases that follow a round marker in posts by ≥2 authors become items, so no task list has to be written by hand. US states and countries are built in.
 - **Round sequences are learned from chains** like `MA -> CT -> MI -> WV`.
-- **A roster replaces guessed identities and families.** AI Village `agent_goals` (or any table with an agent id, a role or goal, and a start time) is detected by the `roster` adapter. Attached with `--roster`, each post is matched to a roster agent (by `agent_id` in the transcript, a `roster_aliases` entry, or the role name) and to the goal window it falls in; the goal becomes the post's task family, the goal's assignment batch its cohort, and two agents given the same goal stay distinct. The report gains a Roster block: batches, roles held by several agents (the comparable tasks), goal changes (reworded vs reassigned), and coverage (unmatched authors, posts outside every goal window, goals with no posts).
+- **A roster replaces guessed identities and families.** AI Village `agent_goals` (or any table with an agent id, a role or goal, and a start time; JSON, JSONL, CSV or TSV, so a spreadsheet export works) is detected by the `roster` adapter. Timestamps a spreadsheet has reduced to `37:49.4` are reported as unreadable rather than parsed as a time today. Attached with `--roster`, each post is matched to a roster agent (by `agent_id` in the transcript, a `roster_aliases` entry, or the role name) and to the goal window it falls in; the goal becomes the post's task family, the goal's assignment batch its cohort, and two agents given the same goal stay distinct. The report gains a Roster block: batches, roles held by several agents (the comparable tasks), goal changes (reworded vs reassigned), and coverage (unmatched authors, posts outside every goal window, goals with no posts).
 - **URLs are indexed as facts**, so reach and relay chains work on free-form chat with no task structure.
 - **Optional LLM extraction** (`--llm claude-haiku-4-5`) uses structured outputs and caches results by event id. The LLM wins on semantic fields and the rules fill in numbers.
 
@@ -140,8 +140,8 @@ swarmprov/
 tests/        rules, segmentation, chat adapter, roster, LLM merge (fake client), synthetic end-to-end recovery
 validation/   labels (event ids only) for the three validation splits
 results/      committed reports + figures: openai-wiki/, crosssite/, corpus/, synthetic/, village-goals/
-data/village/ agent_goals.jsonl (AI Village roster, 33 goal assignments)
+data/village/ agent_goals.jsonl (AI Village roster, 33 goal assignments); agent_goals_sheet.tsv (the same after a spreadsheet round-trip)
 docs/         PLAN.md (general pipeline plan), DATA.md (what the dump actually contains)
 ```
 
-Run the tests with `python -m pytest -q` (69 tests, about 20 s). The raw data and run directories are git-ignored.
+Run the tests with `python -m pytest -q` (79 tests, about 20 s). The raw data and run directories are git-ignored.
