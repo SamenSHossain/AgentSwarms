@@ -65,6 +65,10 @@ class AdapterConfig:
     ignore_authors: tuple[str, ...] = ()
     # use the channel name as the task family when nothing else matches
     family_from_channel: bool = False
+    # when a roster is attached, an agent's current goal (its ``role``) is its task family
+    family_from_roster: bool = True
+    # author strings -> roster agent ids, for transcripts that carry names but no agent id
+    roster_aliases: dict[str, str] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, d: dict, base: "AdapterConfig | None" = None) -> "AdapterConfig":
@@ -115,6 +119,7 @@ class Bundle:
     events: pd.DataFrame
     lifecycle: pd.DataFrame | None = None
     reads: pd.DataFrame | None = None
+    roster: pd.DataFrame | None = None
     capabilities: Capabilities = field(default_factory=Capabilities)
     notes: dict = field(default_factory=dict)
 

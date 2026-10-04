@@ -33,8 +33,13 @@ TABLES: dict[str, list[str]] = {
     "lifecycle": ["channel", "ts", "action", "actor"],
     # Observed reads, when the source logs them (page views, context windows).
     "reads": ["agent_raw", "ts", "channel", "event_id", "method"],
+    # Roster: who the agents are and what each was asked to do, per time window
+    # (AI Village ``agent_goals``).  ``role`` is the short task label, ``goal``
+    # the full instruction; ``end`` is NaT while the assignment is still open.
+    "roster": ["goal_id", "agent_id", "role", "goal", "detail", "start", "end", "created", "updated", "batch"],
     # Identity resolution result: one row per author_raw.
-    "agents": ["author_raw", "agent_strict", "agent_merged", "cohort", "n_events"],
+    # ``roster_agent`` is the roster id when a roster identified the author, else None.
+    "agents": ["author_raw", "agent_strict", "agent_merged", "cohort", "n_events", "roster_agent"],
     # Structured facts extracted from posts.
     "claims": [
         "claim_id", "event_id", "ts", "agent_strict", "agent_merged", "family",

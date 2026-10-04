@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import adapters, claims as claims_mod, exposure, graph, identity, remote, rules
+from . import adapters, claims as claims_mod, exposure, graph, identity, remote, roster as roster_mod, rules
 from .schema import RunDir, conform
 
 AGENT_COLS = {"merged": "agent_merged", "strict": "agent_strict"}
@@ -29,7 +29,8 @@ def load_config(run: RunDir):
     return cfg
 
 
-def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | None = None) -> dict:
+def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | None = None,
+           roster: str | Path | None = None) -> dict:
     source = str(path)
     if remote.is_remote(path):
         _log(f"fetch {path}")
@@ -48,16 +49,27 @@ def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | N
         run.write("lifecycle", b.lifecycle)
     if b.reads is not None:
         run.write("reads", b.reads)
+    ros = b.roster
+    if roster is not None:  # a roster attached to a transcript
+        rpath = remote.resolve(roster)
+        _log(f"roster {roster}")
+        ros = adapters.get("roster").load(Path(rpath)).roster
+    if ros is not None:
+        run.write("roster", ros)
+    has_ts = len(ev) and ev["ts"].notna().any()
     profile = {
         "adapter": a.name, "config": cfg.name, "source": source,
+        "roster": str(roster) if roster is not None else (source if b.roster is not None else None),
         "config_path": str(Path(config).resolve()) if config else None,
         "capabilities": b.capabilities.as_dict(),
         "n_events": len(ev), "n_authors": int(ev["author_raw"].nunique()),
-        "first_ts": str(ev["ts"].min()), "last_ts": str(ev["ts"].max()),
-        "events_per_day": ev["ts"].dt.strftime("%Y-%m-%d").value_counts().sort_index().to_dict(),
+        "first_ts": str(ev["ts"].min()) if has_ts else None, "last_ts": str(ev["ts"].max()) if has_ts else None,
+        "events_per_day": ev["ts"].dt.strftime("%Y-%m-%d").value_counts().sort_index().to_dict() if has_ts else {},
         "notes": b.notes,
     }
     (run.path / "profile.json").write_text(json.dumps(profile, indent=2, default=str))
+    if ros is not None:
+        _log(f"  roster: {len(ros)} goals for {ros['agent_id'].nunique()} agents in {ros['role'].nunique()} roles")
     _log(f"  {len(ev)} posts from {profile['n_authors']} author strings")
     return profile
 
@@ -65,11 +77,25 @@ def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | N
 def extract(run: RunDir, llm: str | None = None) -> None:
     cfg = load_config(run)
     ev = run.read("events")
+    if not len(ev):
+        _log("no posts: nothing to extract (a roster alone gives a roster report; add a transcript for provenance)")
+        return
     _log("resolve identities + families")
     fam = identity.post_families(ev, cfg)
+    ann = None
+    if run.has("roster"):
+        ros = run.read("roster")
+        ann = roster_mod.annotate(ev, ros, cfg.roster_aliases)
+        hit = ann["roster_agent"].notna()
+        if cfg.family_from_roster:
+            fam = fam.where(~hit, ann["role"])
+        run.write("roster_events", ann)
+        _log(f"  roster matched {int(hit.sum())}/{len(ev)} posts by {int(ev.loc[hit, 'author_raw'].nunique())} authors")
     ev["family"] = fam
     run.write("events", ev)
     agents = identity.resolve(ev, fam, cfg)
+    if ann is not None:
+        agents = roster_mod.merge_agents(agents, ev, ann, ros)
     run.write("agents", agents)
     learned = rules.learn_items(ev, fam, cfg)
     for f, items in cfg.extra_items.items():
@@ -99,6 +125,8 @@ def _matcher(learned: dict) -> rules.ItemMatcher:
 
 
 def expose(run: RunDir) -> None:
+    if not run.has("claims"):
+        return
     ev, agents, cl = run.read("events"), run.read("agents"), run.read("claims")
     learned = json.loads((run.path / "items.json").read_text())
     im = _matcher(learned)
@@ -119,6 +147,8 @@ def expose(run: RunDir) -> None:
 
 
 def build_graph(run: RunDir) -> None:
+    if not run.has("mentions"):
+        return
     cfg = load_config(run)
     mn, agents, tags = run.read("mentions"), run.read("agents"), run.read("tags")
     for name, col in AGENT_COLS.items():
@@ -137,9 +167,9 @@ def build_graph(run: RunDir) -> None:
         _log(f"  [{name}] {len(edges)} edges, {len(chains)} fact chains")
 
 
-def run_all(path, out, adapter="auto", llm=None, config=None) -> RunDir:
+def run_all(path, out, adapter="auto", llm=None, config=None, roster=None) -> RunDir:
     run = RunDir(out)
-    ingest(path, run, adapter, config)
+    ingest(path, run, adapter, config, roster)
     extract(run, llm=llm)
     expose(run)
     build_graph(run)

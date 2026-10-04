@@ -1,7 +1,8 @@
 """swarmprov command line.
 
     swarmprov run      INPUT -o runs/wiki [--config cfg.json]   # all stages + report
-    swarmprov ingest   INPUT -o runs/wiki [--adapter wiki|chat|auto]
+    swarmprov run      chat.jsonl.gz -o runs/village --roster agent_goals.jsonl  # with a goal roster
+    swarmprov ingest   INPUT -o runs/wiki [--adapter wiki|chat|roster|auto]
     swarmprov extract  runs/wiki [--llm claude-haiku-4-5]
     swarmprov expose   runs/wiki
     swarmprov graph    runs/wiki
@@ -32,12 +33,14 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--adapter", default="auto")
     s.add_argument("--llm", default=None, help="model id for optional LLM extraction (needs ANTHROPIC_API_KEY)")
     s.add_argument("--config", default=None, help="JSON/TOML file overriding the adapter config (families, techniques, ...)")
+    s.add_argument("--roster", default=None, help="agent-goal table (AI Village agent_goals) to attach: goals become families and cohorts")
 
     s = sub.add_parser("ingest")
     s.add_argument("input")
     s.add_argument("-o", "--out", default="runs/latest")
     s.add_argument("--adapter", default="auto")
     s.add_argument("--config", default=None)
+    s.add_argument("--roster", default=None)
 
     s = sub.add_parser("extract")
     s.add_argument("run")
@@ -76,9 +79,9 @@ def main(argv: list[str] | None = None) -> int:
 
     a = p.parse_args(argv)
     if a.cmd == "run":
-        pipeline.run_all(a.input, a.out, a.adapter, a.llm, a.config)
+        pipeline.run_all(a.input, a.out, a.adapter, a.llm, a.config, a.roster)
     elif a.cmd == "ingest":
-        pipeline.ingest(a.input, RunDir(a.out), a.adapter, a.config)
+        pipeline.ingest(a.input, RunDir(a.out), a.adapter, a.config, a.roster)
     elif a.cmd == "extract":
         pipeline.extract(RunDir(a.run), llm=a.llm)
     elif a.cmd == "expose":

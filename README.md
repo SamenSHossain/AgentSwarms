@@ -29,6 +29,12 @@ swarmprov run full-wiki-logs.zip -o runs/wiki          # zip works too
 swarmprov run village-transcript.json -o runs/village --adapter chat --config my_config.json
 swarmprov run hf://datasets/aidigestorg/ai-village/chat_messages.jsonl.gz -o runs/village --adapter chat
 
+# AI Village agent_goals (who was asked to do what, when): on its own -> roster report;
+# attached to a transcript -> goals become task families, assignment batches become cohorts
+swarmprov run data/village/agent_goals.jsonl -o runs/village_goals
+swarmprov run hf://datasets/aidigestorg/ai-village/chat_messages.jsonl.gz -o runs/village \
+    --adapter chat --roster hf://datasets/aidigestorg/ai-village/agent_goals.jsonl.gz
+
 # the cross-site batch (records.jsonl, links.jsonl, shortener-logs.json, other-wikis.json, coverage CSVs)
 swarmprov run data/raw2 -o runs/corpus                 # standard pipeline on the corpus alone (reach, techniques)
 swarmprov crosssite runs/wiki data/raw2 -o runs/crosssite   # wiki run + corpus: technique spread between surfaces
@@ -42,8 +48,8 @@ Stages can be rerun on their own; each one reads and writes Parquet tables in th
 
 | command | reads → writes |
 |---|---|
-| `swarmprov ingest INPUT -o RUN` | source → `events`, `lifecycle`, `profile.json` |
-| `swarmprov extract RUN [--llm claude-haiku-4-5]` | `events` → `agents`, `claims`, `tags`, `items.json` |
+| `swarmprov ingest INPUT -o RUN [--roster GOALS]` | source → `events`, `lifecycle`, `roster`, `profile.json` |
+| `swarmprov extract RUN [--llm claude-haiku-4-5]` | `events` (+ `roster`) → `agents`, `claims`, `tags`, `roster_events`, `items.json` |
 | `swarmprov expose RUN` | → `mentions`, `exposures_{merged,strict}` |
 | `swarmprov graph RUN` | → `edges_*`, `chains_*`, `provenance_merged.graphml` |
 | `swarmprov report RUN [--mapping strict]` | → `report.md`, `summary.json`, `figures/` |
@@ -97,6 +103,8 @@ All source-specific knowledge lives in one adapter plus an `AdapterConfig`, whic
   "name": "village",
   "families": {"fundraiser": "donat|fundrais", "event": "venue|RSVP"},
   "family_from_channel": false,
+  "family_from_roster": true,
+  "roster_aliases": {"Claude Opus 4.5": "169ea37e-c664-4012-acba-cb583aaab1f3"},
   "techniques": [{"name": "shared-doc", "pattern": "docs\\.google\\.com", "description": "..."}],
   "disputes": [{"family": "fundraiser", "slot": "total raised",
                 "context": "raised|total", "variants": {"$1,481": "1,?481", "$2,000": "2,?000"}}]
@@ -106,6 +114,7 @@ All source-specific knowledge lives in one adapter plus an `AdapterConfig`, whic
 - **Capabilities are detected and reported**: wall clock, explicit authors, read logs, deletions, threading. An analysis that needs a missing capability is skipped or labelled.
 - **Items are learned from the transcript.** Phrases that follow a round marker in posts by ≥2 authors become items, so no task list has to be written by hand. US states and countries are built in.
 - **Round sequences are learned from chains** like `MA -> CT -> MI -> WV`.
+- **A roster replaces guessed identities and families.** AI Village `agent_goals` (or any table with an agent id, a role or goal, and a start time) is detected by the `roster` adapter. Attached with `--roster`, each post is matched to a roster agent (by `agent_id` in the transcript, a `roster_aliases` entry, or the role name) and to the goal window it falls in; the goal becomes the post's task family, the goal's assignment batch its cohort, and two agents given the same goal stay distinct. The report gains a Roster block: batches, roles held by several agents (the comparable tasks), goal changes (reworded vs reassigned), and coverage (unmatched authors, posts outside every goal window, goals with no posts).
 - **URLs are indexed as facts**, so reach and relay chains work on free-form chat with no task structure.
 - **Optional LLM extraction** (`--llm claude-haiku-4-5`) uses structured outputs and caches results by event id. The LLM wins on semantic fields and the rules fill in numbers.
 
@@ -122,15 +131,17 @@ All source-specific knowledge lives in one adapter plus an `AdapterConfig`, whic
 ```
 swarmprov/
   adapters/   base.py (Adapter, AdapterConfig, Capabilities)  wiki.py  chat.py  corpus.py (records/shortener/other-wikis)
-  segment.py  identity.py  rules.py  gazetteer.py  claims.py  exposure.py  graph.py
+              roster.py (agent_goals tables)
+  segment.py  identity.py  roster.py (goal windows -> families, cohorts)  rules.py  gazetteer.py  claims.py  exposure.py  graph.py
   extract_llm.py  validate.py  synth.py  report.py  pipeline.py  cli.py  plotting.py  remote.py (hf:// inputs)
   analysis/   provenance.py (A1)  causal.py (A2)  diffusion.py (A3)  errors.py (A4)  structure.py (A5, A6)
               crosssite.py (technique spread between surfaces, timeline, coverage bounds)
   crosssite_pipeline.py   the `crosssite` stage
-tests/        rules, segmentation, chat adapter, LLM merge (fake client), synthetic end-to-end recovery
+tests/        rules, segmentation, chat adapter, roster, LLM merge (fake client), synthetic end-to-end recovery
 validation/   labels (event ids only) for the three validation splits
-results/      committed reports + figures: openai-wiki/, crosssite/, corpus/, synthetic/
+results/      committed reports + figures: openai-wiki/, crosssite/, corpus/, synthetic/, village-goals/
+data/village/ agent_goals.jsonl (AI Village roster, 33 goal assignments)
 docs/         PLAN.md (general pipeline plan), DATA.md (what the dump actually contains)
 ```
 
-Run the tests with `python -m pytest -q` (59 tests, about 20 s). The raw data and run directories are git-ignored.
+Run the tests with `python -m pytest -q` (69 tests, about 20 s). The raw data and run directories are git-ignored.

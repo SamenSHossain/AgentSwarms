@@ -8,6 +8,7 @@ import math
 import numpy as np
 import pandas as pd
 
+from . import roster as roster_mod
 from .analysis import causal, diffusion, errors, provenance, structure
 from .schema import RunDir
 
@@ -19,7 +20,7 @@ def md_table(df: pd.DataFrame, floatfmt: str = "{:.2f}", pct: tuple[str, ...] = 
     cols = [str(c).replace("|", "\\|") for c in d.columns]
 
     def fmt(c, v):
-        if v is None or (isinstance(v, float) and math.isnan(v)):
+        if v is None or (isinstance(v, float) and math.isnan(v)) or v is pd.NaT:
             return ""
         if c in pct and isinstance(v, (int, float, np.floating)):
             return f"{v:.0%}"
@@ -39,11 +40,37 @@ def _pct(x) -> str:
     return "n/a" if x is None or (isinstance(x, float) and math.isnan(x)) else f"{x:.0%}"
 
 
+def _roster_block(run: RunDir, prof: dict, summary: dict) -> list[str]:
+    ros = run.read("roster")
+    ev = run.read("events") if prof["n_events"] else None
+    ann = run.read("roster_events") if run.has("roster_events") else None
+    s = roster_mod.summary(ros, ev, ann)
+    summary["roster"] = {k: v for k, v in s.items() if not isinstance(v, pd.DataFrame)}
+    return roster_mod.section(s, md_table)
+
+
+def _write(run: RunDir, L: list[str], summary: dict) -> str:
+    text = "\n".join(L)
+    (run.path / "report.md").write_text(text)
+    (run.path / "summary.json").write_text(json.dumps(summary, indent=2, default=str))
+    print(f"[swarmprov] wrote {run.path / 'report.md'}")
+    return text
+
+
 def build(run: RunDir, mapping: str = "merged") -> str:
     prof = json.loads((run.path / "profile.json").read_text())
     from .pipeline import load_config
     cfg = load_config(run)
     caps = prof["capabilities"]
+    if not prof["n_events"]:
+        summary = {"profile": {k: prof[k] for k in ("adapter", "source", "n_events")}}
+        L = ["# Roster report\n",
+             f"Source: `{prof['source']}` (adapter `{prof['adapter']}`) holds no posts, so there is no provenance to "
+             "analyse. The roster below becomes task families and cohorts when attached to a transcript: "
+             "`swarmprov run TRANSCRIPT --roster " + str(prof["source"]) + "`.\n"]
+        if run.has("roster"):
+            L += _roster_block(run, prof, summary)
+        return _write(run, L, summary)
     agent_col = "agent_merged" if mapping == "merged" else "agent_strict"
     ex = run.read(f"exposures_{mapping}")
     ex_alt = run.read(f"exposures_{'strict' if mapping == 'merged' else 'merged'}")
@@ -68,6 +95,9 @@ def build(run: RunDir, mapping: str = "merged") -> str:
     for k, v in caps.items():
         L.append(f"| {k} | {'yes' if v else 'no'} | {conseq.get(k, '')} |")
     L.append("")
+
+    if run.has("roster"):
+        L += _roster_block(run, prof, summary)
 
     # A1
     if len(ex):
@@ -200,18 +230,18 @@ def build(run: RunDir, mapping: str = "merged") -> str:
                  "`swarmprov validate RUN gold.jsonl` scores the extractor against it.\n")
 
     L.append("## Limitations\n")
+    identity_note = (
+        "- **Identity**: the roster fixes cohort (assignment batch) and family (goal) for matched authors; "
+        "unmatched authors fall back to parsed signatures.\n" if run.has("roster") else
+        "- **Identity**: names are parsed from signatures; the merged mapping assumes one agent per (cohort date, task family). "
+        "Both mappings are reported.\n")
     L.append("- **Exposure is inferred, not observed**: no page-view logs, so D means \"was public\", not \"was read\". "
              "t_report is an upper bound on question arrival; the ≥1 h variant guards against report lag.\n"
              "- **Exposure is a lower bound.** Only the captured surfaces are searched for earlier copies of an answer; "
              "the collectors' coverage tables list 143 surfaces the swarm touched, most of them (Discord, 12 uncrawled wikis, "
              "relays) not captured. An \"independent\" answer may have been relayed through one of them, so the exposed "
              "share is a floor and the independent count a ceiling.\n"
-             "- **Identity**: names are parsed from signatures; the merged mapping assumes one agent per (cohort date, task family). "
-             "Both mappings are reported.\n"
+             + identity_note +
              "- **Extraction**: rule-based on templated posts; unrestated answers (\"answered same second\") inherit the consensus value.\n"
              "- **Inferred relay edges** link each carrier to the latest earlier carrier; they are plausible paths, not proven ones.\n")
-    text = "\n".join(L)
-    (run.path / "report.md").write_text(text)
-    (run.path / "summary.json").write_text(json.dumps(summary, indent=2, default=str))
-    print(f"[swarmprov] wrote {run.path / 'report.md'}")
-    return text
+    return _write(run, L, summary)

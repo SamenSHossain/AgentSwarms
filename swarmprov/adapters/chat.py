@@ -20,6 +20,7 @@ from .base import Adapter, AdapterConfig, Bundle, Capabilities
 ALIASES = {
     "ts": ["timestamp", "time", "created_at", "createdAt", "ts", "date", "datetime", "sent_at"],
     "author": ["author", "sender", "agent", "agent_name", "name", "user", "from", "speaker", "username"],
+    "author_alt": ["agent_id", "author_id", "sender_id", "user_id", "model"],
     "text": ["content", "text", "message", "body", "msg"],
     "channel": ["channel", "room", "thread", "conversation", "chat", "chat_id", "room_id"],
     "id": ["id", "message_id", "uuid", "event_id"],
@@ -144,7 +145,7 @@ class ChatAdapter(Adapter):
                 "ts": _to_ts(_pick(m, "ts", self.mapping)),
                 "channel": str(_pick(m, "channel", self.mapping) or "main"),
                 "author_raw": str(_pick(m, "author", self.mapping) or "unknown"),
-                "author_alt": "",
+                "author_alt": str(_pick(m, "author_alt", self.mapping) or ""),
                 "text": text,
                 "parent_id": _pick(m, "parent", self.mapping),
                 "visible_until": pd.NaT,
