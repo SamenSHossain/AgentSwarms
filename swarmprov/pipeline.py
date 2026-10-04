@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import adapters, claims as claims_mod, exposure, graph, identity, remote, roster as roster_mod, rules
+from . import adapters, claims as claims_mod, exposure, graph, identity, remote, roster as roster_mod, rules, village
 from .schema import RunDir, conform
 
 AGENT_COLS = {"merged": "agent_merged", "strict": "agent_strict"}
@@ -57,6 +57,9 @@ def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | N
         ros, roster_notes = rb.roster, rb.notes
     if ros is not None:
         run.write("roster", ros)
+    for name in ("directory", "channels"):
+        if getattr(b, name) is not None:
+            run.write(name, getattr(b, name))
     has_ts = len(ev) and ev["ts"].notna().any()
     profile = {
         "adapter": a.name, "config": cfg.name, "source": source,
@@ -119,6 +122,15 @@ def extract(run: RunDir, llm: str | None = None) -> None:
     _log(f"  {len(agents)} authors -> {agents['agent_merged'].nunique()} merged agents; claims: {counts}")
 
 
+def _lists(channels: pd.DataFrame) -> pd.DataFrame:
+    """Parquet stores the allow/deny lists as text; turn them back into lists."""
+    import ast
+    ch = channels.copy()
+    for c in ("allow", "deny"):
+        ch[c] = ch[c].map(lambda v: ast.literal_eval(v) if isinstance(v, str) and v.startswith("[") else (v if isinstance(v, list) else []))
+    return ch
+
+
 def _matcher(learned: dict) -> rules.ItemMatcher:
     im = rules.ItemMatcher()
     for f, items in learned.items():
@@ -140,9 +152,14 @@ def expose(run: RunDir) -> None:
                                    "item", "value_norm", "value_key"])
     run.write("mentions", mn)
     cons = claims_mod.consensus(cl, mn) if len(cl) else {}
+    channels = run.read("channels") if run.has("channels") else None
+    directory = run.read("directory") if run.has("directory") else None
     for name, col in AGENT_COLS.items():
         rounds = claims_mod.agent_rounds(cl, col) if len(cl) else pd.DataFrame()
-        ex = exposure.build(rounds, mn, cons, col) if len(rounds) else pd.DataFrame()
+        aud = village.audience(_lists(channels), agents, col, directory) if channels is not None else None
+        if aud:
+            _log(f"  [{name}] {len(aud)} restricted channels limit who could read a mention")
+        ex = exposure.build(rounds, mn, cons, col, audience=aud) if len(rounds) else pd.DataFrame()
         run.write(f"exposures_{name}", ex)
         if len(ex):
             _log(f"  [{name}] {len(ex)} agent-rounds, exposed {ex['D'].mean():.1%}")

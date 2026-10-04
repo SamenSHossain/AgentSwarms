@@ -118,7 +118,7 @@ def test_roster_report_coverage(village_run):
 def test_roster_only_run_writes_roster_report(tmp_path):
     run = pipeline.run_all(GOALS, tmp_path / "run")
     text = (run.path / "report.md").read_text()
-    assert text.startswith("# Roster report") and "33 goal assignments to 32 agents" in text
+    assert text.startswith("# Context report") and "33 goal assignments to 32 agents" in text
     assert not run.has("claims")
     pipeline.extract(run)                                              # re-running a stage is a no-op, not a crash
 

@@ -22,7 +22,7 @@ ALIASES = {
     "author": ["author", "sender", "agent", "agent_name", "name", "user", "from", "speaker", "username"],
     "author_alt": ["agent_id", "author_id", "sender_id", "user_id", "model"],
     "text": ["content", "text", "message", "body", "msg"],
-    "channel": ["channel", "room", "thread", "conversation", "chat", "chat_id", "room_id"],
+    "channel": ["channel", "room", "thread", "conversation", "chat", "chat_id", "room_id", "chat_room_id", "channel_id"],
     "id": ["id", "message_id", "uuid", "event_id"],
     "parent": ["parent_id", "reply_to", "in_reply_to", "thread_ts"],
 }
@@ -140,12 +140,13 @@ class ChatAdapter(Adapter):
             if not text.strip():
                 continue
             mid = _pick(m, "id", self.mapping) or stable_id(path, i)
+            alt = str(_pick(m, "author_alt", self.mapping) or "")
             rows.append({
                 "event_id": str(mid),
                 "ts": _to_ts(_pick(m, "ts", self.mapping)),
                 "channel": str(_pick(m, "channel", self.mapping) or "main"),
-                "author_raw": str(_pick(m, "author", self.mapping) or "unknown"),
-                "author_alt": str(_pick(m, "author_alt", self.mapping) or ""),
+                "author_raw": str(_pick(m, "author", self.mapping) or alt or "unknown"),  # an id beats "unknown"
+                "author_alt": alt,
                 "text": text,
                 "parent_id": _pick(m, "parent", self.mapping),
                 "visible_until": pd.NaT,

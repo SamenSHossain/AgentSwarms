@@ -120,6 +120,8 @@ class Bundle:
     lifecycle: pd.DataFrame | None = None
     reads: pd.DataFrame | None = None
     roster: pd.DataFrame | None = None
+    directory: pd.DataFrame | None = None
+    channels: pd.DataFrame | None = None
     capabilities: Capabilities = field(default_factory=Capabilities)
     notes: dict = field(default_factory=dict)
 

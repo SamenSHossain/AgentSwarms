@@ -28,9 +28,20 @@ import pandas as pd
 from .claims import value_key
 
 
-def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: str) -> pd.DataFrame:
+def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: str,
+          audience: dict[str, set[str]] | None = None) -> pd.DataFrame:
+    """``audience`` maps a restricted channel to the agent labels that could read it;
+    a mention there counts as public only for those agents (channels absent from
+    the map are public to all)."""
     m = mentions[mentions["family"] != "url"]
     groups = {k: g.sort_values("ts") for k, g in m.groupby(["family", "item", "value_key"])}
+    audience = audience or {}
+
+    def readable(g: pd.DataFrame, agent) -> pd.DataFrame:
+        if not audience or "channel" not in g or not len(g):
+            return g
+        ok = np.array([c not in audience or agent in audience[c] for c in g["channel"]], dtype=bool)
+        return g.loc[ok]
     rows = []
     rounds = rounds.astype(object).where(rounds.notna(), None)
     for r in rounds.itertuples(index=False):
@@ -39,7 +50,7 @@ def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: s
         t_pub = src = t_self = None
         g = groups.get((r.family, r.item, target)) if target else None
         if g is not None:
-            before = g[g["ts"] < r.t_report]
+            before = readable(g[g["ts"] < r.t_report], r.agent)
             others = before[before[agent_col] != r.agent]
             if len(others):
                 t_pub, src = others["ts"].iloc[0], others[agent_col].iloc[0]
@@ -52,7 +63,7 @@ def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: s
         t_cons = None
         gc = groups.get((r.family, r.item, cv)) if cv else None
         if gc is not None:
-            oc = gc[(gc["ts"] < r.t_report) & (gc[agent_col] != r.agent)]
+            oc = readable(gc[(gc["ts"] < r.t_report) & (gc[agent_col] != r.agent)], r.agent)
             if len(oc):
                 t_cons = oc["ts"].iloc[0]
         gap_c = (r.t_report - t_cons).total_seconds() if t_cons is not None else np.nan

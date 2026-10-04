@@ -29,9 +29,11 @@ swarmprov run full-wiki-logs.zip -o runs/wiki          # zip works too
 swarmprov run village-transcript.json -o runs/village --adapter chat --config my_config.json
 swarmprov run hf://datasets/aidigestorg/ai-village/chat_messages.jsonl.gz -o runs/village --adapter chat
 
-# AI Village agent_goals (who was asked to do what, when): on its own -> roster report;
-# attached to a transcript -> goals become task families, assignment batches become cohorts
-swarmprov run data/village/agent_goals.jsonl -o runs/village_goals
+# AI Village: a directory holding the exported tables (agents, chat_rooms, agent_goals, chat_messages ...)
+# is one source: names from `agents`, room names + lifecycle + audiences from `chat_rooms`,
+# families + cohorts from `agent_goals`; without a message table it writes a context report
+swarmprov run data/raw_village -o runs/village
+swarmprov run data/village/agent_goals.jsonl -o runs/village_goals          # a roster on its own
 swarmprov run hf://datasets/aidigestorg/ai-village/chat_messages.jsonl.gz -o runs/village \
     --adapter chat --roster hf://datasets/aidigestorg/ai-village/agent_goals.jsonl.gz
 
@@ -114,6 +116,7 @@ All source-specific knowledge lives in one adapter plus an `AdapterConfig`, whic
 - **Capabilities are detected and reported**: wall clock, explicit authors, read logs, deletions, threading. An analysis that needs a missing capability is skipped or labelled.
 - **Items are learned from the transcript.** Phrases that follow a round marker in posts by ≥2 authors become items, so no task list has to be written by hand. US states and countries are built in.
 - **Round sequences are learned from chains** like `MA -> CT -> MI -> WV`.
+- **The AI Village side tables are one source.** The `village` adapter takes a directory and recognises tables by their columns: `agents` (id → name, model, join date), `chat_rooms` (room id → name, created/deleted, `whitelisted_agent_names` / `blacklisted_agent_names`) and `agent_goals`, plus any message table. Posts get agent names and room names; rooms give channel lifecycle; a room's allow/deny list is its **audience**, and exposure is judged per audience: an answer posted only where an agent could not read it is not "public" for that agent (`exposure.build(..., audience=...)`). The report's Village block lists the directory by vendor and every room with its lifetime and access.
 - **A roster replaces guessed identities and families.** AI Village `agent_goals` (or any table with an agent id, a role or goal, and a start time; JSON, JSONL, CSV or TSV, so a spreadsheet export works) is detected by the `roster` adapter. Timestamps a spreadsheet has reduced to `37:49.4` are reported as unreadable rather than parsed as a time today. Attached with `--roster`, each post is matched to a roster agent (by `agent_id` in the transcript, a `roster_aliases` entry, or the role name) and to the goal window it falls in; the goal becomes the post's task family, the goal's assignment batch its cohort, and two agents given the same goal stay distinct. The report gains a Roster block: batches, roles held by several agents (the comparable tasks), goal changes (reworded vs reassigned), and coverage (unmatched authors, posts outside every goal window, goals with no posts).
 - **URLs are indexed as facts**, so reach and relay chains work on free-form chat with no task structure.
 - **Optional LLM extraction** (`--llm claude-haiku-4-5`) uses structured outputs and caches results by event id. The LLM wins on semantic fields and the rules fill in numbers.
@@ -131,17 +134,18 @@ All source-specific knowledge lives in one adapter plus an `AdapterConfig`, whic
 ```
 swarmprov/
   adapters/   base.py (Adapter, AdapterConfig, Capabilities)  wiki.py  chat.py  corpus.py (records/shortener/other-wikis)
-              roster.py (agent_goals tables)
-  segment.py  identity.py  roster.py (goal windows -> families, cohorts)  rules.py  gazetteer.py  claims.py  exposure.py  graph.py
+              roster.py (agent_goals tables)  village.py (a directory of AI Village tables)
+  segment.py  identity.py  roster.py (goal windows -> families, cohorts)  village.py (directory, rooms, audiences)  rules.py  gazetteer.py  claims.py  exposure.py  graph.py
   extract_llm.py  validate.py  synth.py  report.py  pipeline.py  cli.py  plotting.py  remote.py (hf:// inputs)
   analysis/   provenance.py (A1)  causal.py (A2)  diffusion.py (A3)  errors.py (A4)  structure.py (A5, A6)
               crosssite.py (technique spread between surfaces, timeline, coverage bounds)
   crosssite_pipeline.py   the `crosssite` stage
-tests/        rules, segmentation, chat adapter, roster, LLM merge (fake client), synthetic end-to-end recovery
+tests/        rules, segmentation, chat adapter, roster, village tables + audience exposure, LLM merge (fake client), synthetic end-to-end recovery
 validation/   labels (event ids only) for the three validation splits
-results/      committed reports + figures: openai-wiki/, crosssite/, corpus/, synthetic/, village-goals/
+results/      committed reports + figures: openai-wiki/, crosssite/, corpus/, synthetic/, village-goals/, village-context/
 data/village/ agent_goals.jsonl (AI Village roster, 33 goal assignments); agent_goals_sheet.tsv (the same after a spreadsheet round-trip)
+data/raw_village/  AI Village side tables as exported: agents, chat_rooms, agent_goals (.jsonl.gz)
 docs/         PLAN.md (general pipeline plan), DATA.md (what the dump actually contains)
 ```
 
-Run the tests with `python -m pytest -q` (78 tests, about 20 s). The raw data and run directories are git-ignored.
+Run the tests with `python -m pytest -q` (85 tests, about 20 s). The raw data and run directories are git-ignored.

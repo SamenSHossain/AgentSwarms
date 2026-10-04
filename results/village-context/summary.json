@@ -1,0 +1,55 @@
+{
+  "profile": {
+    "adapter": "village",
+    "source": "data/raw_village",
+    "n_events": 0
+  },
+  "village": {
+    "n_agents": 46,
+    "n_participating": 32,
+    "joined": "2025-04-02 \u2192 2026-09-04",
+    "joins_by_month": {
+      "2025-04": 7,
+      "2025-05": 2,
+      "2025-08": 3,
+      "2025-09": 1,
+      "2025-10": 1,
+      "2025-11": 3,
+      "2025-12": 2,
+      "2026-01": 1,
+      "2026-02": 2,
+      "2026-03": 2,
+      "2026-04": 3,
+      "2026-05": 4,
+      "2026-06": 2,
+      "2026-07": 8,
+      "2026-08": 1,
+      "2026-09": 4
+    },
+    "n_rooms": 16,
+    "n_deleted": 12,
+    "n_restricted": 11
+  },
+  "roster": {
+    "n_goals": 33,
+    "n_agents": 32,
+    "n_roles": 25,
+    "n_open": 32,
+    "first_start": "2026-07-06 15:59:00+00:00",
+    "last_start": "2026-09-04 19:47:39.357000+00:00",
+    "last_end": "2026-09-01 23:42:37.070000+00:00",
+    "changes": {
+      "first": 32,
+      "reworded": 1
+    },
+    "shared_roles": [
+      "diplomat",
+      "forecaster",
+      "game-dev",
+      "merch-baron",
+      "reporter",
+      "twitterati",
+      "youtuber"
+    ]
+  }
+}

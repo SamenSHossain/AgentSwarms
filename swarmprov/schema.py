@@ -36,7 +36,12 @@ TABLES: dict[str, list[str]] = {
     # Roster: who the agents are and what each was asked to do, per time window
     # (AI Village ``agent_goals``).  ``role`` is the short task label, ``goal``
     # the full instruction; ``end`` is NaT while the assignment is still open.
-    "roster": ["goal_id", "agent_id", "role", "goal", "detail", "start", "end", "created", "updated", "batch"],
+    "roster": ["goal_id", "agent_id", "role", "goal", "detail", "start", "end", "created", "updated", "batch",
+               "agent_name", "model"],  # the last two come from the agent directory when one is present
+    # Agent directory (AI Village ``agents``): id -> display name, model, join date.
+    "directory": ["agent_id", "name", "model", "vendor", "joined", "last_seen", "participating"],
+    # Channel table (AI Village ``chat_rooms``): lifetime and audience restrictions (lists of agent names).
+    "channels": ["channel", "channel_id", "created", "deleted", "allow", "deny"],
     # Identity resolution result: one row per author_raw.
     # ``roster_agent`` is the roster id when a roster identified the author, else None.
     "agents": ["author_raw", "agent_strict", "agent_merged", "cohort", "n_events", "roster_agent"],

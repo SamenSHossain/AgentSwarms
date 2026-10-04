@@ -151,10 +151,16 @@ def eras(roster: pd.DataFrame) -> pd.DataFrame:
                 change = "reworded" if prev["role"] == r["role"] else "reassigned"
                 if pd.notna(prev["end"]) and pd.notna(r["start"]) and r["start"] < prev["end"]:
                     change += "+overlap"
-            rows.append({"agent_id": aid, "role": r["role"], "start": r["start"], "end": r["end"],
+            rows.append({"agent_id": aid, "agent": _label(r), "role": r["role"], "start": r["start"], "end": r["end"],
                          "open": pd.isna(r["end"]), "change": change, "batch": r["batch"], "goal": r["goal"]})
             prev = r
     return pd.DataFrame(rows)
+
+
+def _label(r) -> str:
+    """Agent display name when the directory supplied one, else the id."""
+    name = r.get("agent_name") if hasattr(r, "get") else None
+    return name if isinstance(name, str) and name else str(r["agent_id"])
 
 
 def annotate(events: pd.DataFrame, roster: pd.DataFrame, aliases: dict[str, str] | None = None) -> pd.DataFrame:
@@ -171,6 +177,10 @@ def annotate(events: pd.DataFrame, roster: pd.DataFrame, aliases: dict[str, str]
     ids = set(roster["agent_id"])
     holders = roster.groupby("role")["agent_id"].unique()
     by_role = {role: ids[0] for role, ids in holders.items() if len(ids) == 1}
+    if "agent_name" in roster:  # names from the agent directory
+        for aid, name in zip(roster["agent_id"], roster["agent_name"]):
+            if isinstance(name, str) and name:
+                aliases.setdefault(name.lower(), aid)
     windows = {aid: g.sort_values("start") for aid, g in roster.groupby("agent_id")}
 
     def agent_of(raw, alt) -> str | None:
@@ -179,7 +189,7 @@ def annotate(events: pd.DataFrame, roster: pd.DataFrame, aliases: dict[str, str]
                 return cand
             if cand.lower() in aliases and aliases[cand.lower()] in ids:
                 return aliases[cand.lower()]
-        return by_role.get(slug(raw))
+        return by_role.get(slug(raw))  # a role name only one agent holds
 
     out = {"roster_agent": [], "role": [], "goal_id": [], "batch": [], "in_window": []}
     for raw, alt, ts in zip(events["author_raw"], events["author_alt"].fillna(""), events["ts"]):
@@ -251,13 +261,16 @@ def summary(roster: pd.DataFrame, events: pd.DataFrame | None = None, ann: pd.Da
                                       roles=("role", lambda s: ", ".join(sorted(set(s)))))
           .sort_values("created"))
     with_detail = roster[roster["detail"].astype(bool)][["role", "detail"]]
+    who = (roster.assign(agent=roster.apply(_label, axis=1))
+           .sort_values(["start", "role"])[["role", "agent", "model", "batch", "start", "end"]]
+           if "agent_name" in roster and roster["agent_name"].notna().any() else None)
     out = {
         "n_goals": int(len(roster)), "n_agents": int(roster["agent_id"].nunique()),
         "n_roles": int(roster["role"].nunique()), "n_open": int(roster["end"].isna().sum()),
         "first_start": roster["start"].min(), "last_start": roster["start"].max(), "last_end": roster["end"].max(),
         "changes": er["change"].value_counts().to_dict(),
         "shared_roles": roles[roles["agents"] > 1].index.tolist(),
-        "roles": roles, "batches": bt, "eras": er[er["change"] != "first"], "detail": with_detail,
+        "roles": roles, "batches": bt, "eras": er[er["change"] != "first"], "detail": with_detail, "who": who,
     }
     if events is not None and ann is not None and len(events):
         hit = ann["roster_agent"].notna()
@@ -293,9 +306,12 @@ def section(s: dict, md_table, issues: dict | None = None) -> list[str]:
     L.append(md_table(s["batches"]))
     L.append("\nRoles:\n")
     L.append(md_table(s["roles"]))
+    if s.get("who") is not None:
+        L.append("\nWho was asked to do what (names and models from the agent directory):\n")
+        L.append(md_table(s["who"], index=False))
     if len(s["eras"]):
         L.append("\nGoal changes:\n")
-        L.append(md_table(s["eras"][["agent_id", "role", "change", "start", "end", "goal"]], index=False))
+        L.append(md_table(s["eras"][["agent", "role", "change", "start", "end", "goal"]], index=False))
     if len(s["detail"]):
         L.append("\nGoals with extra instructions:\n")
         L.append(md_table(s["detail"], index=False))

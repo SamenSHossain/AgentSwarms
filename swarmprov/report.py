@@ -8,7 +8,7 @@ import math
 import numpy as np
 import pandas as pd
 
-from . import roster as roster_mod
+from . import roster as roster_mod, village as village_mod
 from .analysis import causal, diffusion, errors, provenance, structure
 from .schema import RunDir
 
@@ -49,6 +49,16 @@ def _roster_block(run: RunDir, prof: dict, summary: dict) -> list[str]:
     return roster_mod.section(s, md_table, prof.get("roster_notes", {}).get("timestamp_issues"))
 
 
+def _village_block(run: RunDir, prof: dict, summary: dict) -> list[str]:
+    from .pipeline import _lists
+    directory = run.read("directory") if run.has("directory") else None
+    channels = _lists(run.read("channels")) if run.has("channels") else None
+    ev = run.read("events") if prof["n_events"] else None
+    s = village_mod.summary(directory, channels, ev)
+    summary["village"] = {k: v for k, v in s.items() if not isinstance(v, pd.DataFrame)}
+    return village_mod.section(s, md_table)
+
+
 def _write(run: RunDir, L: list[str], summary: dict) -> str:
     text = "\n".join(L)
     (run.path / "report.md").write_text(text)
@@ -64,10 +74,11 @@ def build(run: RunDir, mapping: str = "merged") -> str:
     caps = prof["capabilities"]
     if not prof["n_events"]:
         summary = {"profile": {k: prof[k] for k in ("adapter", "source", "n_events")}}
-        L = ["# Roster report\n",
+        L = ["# Context report (no posts)\n",
              f"Source: `{prof['source']}` (adapter `{prof['adapter']}`) holds no posts, so there is no provenance to "
-             "analyse. The roster below becomes task families and cohorts when attached to a transcript: "
-             "`swarmprov run TRANSCRIPT --roster " + str(prof["source"]) + "`.\n"]
+             "analyse. The tables below become task families, cohorts, channel lifecycle and audiences once a "
+             "message table sits next to them (or is attached with `--roster`).\n"]
+        L += _village_block(run, prof, summary)
         if run.has("roster"):
             L += _roster_block(run, prof, summary)
         return _write(run, L, summary)
@@ -96,6 +107,7 @@ def build(run: RunDir, mapping: str = "merged") -> str:
         L.append(f"| {k} | {'yes' if v else 'no'} | {conseq.get(k, '')} |")
     L.append("")
 
+    L += _village_block(run, prof, summary)
     if run.has("roster"):
         L += _roster_block(run, prof, summary)
 
