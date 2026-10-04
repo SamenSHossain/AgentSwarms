@@ -126,6 +126,7 @@ class Bundle:
     channels: pd.DataFrame | None = None
     activity: pd.DataFrame | None = None
     probes: pd.DataFrame | None = None
+    eras: pd.DataFrame | None = None
     capabilities: Capabilities = field(default_factory=Capabilities)
     notes: dict = field(default_factory=dict)
 

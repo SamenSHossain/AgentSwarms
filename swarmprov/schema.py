@@ -53,6 +53,9 @@ TABLES: dict[str, list[str]] = {
     "channels": ["channel", "channel_id", "created", "deleted", "allow", "deny"],
     # Activity log (AI Village ``claude_code_sessions`` and the like): when an agent was running.
     "activity": ["agent_id", "agent_name", "ts", "kind", "ref"],
+    # Shared goals (AI Village ``village_goals``): one window per goal everyone was given; ``label``
+    # is the short family name used for posts no agent-specific goal covers.
+    "eras": ["era_id", "label", "goal", "start", "end", "created", "updated"],
     # Identity resolution result: one row per author_raw.
     # ``roster_agent`` is the roster id when a roster identified the author, else None.
     "agents": ["author_raw", "agent_strict", "agent_merged", "cohort", "n_events", "roster_agent"],

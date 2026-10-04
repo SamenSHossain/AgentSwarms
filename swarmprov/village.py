@@ -10,7 +10,11 @@ carry context the provenance pipeline needs and a transcript alone lacks:
                     ``whitelisted_agent_names`` / ``blacklisted_agent_names``:
                     a post in a restricted room was never public to the agents
                     outside it, so exposure must be judged per audience;
-* ``agent_goals`` - the roster (see :mod:`swarmprov.roster`).
+* ``agent_goals`` - the roster (see :mod:`swarmprov.roster`);
+* ``village_goals`` - the shared goals: one window per goal the whole village
+                    was given (weekly, contiguous).  A shared goal is a task
+                    family for everyone, so a post that no agent-specific goal
+                    covers takes the era it falls in.
 
 Tables are recognised by their columns, not file names, so an upload prefix
 or a rename does not matter.
@@ -32,7 +36,11 @@ SIGNATURES = {
     "agents": {"id", "name", "model_string"},
     "rooms": {"id", "name", "deleted_at"},
     "sessions": {"agent_id", "created_at"},   # a presence log: one row per session start
+    "eras": {"goal", "start_time"},           # shared goals: windows without an agent id
 }
+STOPWORDS = {"a", "an", "the", "your", "you", "yours", "as", "can", "it", "to", "and", "of", "in", "on", "for", "with",
+             "like", "whatever", "youd", "do", "each", "agent", "agents", "own", "be", "is", "that", "this", "up", "out",
+             "much", "many", "most", "while", "one", "other", "which", "will", "next", "soon", "please", "yourselves"}
 TEXT_KEYS = {"content", "text", "message", "body", "msg"}
 VENDORS = [("claude", "Anthropic"), ("gpt", "OpenAI"), ("o1", "OpenAI"), ("o3", "OpenAI"), ("o4", "OpenAI"),
            ("gemini", "Google"), ("grok", "xAI"), ("deepseek", "DeepSeek"), ("kimi", "Moonshot"), ("glm", "Zhipu"),
@@ -50,6 +58,65 @@ def classify(rows: list[dict]) -> str | None:
         if sig <= keys and (kind != "goals" or ("short_name" in keys or "name" in keys)):
             return kind
     return None
+
+
+def era_label(n: int, goal: str) -> str:
+    """Short family name for a shared goal: ``e17-form-two-teams``."""
+    words = [w for w in re.sub(r"[^a-z0-9 ]+", " ", str(goal).lower().replace("'", "")).split() if w not in STOPWORDS]
+    return f"e{n:02d}-" + "-".join(words[:3] or ["goal"])
+
+
+def normalize_eras(rows: list[dict]) -> pd.DataFrame:
+    out = [{"era_id": str(r.get("id") or i), "goal": str(r.get("goal") or r.get("name") or ""),
+            "start": _ts(r.get("start_time") or r.get("start")), "end": _ts(r.get("end_time") or r.get("end")),
+            "created": _ts(r.get("created_at")), "updated": _ts(r.get("updated_at"))}
+           for i, r in enumerate(rows) if isinstance(r, dict) and (r.get("goal") or r.get("name"))]
+    if not out:
+        raise ValueError("no shared-goal rows with a goal text")
+    df = pd.DataFrame(out).sort_values(["start", "era_id"], kind="stable").reset_index(drop=True)
+    df["label"] = [era_label(i + 1, g) for i, g in enumerate(df["goal"])]
+    return conform(df, "eras")
+
+
+def annotate_eras(events: pd.DataFrame, eras: pd.DataFrame) -> pd.DataFrame:
+    """The shared goal in force when each post was made (None outside every window)."""
+    e = eras.sort_values("start")
+    starts = list(pd.to_datetime(e["start"], utc=True, errors="coerce"))
+    ends = list(pd.to_datetime(e["end"], utc=True, errors="coerce"))
+    ids, labels = e["era_id"].tolist(), e["label"].tolist()
+    out_id, out_label = [], []
+    for ts in pd.to_datetime(events["ts"], utc=True, errors="coerce"):
+        hit = None
+        if pd.notna(ts):
+            for i in range(len(e)):
+                if (pd.isna(starts[i]) or starts[i] <= ts) and (pd.isna(ends[i]) or ts < ends[i]):
+                    hit = i  # the latest window containing ts wins
+        out_id.append(ids[hit] if hit is not None else None)
+        out_label.append(labels[hit] if hit is not None else None)
+    return pd.DataFrame({"era_id": pd.Series(out_id, index=events.index, dtype="object"),
+                         "era": pd.Series(out_label, index=events.index, dtype="object")})
+
+
+def eras_summary(eras: pd.DataFrame, events: pd.DataFrame | None = None, roster: pd.DataFrame | None = None,
+                 era_ann: pd.DataFrame | None = None) -> dict:
+    e = eras.sort_values("start").reset_index(drop=True)
+    days = (e["end"] - e["start"]).dt.total_seconds().div(86400)
+    gaps = (e["start"].shift(-1) - e["end"]).dt.total_seconds().abs().dropna()
+    s = {"n": int(len(e)), "first_start": e["start"].min(), "last_start": e["start"].max(),
+         "n_open": int(e["end"].isna().sum()), "median_days": float(days.median()) if days.notna().any() else None,
+         "n_gaps": int((gaps > 60).sum()), "handover": None}
+    if roster is not None and len(roster) and roster["start"].notna().any():
+        last = e.iloc[-1]
+        if pd.notna(last["start"]) and abs((roster["start"].min() - last["start"]).total_seconds()) <= 3600:
+            s["handover"] = {"label": last["label"], "goal": last["goal"], "start": last["start"]}
+    tbl = e[["label", "start", "goal"]].assign(days=days.round(1))
+    if events is not None and len(events) and era_ann is not None:
+        per = era_ann["era"].value_counts()
+        tbl = tbl.assign(posts=tbl["label"].map(per).fillna(0).astype(int))
+        s["posts_outside"] = int(era_ann["era"].isna().sum())
+        s["posts"] = int(len(events))
+    s["table"] = tbl
+    return s
 
 
 def normalize_activity(rows: list[dict], directory: pd.DataFrame | None = None, kind: str = "session") -> pd.DataFrame:
@@ -172,10 +239,13 @@ def audience(channels: pd.DataFrame, agents: pd.DataFrame, agent_col: str,
 
 def summary(directory: pd.DataFrame | None, channels: pd.DataFrame | None, events: pd.DataFrame | None = None,
             activity: pd.DataFrame | None = None, roster: pd.DataFrame | None = None,
-            unrecognised: list[str] | None = None) -> dict:
+            unrecognised: list[str] | None = None, eras: pd.DataFrame | None = None,
+            era_ann: pd.DataFrame | None = None) -> dict:
     s: dict = {}
     if unrecognised:
         s["unrecognised"] = list(unrecognised)
+    if eras is not None and len(eras):
+        s["eras"] = eras_summary(eras, events, roster, era_ann)
     if activity is not None and len(activity):
         s["activity"] = activity_summary(activity, roster, events)
     if directory is not None and len(directory):
@@ -219,6 +289,15 @@ def section(s: dict, md_table) -> list[str]:
             L.append(f"{s['posts_in_restricted']:,} transcript posts are in restricted rooms"
                      + (f"; channels not in the room table: {', '.join(s['unknown_channels'])}" if s["unknown_channels"] else "") + ".\n")
         L.append(md_table(s["rooms"], index=False, floatfmt="{:.1f}"))
+    if "eras" in s:
+        e = s["eras"]
+        L.append(f"\nShared goals: {e['n']} windows from {e['first_start']:%Y-%m-%d} to {e['last_start']:%Y-%m-%d} (last start), "
+                 f"median {e['median_days']:.1f} days each, {e['n_gaps']} gap(s) between consecutive windows, {e['n_open']} still open. "
+                 "A shared goal is the task family of every post in its window that no agent-specific goal covers."
+                 + (f" The village switched from shared to individual goals on {e['handover']['start']:%Y-%m-%d %H:%M} UTC "
+                    f"(\"{e['handover']['goal']}\"), the minute the first per-agent goal starts." if e.get("handover") else "")
+                 + (f" {e['posts_outside']:,} of {e['posts']:,} posts fall outside every window." if "posts" in e else "") + "\n")
+        L.append(md_table(e["table"], index=False, floatfmt="{:.1f}"))
     if "activity" in s:
         a = s["activity"]
         L.append(f"\nActivity log: {a['n_rows']:,} session starts by {a['n_agents']} agent(s), {a['span']}, "

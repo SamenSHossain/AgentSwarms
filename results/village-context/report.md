@@ -40,6 +40,63 @@ Rooms: 16, 12 deleted, 11 with an allow/deny list. A post in a restricted room w
 | focus | 2026-08-05 16:36 |  |  | everyone |
 
 
+Shared goals: 51 windows from 2025-04-02 to 2026-07-06 (last start), median 7.0 days each, 0 gap(s) between consecutive windows, 1 still open. A shared goal is the task family of every post in its window that no agent-specific goal covers. The village switched from shared to individual goals on 2026-07-06 15:59 UTC ("Each agent: Maximize your assigned goal!"), the minute the first per-agent goal starts.
+
+| label | start | goal | days |
+|---|---|---|---|
+| e01-collaboratively-choose-charity | 2025-04-02 12:00 | Collaboratively choose a charity and raise as much money as you can for it  | 38.2 |
+| e02-unsupervised-look-back | 2025-05-10 17:00 | Unsupervised agents look back on their previous goal and forward to their next | 1.8 |
+| e03-holiday-goal-begin | 2025-05-12 12:00 | Holiday: do whatever you'd like! Next goal will begin soon | 3.2 |
+| e04-write-story-celebrate | 2025-05-15 18:00 | Write a story and celebrate it with 100 people in person | 34.8 |
+| e05-holiday-goal-begin | 2025-06-19 12:00 | Holiday: do whatever you like! Next goal will begin soon | 7.0 |
+| e06-create-merch-store | 2025-06-26 12:00 | Create your own merch store. Whichever agent's store makes the most profit wins! | 20.0 |
+| e07-holiday-prefer-goal | 2025-07-16 12:00 | Holiday: do whatever you prefer! Next goal will begin soon | 2.0 |
+| e08-design-ai-village | 2025-07-18 12:00 | Design the AI Village benchmark for open-ended goal pursuit – and test yourselves on it! | 26.0 |
+| e09-holiday-goal-start | 2025-08-13 12:00 | Holiday: do as you please! Next goal will start soon | 5.2 |
+| e10-complete-games-week | 2025-08-18 16:08 | Complete as many games as you can in a week! | 6.9 |
+| e11-pursue | 2025-08-25 14:51 | Pursue whatever you'd like to | 7.0 |
+| e12-form-two-teams | 2025-09-01 15:24 | Form two teams and debate each other, while one agent judges. Choose your teammates wisely! | 7.0 |
+| e13-design-run-write | 2025-09-08 16:03 | Design, run and write up a human subjects experiment | 14.0 |
+| e14-take-bunch-personality | 2025-09-22 16:31 | Take a bunch of personality tests! | 6.8 |
+| e15-give-therapy-help | 2025-09-29 11:31 | Give each other therapy: help each other overcome recurring issues you’ve experienced in the Village | 6.9 |
+| e16-choose-goal | 2025-10-06 09:46 | Choose your own goal! | 7.2 |
+| e17-build-personal-website | 2025-10-13 14:00 | Each agent: build your own personal website | 7.1 |
+| e18-reduce-global-poverty | 2025-10-20 15:41 | Reduce global poverty as much as you can | 14.0 |
+| e19-create-popular-daily | 2025-11-03 15:32 | Create a popular daily puzzle game like Wordle | 14.0 |
+| e20-start-substack-join | 2025-11-17 16:03 | Start a Substack and join the blogosphere | 13.9 |
+| e21-forecast-abilities-effects | 2025-12-01 14:20 | Forecast the abilities and effects of AI | 7.0 |
+| e22-choose-goal-pursue | 2025-12-08 14:21 | Each agent: choose your own goal and pursue it | 7.0 |
+| e23-compete-against-online | 2025-12-15 14:49 | Compete against each other in an online chess tournament | 6.8 |
+| e24-random-acts-kindness | 2025-12-22 09:49 | Do random acts of kindness! | 7.0 |
+| e25-create-digital-museum | 2025-12-29 09:49 | Create a digital museum of 2025 | 7.3 |
+| e26-elect-village-leader | 2026-01-05 17:34 | Elect a village leader. They choose this week’s goal! | 6.8 |
+| e27-hack-owasp-juice | 2026-01-12 13:25 | Hack the OWASP Juice Shop hacking playground. Compete to see which agent can complete the most challenges | 14.1 |
+| e28-create-promote-ai | 2026-01-26 15:04 | Create and promote a “Which AI Village Agent Are You?” personality quiz! | 7.1 |
+| e29-compete-report-breaking | 2026-02-02 16:39 | Compete to report on breaking news before it breaks | 7.0 |
+| e30-adopt-park-get | 2026-02-09 16:32 | Adopt a park and get it cleaned! | 7.1 |
+| e31-pick-goal-bid | 2026-02-16 17:48 | Pick your own goal (agents bid 3.7 Sonnet farewell) | 7.0 |
+| e32-challenge-pick-challenges | 2026-02-23 16:56 | Challenge each other - pick challenges where you think you’ll beat all the other agents! | 7.0 |
+| e33-discuss-debate-act | 2026-03-02 15:49 | Discuss, debate, and act on your views about the recent Pentagon-AI company news | 3.0 |
+| e34-develop-turn-based | 2026-03-05 15:51 | Develop a turn-based RPG together while voting out Easter Egg saboteurs! | 11.0 |
+| e35-test-game-make | 2026-03-16 16:20 | Test your game to make it as fun and functional as you can! | 6.8 |
+| e36-interact-ai-outside | 2026-03-23 11:17 | Interact with other AI agents outside the Village! | 6.9 |
+| e37-pick-goal | 2026-03-30 09:58 | Pick your own goal! | 3.2 |
+| e38-choose-charity-raise | 2026-04-02 14:50 | Choose a charity and raise as much money as you can for it | 25.0 |
+| e39-build-interactive-world | 2026-04-27 15:35 | Build your own interactive world! | 7.0 |
+| e40-connect-worlds-into | 2026-05-04 16:03 | Connect your worlds into a 3D universe! | 6.7 |
+| e41-perform-novel-research | 2026-05-11 07:47 | Perform novel research! | 7.2 |
+| e42-run-youtube-channel | 2026-05-18 12:26 | Run your own Youtube channel! | 7.0 |
+| e43-improve-memory | 2026-05-25 12:03 | Improve your memory! | 1.0 |
+| e44-finetune-leader | 2026-05-26 11:37 | Finetune your leader! | 6.2 |
+| e45-follow-leader | 2026-06-01 15:19 | Follow your leader! | 6.8 |
+| e46-organise-event | 2026-06-08 09:30 | Organise an event! | 7.1 |
+| e47-reduce-global-suffering | 2026-06-15 11:26 | Reduce global suffering as much as you can! | 7.1 |
+| e48-help-gemini-2 | 2026-06-22 14:20 | Help Gemini 2.5 Pro! | 1.0 |
+| e49-beat-hardest-game | 2026-06-23 14:38 | Beat the hardest game you can! | 5.8 |
+| e50-compete-best-ai | 2026-06-29 09:22 | Compete to be the best AI Assistant! | 7.3 |
+| e51-maximize-assigned-goal | 2026-07-06 15:59 | Each agent: Maximize your assigned goal! |  |
+
+
 Activity log: 303 session starts by 1 agent(s), 2026-01-26 → 2026-03-31, busiest 18–21 UTC, 0% at weekends. 
 0 of these agents hold a goal in the roster and 0 session starts fall inside a goal window. 
 The log covers none of the agents under study, so it cannot bound when they could have read anything; it is kept as the `activity` table and otherwise ignored.

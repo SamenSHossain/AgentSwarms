@@ -24,7 +24,8 @@ def test_tables_are_recognised_by_columns():
     found = discover(RAW)
     assert {k: v.name for k, v in found.items()} == {
         "goals": "agent_goals.jsonl.gz", "agents": "agents.jsonl.gz", "rooms": "chat_rooms.jsonl.gz",
-        "sessions": "claude_code_sessions.jsonl.gz"}
+        "sessions": "claude_code_sessions.jsonl.gz", "eras": "village_goals.jsonl.gz"}
+    assert adapters.detect(RAW / "village_goals.jsonl.gz").name == "village"
     assert adapters.detect(RAW).name == "village"
     assert adapters.detect(RAW / "agents.jsonl.gz").name == "village"
     assert adapters.detect(RAW / "chat_rooms.jsonl.gz").name == "village"
@@ -155,3 +156,54 @@ def test_unrecognised_files_are_listed(tmp_path):
     assert prof["notes"]["unrecognised"] == ["mystery.jsonl"]
     assert "`mystery.jsonl`" in (run.path / "report.md").read_text()
     assert len(run.read("activity")) == 303
+
+
+# --- shared goals (village_goals) ------------------------------------------------------
+
+def test_shared_goals_become_eras(bundle):
+    e = bundle.eras
+    assert len(e) == 51 and e["start"].notna().all() and e["end"].isna().sum() == 1       # no NaT from mixed formats
+    e = e.sort_values("start").reset_index(drop=True)
+    assert ((e["start"].shift(-1) - e["end"]).dt.total_seconds().abs().dropna() == 0).all()  # contiguous windows
+    assert e["label"].is_unique and e["label"].iloc[0].startswith("e01-")
+    assert e.iloc[-1]["goal"].startswith("Each agent: Maximize your assigned goal")
+    assert e.iloc[-1]["start"] == bundle.roster["start"].min()                            # handover to per-agent goals
+
+
+def test_era_label_is_short_and_stable():
+    assert village.era_label(17, "Form two teams and debate each other, while one agent judges. Choose your teammates wisely!") == "e17-form-two-teams"
+    assert village.era_label(3, "Holiday: do whatever you like! Next goal will begin soon") == "e03-holiday-goal-begin"
+    assert village.era_label(5, "???") == "e05-goal"
+
+
+def test_annotate_eras_picks_the_window(bundle):
+    e = bundle.eras
+    ev = pd.DataFrame({"ts": pd.to_datetime(["2026-06-16T12:00:00Z", "2025-01-01T00:00:00Z", "2026-09-01T00:00:00Z"], utc=True)})
+    a = village.annotate_eras(ev, e)
+    assert a["era"].iloc[0] == e.set_index("goal").loc["Reduce global suffering as much as you can!", "label"]
+    assert a["era"].iloc[1] is None                                                       # before the first window
+    assert a["era"].iloc[2] == e.sort_values("start")["label"].iloc[-1]                   # the open window runs on
+
+
+def test_family_precedence_agent_goal_then_era(tmp_path):
+    """A post inside the author's own goal window takes the role; a post by the same author
+    before that window, or by an unknown author, takes the shared goal of its time."""
+    for f in RAW.glob("*.jsonl.gz"):
+        shutil.copy(f, tmp_path / f.name)
+    msgs = [
+        _post(0, SONNET45, GENERAL, pd.Timestamp("2026-07-07T10:00:00Z"), "R1 CONFIRMED: Utah arrived 09:58:00; answered 73.74"),
+        _post(1, SONNET45, GENERAL, pd.Timestamp("2026-06-16T12:00:00Z"), "Working on suffering reduction, 12 ideas"),
+        _post(2, "", GENERAL, pd.Timestamp("2026-06-16T13:00:00Z"), "Observer note 1"),
+    ]
+    (tmp_path / "chat_messages.jsonl").write_text("\n".join(json.dumps(m) for m in msgs))
+    run = pipeline.run_all(tmp_path, tmp_path / "run")
+    ev = run.read("events").set_index("event_id")
+    eras = run.read("eras").set_index("goal")
+    suffering = eras.loc["Reduce global suffering as much as you can!", "label"]
+    assert ev.loc["m0", "family"] == "twitterati"
+    assert ev.loc["m1", "family"] == suffering                       # not the nearest agent goal: it was not in force yet
+    assert ev.loc["m2", "family"] == suffering
+    re_ = run.read("roster_events")
+    assert {"roster_agent", "role", "in_window", "era_id", "era"} <= set(re_.columns)
+    text = (run.path / "report.md").read_text()
+    assert "Shared goals: 51 windows" in text and "switched from shared to individual goals on 2026-07-06 15:59" in text

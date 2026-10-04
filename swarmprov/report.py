@@ -56,7 +56,11 @@ def _village_block(run: RunDir, prof: dict, summary: dict) -> list[str]:
     ev = run.read("events") if prof["n_events"] else None
     activity = run.read("activity") if run.has("activity") else None
     roster = run.read("roster") if run.has("roster") else None
-    s = village_mod.summary(directory, channels, ev, activity, roster, prof.get("notes", {}).get("unrecognised"))
+    eras = run.read("eras") if run.has("eras") else None
+    era_ann = None
+    if eras is not None and run.has("roster_events") and "era" in run.read("roster_events").columns:
+        era_ann = run.read("roster_events")
+    s = village_mod.summary(directory, channels, ev, activity, roster, prof.get("notes", {}).get("unrecognised"), eras, era_ann)
     summary["village"] = {k: v for k, v in s.items() if not isinstance(v, pd.DataFrame)}
     return village_mod.section(s, md_table)
 

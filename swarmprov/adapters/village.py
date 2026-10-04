@@ -46,8 +46,8 @@ class VillageAdapter(Adapter):
         path = Path(path)
         found = discover(path)
         if path.is_dir():
-            return bool(found.keys() & {"goals", "agents", "rooms", "sessions"})
-        return bool(found.keys() & {"agents", "rooms", "sessions"})   # a lone goals file is the roster adapter's
+            return bool(found.keys() & {"goals", "agents", "rooms", "sessions", "eras"})
+        return bool(found.keys() & {"agents", "rooms", "sessions", "eras"})   # a lone goals file is the roster adapter's
 
     def load(self, path: Path) -> Bundle:
         path = Path(path)
@@ -59,6 +59,7 @@ class VillageAdapter(Adapter):
         unrecognised = found.pop("_unrecognised", [])
         notes = {"tables": {k: v.name for k, v in found.items()}, "unrecognised": unrecognised}
         activity = village_mod.normalize_activity(read_rows(found["sessions"]), directory) if "sessions" in found else None
+        eras = village_mod.normalize_eras(read_rows(found["eras"])) if "eras" in found else None
         if "goals" in found:
             rows = read_rows(found["goals"])
             roster = roster_mod.normalize(rows)
@@ -88,6 +89,7 @@ class VillageAdapter(Adapter):
         notes.update({"n_agents": 0 if directory is None else int(len(directory)),
                       "n_rooms": 0 if channels is None else int(len(channels)),
                       "n_goals": 0 if roster is None else int(len(roster)),
-                      "n_activity": 0 if activity is None else int(len(activity))})
+                      "n_activity": 0 if activity is None else int(len(activity)),
+                      "n_eras": 0 if eras is None else int(len(eras))})
         return Bundle(events=events, lifecycle=lifecycle, roster=roster, directory=directory,
-                      channels=channels, activity=activity, capabilities=caps, notes=notes)
+                      channels=channels, activity=activity, eras=eras, capabilities=caps, notes=notes)

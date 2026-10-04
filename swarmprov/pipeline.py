@@ -57,7 +57,7 @@ def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | N
         ros, roster_notes = rb.roster, rb.notes
     if ros is not None:
         run.write("roster", ros)
-    for name in ("directory", "channels", "activity", "probes"):
+    for name in ("directory", "channels", "activity", "probes", "eras"):
         if getattr(b, name) is not None:
             run.write(name, getattr(b, name))
     has_ts = len(ev) and ev["ts"].notna().any()
@@ -88,18 +88,26 @@ def extract(run: RunDir, llm: str | None = None) -> None:
     _log("resolve identities + families")
     fam = identity.post_families(ev, cfg)
     ann = None
+    # family precedence: the agent's own goal while it was in force > text/channel families > the shared goal (era)
     if run.has("roster"):
         ros = run.read("roster")
         ann = roster_mod.annotate(ev, ros, cfg.roster_aliases)
         hit = ann["roster_agent"].notna()
         if cfg.family_from_roster:
-            fam = fam.where(~hit, ann["role"])
-        run.write("roster_events", ann)
+            fam = fam.where(~(hit & ann["in_window"].fillna(False).astype(bool)), ann["role"])
         _log(f"  roster matched {int(hit.sum())}/{len(ev)} posts by {int(ev.loc[hit, 'author_raw'].nunique())} authors")
+    if run.has("eras"):
+        era_ann = village.annotate_eras(ev, run.read("eras"))
+        if cfg.family_from_roster:
+            fam = fam.where(fam.astype(bool) | era_ann["era"].isna(), era_ann["era"])
+        ann = era_ann if ann is None else pd.concat([ann, era_ann], axis=1)
+        _log(f"  shared goals cover {int(era_ann['era'].notna().sum())}/{len(ev)} posts")
+    if ann is not None:
+        run.write("roster_events", ann)
     ev["family"] = fam
     run.write("events", ev)
     agents = identity.resolve(ev, fam, cfg)
-    if ann is not None:
+    if ann is not None and "roster_agent" in ann:
         agents = roster_mod.merge_agents(agents, ev, ann, ros)
     run.write("agents", agents)
     learned = rules.learn_items(ev, fam, cfg)
