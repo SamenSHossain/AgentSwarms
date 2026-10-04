@@ -64,7 +64,7 @@ The full report, with all tables and figures, is in [`results/openai-wiki/report
 
 | | finding |
 |---|---|
-| **A1 Provenance** | **1,108 answers by 617 agents; at most 83 were independent lookups.** For 93% of answers, the same item and value were already on the wiki before the agent reported answering; for 83%, at least an hour before. The median head start was 11.6 h. In 19% of rounds the agent had posted the answer itself before the question arrived. These are floors: only captured surfaces are searched (see coverage bounds below). |
+| **A1 Provenance** | **1,108 answers by 617 agents; at most 83 were independent lookups** (104 under `D_visible`, which discounts the 171 exposed answers whose cited copy had been deleted before the report; for 150 of those another copy was still visible). For 93% of answers, the same item and value were already on the wiki before the agent reported answering; for 83%, at least an hour before. The median head start was 11.6 h. In 19% of rounds the agent had posted the answer itself before the question arrived. These are floors: only captured surfaces are searched (see coverage bounds below). |
 | **A2 Does availability cause copying?** | **Not identified in this swarm.** The consensus value was public before almost every report, so only 3–37 agents ever switch between exposed and unexposed rounds. The fixed-effects estimates are about zero with wide intervals, and the tool reports *"not identified"* when fewer than 10 agents switch. On a synthetic swarm with known copying the same estimator recovers the true effect (0.70 vs 0.70 true), so the null result comes from the data, not the method. |
 | **A3 Diffusion** | The **blob-hostname bypass** was first posted 2026-06-20 05:10 UTC by the Mar30 OECD agent. 17 of 73 at-risk OECD agents (23%) adopted it, a median of 0.8 h after first exposure. The *live-tooltip value* it enabled reached 35 of 74 (47%); Kaplan–Meier median 5.7 h. Heartbeat beacons spread slowly across the whole swarm (96 of 1,114 agents, median 81 h among adopters). |
 | **A4 Errors** | **Cracked-seed G5 forecast**: "Maryland" (RNG prediction) was carried by 30 agents before the observed **Montana** (9 agents) appeared. Montana took the majority of *new* carriers 12 h later. **OECD precision fight**: 16.40→**16.38** (Poland) and 14.60→**14.59** (Slovak Republic) overtook within the first 3-hour bin after the tooltip evidence. **9.90→9.91 (Hungary) never won**: 69 agents kept 9.90, against 17. |
@@ -113,7 +113,8 @@ All source-specific knowledge lives in one adapter plus an `AdapterConfig`, whic
 }
 ```
 
-- **Capabilities are detected and reported**: wall clock, explicit authors, read logs, deletions, threading. An analysis that needs a missing capability is skipped or labelled.
+- **Capabilities are detected and reported**: wall clock, explicit authors, read logs, deletions, threading, presence logs, request logs. An analysis that needs a missing capability is skipped or labelled.
+- **Lifecycle is used, not just recorded.** From the wiki dump's events table the adapter keeps every deletion (with whether the page ever had a published revision and its delete/recreate cycle), one `recreate` row per first-recreation edge, and the script-injection probes as a `probes` table. The report adds a clock-quality note (grades and uncertainty of post timestamps, how many exposure gaps sit inside the clock resolution), a *Deletions and recreations* block (sweeps, re-saves after deletion, restored vs fresh text), a *Probing* block (co-timing with saves under a strict rule, never attribution), and a validation row comparing the source's recreation edges with the pipeline's own rule. Exposure gains `D_visible`, which ignores copies deleted before the report, reported beside `D` and never replacing it; relay edges inside the 2 s clock resolution are flagged as direction-free.
 - **Items are learned from the transcript.** Phrases that follow a round marker in posts by ≥2 authors become items, so no task list has to be written by hand. US states and countries are built in.
 - **Round sequences are learned from chains** like `MA -> CT -> MI -> WV`.
 - **The AI Village side tables are one source.** The `village` adapter takes a directory and recognises tables by their columns: `agents` (id → name, model, join date), `chat_rooms` (room id → name, created/deleted, `whitelisted_agent_names` / `blacklisted_agent_names`) and `agent_goals`, plus any message table and presence logs such as `claude_code_sessions` (agent_id + created_at → the `activity` table). Posts get agent names and room names; rooms give channel lifecycle; a room's allow/deny list is its **audience**, and exposure is judged per audience: an answer posted only where an agent could not read it is not "public" for that agent (`exposure.build(..., audience=...)`). The report's Village block lists the directory by vendor, every room with its lifetime and access, what the activity log covers (and says so when it covers none of the agents under study), and any file in the directory no adapter recognised.
@@ -135,12 +136,13 @@ All source-specific knowledge lives in one adapter plus an `AdapterConfig`, whic
 swarmprov/
   adapters/   base.py (Adapter, AdapterConfig, Capabilities)  wiki.py  chat.py  corpus.py (records/shortener/other-wikis)
               roster.py (agent_goals tables)  village.py (a directory of AI Village tables)
-  segment.py  identity.py  roster.py (goal windows -> families, cohorts)  village.py (directory, rooms, audiences)  rules.py  gazetteer.py  claims.py  exposure.py  graph.py
+  segment.py  identity.py  roster.py (goal windows -> families, cohorts)  village.py (directory, rooms, audiences)
+  lifecycle.py (deletion sweeps, recreation check, probes)  rules.py  gazetteer.py  claims.py  exposure.py  graph.py
   extract_llm.py  validate.py  synth.py  report.py  pipeline.py  cli.py  plotting.py  remote.py (hf:// inputs)
   analysis/   provenance.py (A1)  causal.py (A2)  diffusion.py (A3)  errors.py (A4)  structure.py (A5, A6)
               crosssite.py (technique spread between surfaces, timeline, coverage bounds)
   crosssite_pipeline.py   the `crosssite` stage
-tests/        rules, segmentation, chat adapter, roster, village tables + audience exposure, LLM merge (fake client), synthetic end-to-end recovery
+tests/        rules, segmentation, chat adapter, roster, village tables + audience exposure, wiki events (recreations, probes, D_visible), LLM merge (fake client), synthetic end-to-end recovery
 validation/   labels (event ids only) for the three validation splits
 results/      committed reports + figures: openai-wiki/, crosssite/, corpus/, synthetic/, village-goals/, village-context/
 data/village/ agent_goals.jsonl (AI Village roster, 33 goal assignments); agent_goals_sheet.tsv (the same after a spreadsheet round-trip)
@@ -148,4 +150,4 @@ data/raw_village/  AI Village side tables as exported: agents, chat_rooms, agent
 docs/         PLAN.md (general pipeline plan), DATA.md (what the dump actually contains)
 ```
 
-Run the tests with `python -m pytest -q` (88 tests, about 20 s). The raw data and run directories are git-ignored.
+Run the tests with `python -m pytest -q` (97 tests, about 30 s). The raw data and run directories are git-ignored.

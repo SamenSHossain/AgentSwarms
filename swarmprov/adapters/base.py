@@ -21,6 +21,7 @@ class Capabilities:
     has_threading: bool = False
     has_episodes: bool = False  # explicit round / turn boundaries as fields
     has_activity: bool = False  # presence log: when each agent was running
+    has_request_log: bool = False  # request-level rows exist (here: script-injection probes only; no page views)
 
     def as_dict(self) -> dict[str, bool]:
         return dict(self.__dict__)
@@ -124,6 +125,7 @@ class Bundle:
     directory: pd.DataFrame | None = None
     channels: pd.DataFrame | None = None
     activity: pd.DataFrame | None = None
+    probes: pd.DataFrame | None = None
     capabilities: Capabilities = field(default_factory=Capabilities)
     notes: dict = field(default_factory=dict)
 

@@ -7,6 +7,82 @@
     "first_ts": "2026-05-24 06:02:19+00:00",
     "last_ts": "2026-07-02 17:51:22+00:00"
   },
+  "village": {},
+  "deletions": {
+    "n": 5217,
+    "pages": 5144,
+    "actors": [
+      "[Admin1]"
+    ],
+    "first": "2026-06-04 10:53:40+00:00",
+    "last": "2026-07-14 13:56:54+00:00",
+    "held": 3969,
+    "unheld": 1248,
+    "n_sweeps": 80,
+    "sweep_median": 41.0,
+    "sweeps_15": 112,
+    "sweeps_60": 53,
+    "largest": {
+      "n": 441,
+      "pages": 440,
+      "start": "2026-07-13 19:15:30+00:00",
+      "end": "2026-07-13 22:18:48+00:00"
+    },
+    "n_recreate": 68,
+    "recreate_with_revision": 64,
+    "recreate_gap_median_h": 0.37930555555555556,
+    "last_write": "2026-07-02 17:51:22+00:00",
+    "deleted_before_last_write": 2796,
+    "posts": 15987,
+    "posts_on_deleted_pages": 13542,
+    "posts_deleted_while_writing": 8857,
+    "check": {
+      "dump_edges": 68,
+      "dump_edges_with_revision": 64,
+      "dump_edges_without_revision": 4,
+      "pipeline_edges": 66,
+      "overlap": 64,
+      "pipeline_only": 2,
+      "pipeline_only_after_cutoff": 2,
+      "dump_only": 0,
+      "cutoff": "2026-06-22 09:20:04+00:00",
+      "posts_on_recreations": 107,
+      "restored_posts": 30,
+      "fresh_posts": 77
+    }
+  },
+  "probes": {
+    "n": 101,
+    "sites": [
+      "dse"
+    ],
+    "first": "2026-05-17 05:46:45+00:00",
+    "last": "2026-06-30 12:10:38+00:00",
+    "n_ip16": 46,
+    "n_success": 0,
+    "actions": {
+      "browse-bare": 43,
+      "form_editprefs": 26,
+      "browse": 24,
+      "form_search": 2,
+      "editprefs": 2,
+      "showtop": 1,
+      "random": 1,
+      "rc": 1,
+      "<payload>": 1
+    },
+    "top_day": "2026-06-18",
+    "top_day_n": 48,
+    "top_ip16": "52.87",
+    "top_ip16_n": 30,
+    "n_cotimed": 14,
+    "cotimed_labels": [
+      "AgentDataHelperX"
+    ],
+    "payloads": [
+      "<script>alert('XSS')</script>"
+    ]
+  },
   "A1": {
     "n_answers": 1108,
     "n_independent": 83,
@@ -29,11 +105,11 @@
       "agents_with_D_variation": 17,
       "mean_y_D0": 0.4838709677419355,
       "mean_y_D1": 0.48412698412698413,
-      "beta": -0.06633494373768489,
-      "se": 0.06561512920742678,
-      "p": 0.31284807352042066,
-      "ci_lo": -0.19546090324455745,
-      "ci_hi": 0.06279101576918766,
+      "beta": -0.06633494414991348,
+      "se": 0.06561511702597438,
+      "p": 0.3128479808354039,
+      "ci_lo": -0.19546087968454443,
+      "ci_hi": 0.06279099138471747,
       "note": NaN
     },
     {
@@ -47,11 +123,11 @@
       "agents_with_D_variation": 37,
       "mean_y_D0": 0.6063829787234043,
       "mean_y_D1": 0.4675324675324675,
-      "beta": -0.11273927227854844,
-      "se": 0.11436991918204581,
-      "p": 0.3250565514789754,
-      "ci_lo": -0.3378112294855392,
-      "ci_hi": 0.11233268492844237,
+      "beta": -0.11273927238107655,
+      "se": 0.11436990478453721,
+      "p": 0.32505649023261407,
+      "ci_lo": -0.33781120125478303,
+      "ci_hi": 0.11233265649262993,
       "note": NaN
     },
     {
@@ -83,11 +159,11 @@
       "agents_with_D_variation": 10,
       "mean_y_D0": 0.9523809523809523,
       "mean_y_D1": 0.8951048951048951,
-      "beta": 0.0009667228623873576,
-      "se": 0.0038238467275152834,
-      "p": 0.800785263912553,
-      "ci_lo": -0.00659370170912112,
-      "ci_hi": 0.008527147433895835,
+      "beta": 0.0009667210185989637,
+      "se": 0.003823756076887678,
+      "p": 0.8007810134182798,
+      "ci_lo": -0.0065935243205079005,
+      "ci_hi": 0.008526966357705827,
       "note": NaN
     },
     {
@@ -119,11 +195,11 @@
       "agents_with_D_variation": 15,
       "mean_y_D0": 0.7916666666666666,
       "mean_y_D1": 0.7970749542961609,
-      "beta": 0.024765532182865535,
-      "se": 0.0944582188438045,
-      "p": 0.7934186648928174,
-      "ci_lo": -0.16137037578299152,
-      "ci_hi": 0.21090144014872259,
+      "beta": 0.024765532392697742,
+      "se": 0.09445822243049715,
+      "p": 0.7934186708477071,
+      "ci_lo": -0.16137038264096454,
+      "ci_hi": 0.21090144742636002,
       "note": NaN
     }
   ],
@@ -259,7 +335,7 @@
     "exposure_sources": 49,
     "gini_exposure_outdegree": 0.691806869089099,
     "top10_share_exposure": 0.7336585365853658,
-    "gini_relay_outdegree": 0.6640724129700122,
+    "gini_relay_outdegree": 0.664071987106558,
     "mean_chain_depth": 2.0314465408805034,
     "mean_agents_per_fact": 9.371069182389936
   },

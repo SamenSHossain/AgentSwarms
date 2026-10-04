@@ -57,7 +57,7 @@ def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | N
         ros, roster_notes = rb.roster, rb.notes
     if ros is not None:
         run.write("roster", ros)
-    for name in ("directory", "channels", "activity"):
+    for name in ("directory", "channels", "activity", "probes"):
         if getattr(b, name) is not None:
             run.write(name, getattr(b, name))
     has_ts = len(ev) and ev["ts"].notna().any()
@@ -150,6 +150,9 @@ def expose(run: RunDir) -> None:
     if mn.empty:
         mn = pd.DataFrame(columns=["event_id", "ts", "agent_strict", "agent_merged", "channel", "family",
                                    "item", "value_norm", "value_key"])
+    if "visible_until" in ev and len(mn):  # a deleted copy stops being public: exposure reports D_visible beside D
+        vu = ev[["event_id"]].assign(visible_until=pd.to_datetime(ev["visible_until"], utc=True, errors="coerce"))
+        mn = mn.merge(vu.drop_duplicates("event_id"), on="event_id", how="left")
     run.write("mentions", mn)
     cons = claims_mod.consensus(cl, mn) if len(cl) else {}
     channels = run.read("channels") if run.has("channels") else None

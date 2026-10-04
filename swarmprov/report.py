@@ -8,7 +8,7 @@ import math
 import numpy as np
 import pandas as pd
 
-from . import roster as roster_mod, village as village_mod
+from . import lifecycle as lifecycle_mod, roster as roster_mod, village as village_mod
 from .analysis import causal, diffusion, errors, provenance, structure
 from .schema import RunDir
 
@@ -101,7 +101,8 @@ def build(run: RunDir, mapping: str = "merged") -> str:
         "has_wall_clock": "ordering by real time is possible",
         "has_explicit_author": "authors come from fields, not parsed signatures",
         "has_reads": "exposure is *observed*; otherwise it is inferred from what was public",
-        "has_lifecycle": "deletions are tracked (content stops being visible)",
+        "has_lifecycle": "deletions are recorded, posts carry visible_until, and A1 reports D_visible beside D",
+        "has_request_log": "request-level rows exist (script-injection probes only); still no page views",
         "has_threading": "reply links usable as explicit edges",
         "has_episodes": "rounds are fields; otherwise parsed from text",
         "has_activity": "a presence log says when each agent was running",
@@ -110,9 +111,22 @@ def build(run: RunDir, mapping: str = "merged") -> str:
         L.append(f"| {k} | {'yes' if v else 'no'} | {conseq.get(k, '')} |")
     L.append("")
 
+    notes = prof.get("notes") or {}
+    if notes.get("clock_grades"):
+        L.append(_clock_note(notes, ex) + "\n")
     L += _village_block(run, prof, summary)
     if run.has("roster"):
         L += _roster_block(run, prof, summary)
+    if run.has("lifecycle"):
+        lc = run.read("lifecycle")
+        if len(lc) and (lc["action"] == "delete").any():
+            ds = lifecycle_mod.deletion_summary(lc, run.read("events"), notes.get("recreation_check"))
+            summary["deletions"] = {k: v for k, v in ds.items() if k != "check"} | {"check": {k: v for k, v in (ds.get("check") or {}).items() if k != "restored_event_ids"}}
+            L += lifecycle_mod.deletion_section(ds, _pct)
+    if run.has("probes"):
+        ps = lifecycle_mod.probe_summary(run.read("probes"))
+        summary["probes"] = ps
+        L += lifecycle_mod.probe_section(ps)
 
     # A1
     if len(ex):
@@ -125,6 +139,8 @@ def build(run: RunDir, mapping: str = "merged") -> str:
                  f"{_pct(r1['share_exposed'])} of answers were already public before the report, "
                  f"{_pct(r1['share_exposed_60m'])} at least an hour before (robust to the unknown lag between a question's arrival and its report). "
                  f"Median head start: {r1['median_gap_h']:.1f} h. In {_pct(r1['share_self_prepared'])} of rounds the agent itself had posted the answer in advance.\n")
+        if "D_visible" in ex and ex["src_deleted_before_report"].sum():
+            L.append(_visibility_note(ex) + "\n")
         L.append(f"![provenance](figures/{run.figure('a1_provenance.png').name})\n")
         L.append(md_table(r1["by_family"], pct=("exposed", "exposed_60m", "self_prepared", "instant")))
         L.append("\nBy round:\n")
@@ -231,6 +247,13 @@ def build(run: RunDir, mapping: str = "merged") -> str:
 
     # Validation
     L.append("## Validation\n")
+    rc = notes.get("recreation_check")
+    if rc:
+        L.append(f"**Recreation edges** (source vs pipeline): the source marks {rc['dump_edges']} first recreations after a deletion "
+                 f"({rc['dump_edges_with_revision']} with a stored revision); the pipeline's rule finds {rc['pipeline_edges']}, "
+                 f"{rc['overlap']} identical, {rc['dump_only']} missed, {rc['pipeline_only']} extra"
+                 + (f" ({rc['pipeline_only_after_cutoff']} after the source's cutoff)" if rc.get("cutoff") else "")
+                 + f". {rc['restored_posts']} of {rc['posts_on_recreations']} posts on those revisions restore pre-deletion text.\n")
     vfiles = sorted(run.path.glob("validation*.json"))
     if vfiles:
         summary["validation"] = {}
@@ -258,5 +281,55 @@ def build(run: RunDir, mapping: str = "merged") -> str:
              "share is a floor and the independent count a ceiling.\n"
              + identity_note +
              "- **Extraction**: rule-based on templated posts; unrestated answers (\"answered same second\") inherit the consensus value.\n"
-             "- **Inferred relay edges** link each carrier to the latest earlier carrier; they are plausible paths, not proven ones.\n")
+             "- **Inferred relay edges** link each carrier to the latest earlier carrier; they are plausible paths, not proven ones."
+             + _relay_tie_note(edges) + "\n"
+             + ("- **Deletion ends visibility, not knowledge.** D_visible treats a copy deleted before the report as never public; "
+                "an agent that read it earlier, or a copy on an uncaptured surface, is not affected, so D stays the headline.\n"
+                if "D_visible" in ex and len(ex) else "")
+             + ("- **The request log is narrow.** Only script-injection probe rows are included, with no page views, so exposure "
+                "remains inferred.\n" if run.has("probes") else ""))
     return _write(run, L, summary)
+
+
+def _clock_note(notes: dict, ex: pd.DataFrame) -> str:
+    g, pg = notes.get("clock_grades", {}), notes.get("posts_by_clock_grade", {})
+    n_posts = sum(pg.values()) or 1
+    unc = notes.get("clock_uncertainty_s") or []
+    lag = notes.get("delete_request_lag_s") or {}
+    parts = [f"Clock quality: post timestamps are the save request's wall-clock second, corroborated at grade "
+             + ", ".join(f"{k} for {v:,}" for k, v in sorted(pg.items(), key=lambda kv: -kv[1])) + f" of {n_posts:,} posts"
+             + (f" (stated uncertainty {', '.join(f'{u:g}' for u in unc)} s)" if unc else "") + "."]
+    if lag:
+        n_del = sum(lag.values())
+        one = lag.get("1", 0)
+        parts.append(f" Deletion times are the deletion's success second ({one:,} of {n_del:,} one second after the request).")
+    if len(ex) and "gap_s" in ex and ex["gap_s"].notna().any():
+        gs = ex["gap_s"].dropna()
+        parts.append(f" Minimum exposure head start {gs.min():.0f} s; {int((gs < 2).sum())} of {len(gs):,} exposed answers within the 2 s "
+                     f"summed uncertainty, {int(((gs >= 598) & (gs < 602)).sum())} within 2 s of the 10 min threshold, "
+                     f"{int(((gs >= 3598) & (gs < 3602)).sum())} within 2 s of the 1 h threshold.")
+    return "".join(parts)
+
+
+def _visibility_note(ex: pd.DataFrame) -> str:
+    exposed = ex[ex["D"] == 1]
+    gone = exposed[exposed["src_deleted_before_report"] == 1]
+    other = int((gone["D_visible"] == 1).sum())
+    n_ind, n_ind_vis = int((ex["D"] == 0).sum()), int((ex["D_visible"] == 0).sum())
+    age = (gone["t_report"] - gone["t_public"]).dt.total_seconds().div(3600)
+    since = (gone["t_report"] - pd.to_datetime(gone["t_src_deleted"], utc=True)).dt.total_seconds().div(3600)
+    return (f"Honouring deletions: {len(gone):,} of {len(exposed):,} exposed answers cite a public copy that had been deleted before "
+            f"the report (posted a median {age.median():.1f} h before it, deleted a median {since.median():.1f} h before it); "
+            f"for {other:,} another copy was still visible, for {len(gone) - other:,} "
+            f"nothing visible carried the value, so the independent count would be {n_ind_vis:,} ({_pct(n_ind_vis / len(ex))}) "
+            f"under D_visible instead of {n_ind:,} ({_pct(n_ind / len(ex))}).")
+
+
+def _relay_tie_note(edges: pd.DataFrame) -> str:
+    if not len(edges) or "within_clock_res" not in edges:
+        return ""
+    rel = edges[edges["kind"].isin(["relay", "relay_xchannel"])]
+    url = rel["family"].astype(str).str.startswith("url")
+    tie = rel["within_clock_res"].fillna(False).astype(bool)
+    return (f" {int((tie & ~url).sum()):,} of {int((~url).sum()):,} answer relay hops (and {int((tie & url).sum()):,} URL hops) "
+            f"fall within 2 s of their source and carry no reliable direction.")

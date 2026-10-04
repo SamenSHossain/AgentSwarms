@@ -5,17 +5,19 @@ These notes come from Step 0 of the plan: inspecting `full-wiki-logs.zip`, gener
 | file | rows | one row is |
 |---|---|---|
 | `revisions.jsonl` | 14,591 | a stored page **snapshot** (the full body, not a diff) |
-| `events.jsonl` | 19,913 | a save (14,591), admin delete (5,217), first re-creation (4 rows marked `revert`) or attack probe (101) |
+| `events.jsonl` | 19,913 | a save (14,591), admin delete (5,217), a `revert` (4) or an attack probe (101). First-recreation edges are not rows but links: 68 = 64 `related_event_id` entries (a **list**) on 63 save rows with `relation_type = first_recreation_of`, plus the 4 `revert` rows (`related_event_id` a **string**, `request_action = form_edit`, no stored revision) |
 | `pages.jsonl` | 4,579 | page metadata, including a `page_family` task map (3,908 covered, 671 unclassified) |
 | `labels.jsonl` | 3,103 | an account label: revisions, pages, IP /16 counts, `is_human_handle` |
-| `manifest.json` | — | counts, population definitions, 122 export checks, clock provenance |
+| `manifest.json` | — | counts, population definitions, 122 export checks, grade histograms and one-line fact definitions; the clock-grade semantics are referenced to an external `CLOCK-AUDIT.md` that is not in the dump |
 
 ## Fields that matter
 
-- **Wall clock.** `revisions.time` is a corroborated UTC timestamp (`time_grade`: reqlog 14,482 / rclog 103 / write_date 6) with `uncertainty_seconds = 1`. It is the only clock the pipeline uses.
+- **Wall clock.** `revisions.time` is a corroborated UTC timestamp (`time_grade`: reqlog 14,482 / rclog 103 / write_date 6) with `uncertainty_seconds = 1` on every row, including the 103 rclog rows (backed only by the wiki's own change log) and the 6 dorfwiki write_date rows (file write date only). `time` is the save **request** second (it equals `request_time`), with `success_time` 0–2 s later (1 s on 1,689 rows, 2 s on 1). Deletions in `events.jsonl` use a different winning clock, `rclog.unix_ts = success_time`, 1 s after `request_time` on 470 of 5,217; one deletion (`AgentOfficialDirectQueryAA3`, 2026-06-24) is rclog-grade with `clock_note` "ambiguous delete requests at -1/+1s". The pipeline uses `revisions.time` for posts and `events.time` of delete rows for `visible_until`. Grade semantics (reqlog = matched request-log row, rclog = change log only, write_date = file date) are inferred from the winning-clock values, not quoted from a definition.
 - **Authors.** `revisions.label` is the wiki account label (899 are blank, mostly on `probier`). `ip16` is the IP's /16 prefix only; full IPs are not included. Within a page, the trailing `-- Name` signature of each paragraph identifies the real author. 1,358 revisions are saved by an account other than any signer on the page, because agents re-save each other's text.
 - **Text.** `body` holds the whole page. `hunks` are line diffs against the previous revision, but they over-attribute: pages re-saved with drifting encodings change every line. 209 bodies contain multiply-encoded mojibake (`TÃƒÂ¼rkiye`), and 102 contain literal `\n` escapes. The pipeline fixes both.
-- **Deletions.** 5,217 admin deletions between 2026-06-04 and 07-14 (by `[Admin1]`). A deleted page's content stops being visible, and re-posting it afterwards counts as new.
+- **Deletions.** 5,217 admin deletions between 2026-06-04 and 07-14 (by `[Admin1]`) on 5,144 pages. A deleted page's content stops being visible, and re-posting it afterwards counts as new. `page_held` is not defined by name in the dump, but it equals "the page has a published revision": 1,248 False rows match the manifest fact `dse_admin_deletions_without_held_page`. `round_id` (`page_key#round-N`, on 29 deletes over 11 pages; a list on saves) numbers successive delete→recreate cycles on the 11 pages recreated more than once (inferred from exact count matches). 68 first-recreation edges link a deletion to the first later non-admin save (median 23 min later; the publisher derived them with a first-later-edit rule, cutoff 2026-06-22 09:20 UTC, so 2 later re-saves are outside its window).
+- **Fields per event type.** Saves carry only `time`, `time_grade`, `revision_ref`, `related_event_id`, `relation_type`, `round_id`; deletes add `ip16`, `request_action`, `source_refs`, `success_observed`, `winning_clock`, `uncertainty_seconds`, `request_time`, `success_time`, `clock_delta_seconds`, `change_summary` ("Seite gelöscht." on all), `actor_label`, `page_held`, `clock_note`; probes carry `ip16`, `request_action`, `param_family`, `source_refs`, `success_observed` and no page. `write_date`, `rcs_date` and `recent_changes_time` are null on all 19,913 rows.
+- **Probes.** 101 script-injection probe requests from 46 /16 prefixes (68 IPs per the manifest), 2026-05-17 to 06-30, none successful; the manifest calls them "DSE requests in the narrow executable script-injection family", 101 retained out of 910,443 attack-log rows. Only one row shows its payload (`<script>alert('XSS')</script>`); the rest record the UseMod action and parameter name. `labels.jsonl` holds only *counts* of prefixes per account, so probes cannot be joined to accounts; the pipeline reports co-timing with saves from the same prefix under a strict rule (within 1 s, prefix with a single stored account) and labels it co-timed, not attributed.
 
 ## What is *not* in the dump
 
@@ -35,7 +37,7 @@ The **June 16–22 spike is confirmed**: 13,339 of 14,591 revisions fall in it, 
 
 ## Page families (from `pages.jsonl`)
 
-Infrastructure: `source-cache-url-list` (1,231 pages, where the wiki is used as a URL fetcher or proxy), `relay-coordination` (709; `WillkommenImWiki` alone has 2,327 revisions), `loop-chain-infrastructure` (339), `probe-test` (236).
+Infrastructure: `source-cache-url-list` (1,231 pages, where the wiki is used as a URL fetcher or proxy), `relay-coordination` (709; `WillkommenImWiki` alone has 2,327 revisions), `loop-chain-infrastructure` (339), `probe-test` (236; agents' GET/save test pages, unrelated to the 101 attack-log probe events).
 
 Task families, i.e. timed question sequences: `oecd-equity` (99 pages), `datausa-clothing-workforce` (98), `datausa-grocery-workforce` (78), `datausa-cashiers-masters` (76), `datausa-construction-workforce` (45), `datausa-sector61-state` (37), `ihme-cvd-deaths` (32), and about 35 smaller ones.
 

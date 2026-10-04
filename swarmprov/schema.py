@@ -29,8 +29,17 @@ TABLES: dict[str, list[str]] = {
         "site",           # surface the post lives on: "dse", "paste.linuxiarz.pl", "rmn.re", ...
         "source_kind",    # adapter-specific provenance of the row: "revision", "paste", "shortener_link", ...
     ],
-    # Channel deletions / recreations (wiki admin deletions, archived rooms).
-    "lifecycle": ["channel", "ts", "action", "actor"],
+    # Channel deletions / recreations (wiki admin deletions, archived rooms).  The
+    # last five columns come from sources that record them (the wiki dump):
+    # ``related_event_id`` links a recreation to its deletion, ``revision_ref`` to
+    # the stored revision, ``page_held`` says the deleted page had a published
+    # revision, ``round_id`` numbers successive delete/recreate cycles.
+    "lifecycle": ["channel", "ts", "action", "actor", "event_id", "related_event_id", "revision_ref", "page_held", "round_id"],
+    # Request-log probes (wiki attack log): no page, an IP /16 prefix as actor.  The
+    # ``cotimed_label`` is the single stored account on that prefix when a save
+    # landed within 1 s: co-timed with, not attributed to.
+    "probes": ["probe_id", "ts", "site", "actor", "ip16", "request_action", "param_family", "success_observed",
+               "time_grade", "source_ref", "nearest_save_label", "nearest_save_dt_s", "n_labels_on_prefix", "cotimed_label"],
     # Observed reads, when the source logs them (page views, context windows).
     "reads": ["agent_raw", "ts", "channel", "event_id", "method"],
     # Roster: who the agents are and what each was asked to do, per time window
@@ -66,9 +75,12 @@ TABLES: dict[str, list[str]] = {
         "claim_id", "agent", "family", "episode", "item", "value_norm", "t_report",
         "t_public", "src_agent", "t_self_prepared", "gap_s", "D", "D_w10m", "D_w60m", "D_cons", "D_cons_w60m",
         "y_instant", "y_consensus", "consensus_value", "latency_class", "wrong_flag",
+        # visibility-aware variant: the earliest copy still visible at t_report (deleted copies skipped)
+        "t_public_visible", "D_visible", "src_deleted_before_report", "t_src_deleted",
     ],
-    # Provenance graph edges.
-    "edges": ["src", "dst", "family", "item", "value_norm", "kind", "dt_s", "event_id"],
+    # Provenance graph edges.  ``within_clock_res``: the hop is inside the summed 1 s + 1 s
+    # clock uncertainty, so its direction is not reliable.
+    "edges": ["src", "dst", "family", "item", "value_norm", "kind", "dt_s", "event_id", "within_clock_res"],
 }
 
 

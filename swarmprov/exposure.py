@@ -18,6 +18,11 @@ with a wiki timestamp.
 * ``D_cons``    the *consensus* value was public before the report.  This is the
   causal treatment: unlike D it does not depend on the agent's own answer, so
   "wrong answer => nothing matching was public" cannot manufacture an effect.
+* ``D_visible`` like D, but a copy whose channel was deleted before the report
+  (``visible_until <= t_report``) does not count: the earliest copy *still
+  readable* at report time.  Deletion ends public visibility, not knowledge an
+  agent already took, so D_visible under-counts exposure and D stays the headline;
+  ``src_deleted_before_report`` marks the D=1 rows whose first source was gone.
 """
 
 from __future__ import annotations
@@ -49,11 +54,22 @@ def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: s
         target = value_key(r.value_norm) or cv
         t_pub = src = t_self = None
         g = groups.get((r.family, r.item, target)) if target else None
+        t_vis = t_src_del = None
+        src_gone = False
         if g is not None:
             before = readable(g[g["ts"] < r.t_report], r.agent)
             others = before[before[agent_col] != r.agent]
             if len(others):
                 t_pub, src = others["ts"].iloc[0], others[agent_col].iloc[0]
+                if "visible_until" in others:
+                    vu = pd.to_datetime(others["visible_until"], utc=True, errors="coerce")
+                    still = others[vu.isna() | (vu > r.t_report)]
+                    if len(still):
+                        t_vis = still["ts"].iloc[0]
+                    src_gone = bool(pd.notna(vu.iloc[0]) and vu.iloc[0] <= r.t_report)
+                    t_src_del = vu.iloc[0] if pd.notna(vu.iloc[0]) else None
+                else:
+                    t_vis = t_pub
             own = before[before[agent_col] == r.agent]
             if len(own):
                 t_self = own["ts"].iloc[0]
@@ -89,6 +105,8 @@ def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: s
             "latency_known": int(r.latency_class is not None),
             "y_consensus": y_cons, "consensus_value": cv,
             "latency_class": r.latency_class, "wrong_flag": r.wrong_flag,
+            "t_public_visible": t_vis, "D_visible": int(t_vis is not None),
+            "src_deleted_before_report": int(src_gone), "t_src_deleted": t_src_del,
         })
     out = pd.DataFrame(rows)
     if len(out):

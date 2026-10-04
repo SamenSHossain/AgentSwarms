@@ -20,6 +20,9 @@ import pandas as pd
 
 from .identity import cohort_token
 
+# two 1 s clocks: a hop shorter than this cannot be ordered reliably
+CLOCK_RES_S = 2.0
+
 
 def relay_edges(mentions: pd.DataFrame, agent_col: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Relay trees per fact.  A new carrier's parent is the latest earlier
@@ -53,8 +56,10 @@ def relay_edges(mentions: pd.DataFrame, agent_col: str) -> tuple[pd.DataFrame, p
                 else:
                     src, src_ts, kind = origin, t_origin, "relay_xchannel"
                 depth[a] = depth[src] + 1
+                dt = (r.ts - src_ts).total_seconds()
                 edges.append({"src": src, "dst": a, "family": fam, "item": item, "value_norm": vk,
-                              "kind": kind, "dt_s": (r.ts - src_ts).total_seconds(), "event_id": r.event_id})
+                              "kind": kind, "dt_s": dt, "event_id": r.event_id,
+                              "within_clock_res": dt <= CLOCK_RES_S})  # direction not reliable inside the clock resolution
             latest_on[ch] = (a, r.ts)
         multi_rows.append({"family": fam, "item": item, "value_key": vk, "originator": origin,
                            "t0": t_origin, "n_agents": len(depth), "max_depth": max(depth.values()),

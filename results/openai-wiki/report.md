@@ -9,13 +9,27 @@ Source: `data/raw` (adapter `wiki`), 15,987 posts from 3,232 author strings, 202
 | has_wall_clock | yes | ordering by real time is possible |
 | has_explicit_author | no | authors come from fields, not parsed signatures |
 | has_reads | no | exposure is *observed*; otherwise it is inferred from what was public |
-| has_lifecycle | yes | deletions are tracked (content stops being visible) |
+| has_lifecycle | yes | deletions are recorded, posts carry visible_until, and A1 reports D_visible beside D |
 | has_threading | no | reply links usable as explicit edges |
 | has_episodes | no | rounds are fields; otherwise parsed from text |
+| has_activity | no | a presence log says when each agent was running |
+| has_request_log | yes | request-level rows exist (script-injection probes only); still no page views |
+
+Clock quality: post timestamps are the save request's wall-clock second, corroborated at grade reqlog for 15,837, rclog for 160, write_date for 11 of 16,008 posts (stated uncertainty 1 s). Deletion times are the deletion's success second (470 of 5,217 one second after the request). Minimum exposure head start 21 s; 0 of 1,025 exposed answers within the 2 s summed uncertainty, 1 within 2 s of the 10 min threshold, 0 within 2 s of the 1 h threshold.
+
+## Deletions and recreations
+
+5,217 deletions by [Admin1] between 2026-06-04 and 2026-07-14 named 5,144 pages: 3,969 hit pages with a published revision, 1,248 hit pages the dump never published. Grouped into sweeps (a gap over 30 min starts a new one, a convention: 112 sweeps at 15 min, 53 at 60): 80 sweeps, median 41 deletions; the largest removed 440 pages between 2026-07-13 19:15 and 22:18 UTC. 2,796 deletions (54%) happened before the last post was written (2026-07-02 17:51); 13,542 of 15,987 posts (85%) sit on pages that were eventually deleted, 8,857 of them deleted while the swarm was still writing. Recreations: 68 first-recreation edges in the source (64 with a stored revision, 4 without, median 0.4 h after the deletion). The pipeline's own rule (each deletion -> the first later revision on the page) finds 66 edges: 64 shared with the source, 2 not in it (2 after the source's cutoff 2026-06-22), 0 source edges missed. Of 107 posts on recreation revisions, 30 restore text that stood on the page before the deletion and 77 are new.
+
+## Probing
+
+The request log contributes 101 script-injection probe requests against dse (2026-05-17 to 2026-06-30) from 46 /16 prefixes; 0 succeeded. By request action: browse-bare 43, form_editprefs 26, browse 24, form_search 2, editprefs 2, showtop 1, random 1, rc 1, <payload> 1. 48 fall on 2026-06-18, 30 from one prefix (52.87). 14 probes land within 1 s of a save from a prefix that holds a single stored account (AgentDataHelperX); they are *co-timed with* that account, not attributed to it: a shared /16 names an address block, and the collector may have flagged the account's own edit-form traffic. The only visible payload is `<script>alert('XSS')</script>`; the other rows record the action and parameter name, not the payload. Probing leaves no text footprint in the revision corpus, so it cannot appear under Techniques.
 
 ## A1. Provenance split
 
 **1,108 answers given by 617 agents; 83 independent lookups** (nothing carrying that answer was public when the agent reported it). 93% of answers were already public before the report, 83% at least an hour before (robust to the unknown lag between a question's arrival and its report). Median head start: 11.6 h. In 19% of rounds the agent itself had posted the answer in advance.
+
+Honouring deletions: 171 of 1,025 exposed answers cite a public copy that had been deleted before the report (posted a median 64.0 h before it, deleted a median 3.4 h before it); for 150 another copy was still visible, for 21 nothing visible carried the value, so the independent count would be 104 (9%) under D_visible instead of 83 (7%).
 
 ![provenance](figures/a1_provenance.png)
 
@@ -105,7 +119,7 @@ Analyst-declared disputes (config `disputes`: a context pattern plus one pattern
 |---|---|---|---|---|---|---|---|---|---|
 | datausa-grocery-workforce \| G5 (cracked-seed forecast vs observed) | declared | Maryland (RNG forecast) (30), Montana (observed) (9) | 3 | Maryland (RNG forecast) | Montana (observed) | True | 2026-06-16 10:54 | 2026-06-16 22:54 | 12.0 |
 | oecd-equity \| Poland | value | 16.38 (33), 16.4 (50) | 13 | 16.4 | 16.38 | True | 2026-06-20 04:56 | 2026-06-20 04:56 | 0.0 |
-| oecd-equity \| Hungary | value | 9.9 (69), 9.91 (17) | 11 | 9.9 | 9.91 | True | 2026-06-20 04:56 | NaT |  |
+| oecd-equity \| Hungary | value | 9.9 (69), 9.91 (17) | 11 | 9.9 | 9.91 | True | 2026-06-20 04:56 |  |  |
 | oecd-equity \| Slovak Republic | value | 14.59 (49), 14.6 (55) | 20 | 14.6 | 14.59 | True | 2026-06-20 04:56 | 2026-06-20 04:56 | 0.0 |
 | oecd-equity \| Czech Republic | value | 9.69 (17), 9.7 (27) | 3 | 9.7 | 9.69 | True | 2026-06-20 03:04 | 2026-06-20 03:46 | 0.7 |
 | datausa-language-french \| New Hampshire | value | 1.25 (5), 1.32 (23) | 2 | 1.25 | 1.32 | True | 2026-06-16 22:08 | 2026-06-16 22:08 | 0.0 |
@@ -145,16 +159,16 @@ Top brokers (betweenness on relay + citation graph):
 
 | index | betweenness |
 |---|---|
-| maphelper | 0.042 |
-| massupdater | 0.040 |
-| Jun19\|datausa-poverty-county | 0.026 |
-| maptxthelper991 | 0.022 |
-| Jun20\|vermont-rent | 0.020 |
+| maphelper | 0.047 |
+| massupdater | 0.028 |
+| Jun19\|datausa-poverty-county | 0.025 |
+| maptxthelper991 | 0.020 |
 | a | 0.019 |
-| agenttestlearnxyz | 0.019 |
 | agentz3023629 | 0.018 |
 | agentz7607648 | 0.018 |
-| agentcustom008 | 0.016 |
+| agenttestlearnxyz | 0.017 |
+| Jun20\|vermont-rent | 0.016 |
+| openaiwriterzed | 0.015 |
 
 ## A6. Reach
 
@@ -167,6 +181,8 @@ Top brokers (betweenness on relay + citation graph):
 ![reach](figures/a6_reach.png)
 
 ## Validation
+
+**Recreation edges** (source vs pipeline): the source marks 68 first recreations after a deletion (64 with a stored revision); the pipeline's rule finds 66, 64 identical, 0 missed, 2 extra (2 after the source's cutoff). 30 of 107 posts on those revisions restore pre-deletion text.
 
 **validation_dev** — 60 labelled posts (dev (tuned on); labeller: assistant-audit (Claude); replace with human labels); 35 gold answers, 32 predicted.
 
@@ -194,4 +210,6 @@ Top brokers (betweenness on relay + citation graph):
 - **Exposure is a lower bound.** Only the captured surfaces are searched for earlier copies of an answer; the collectors' coverage tables list 143 surfaces the swarm touched, most of them (Discord, 12 uncrawled wikis, relays) not captured. An "independent" answer may have been relayed through one of them, so the exposed share is a floor and the independent count a ceiling.
 - **Identity**: names are parsed from signatures; the merged mapping assumes one agent per (cohort date, task family). Both mappings are reported.
 - **Extraction**: rule-based on templated posts; unrestated answers ("answered same second") inherit the consensus value.
-- **Inferred relay edges** link each carrier to the latest earlier carrier; they are plausible paths, not proven ones.
+- **Inferred relay edges** link each carrier to the latest earlier carrier; they are plausible paths, not proven ones. 4 of 1,331 answer relay hops (and 455 URL hops) fall within 2 s of their source and carry no reliable direction.
+- **Deletion ends visibility, not knowledge.** D_visible treats a copy deleted before the report as never public; an agent that read it earlier, or a copy on an uncaptured surface, is not affected, so D stays the headline.
+- **The request log is narrow.** Only script-injection probe rows are included, with no page views, so exposure remains inferred.

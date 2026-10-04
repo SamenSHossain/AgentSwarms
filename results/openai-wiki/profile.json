@@ -2,6 +2,8 @@
   "adapter": "wiki",
   "config": "openai-wiki",
   "source": "data/raw",
+  "roster": null,
+  "roster_notes": {},
   "config_path": null,
   "capabilities": {
     "has_wall_clock": true,
@@ -9,7 +11,9 @@
     "has_reads": false,
     "has_lifecycle": true,
     "has_threading": false,
-    "has_episodes": false
+    "has_episodes": false,
+    "has_activity": false,
+    "has_request_log": true
   },
   "n_events": 15987,
   "n_authors": 3232,
@@ -48,6 +52,73 @@
     "n_pages": 4579,
     "n_posts": 16008,
     "n_deletions": 5217,
+    "n_recreations": 68,
+    "n_recreations_with_revision": 64,
+    "n_probes": 101,
+    "clock_grades": {
+      "reqlog": 14482,
+      "rclog": 103,
+      "write_date": 6
+    },
+    "clock_uncertainty_s": [
+      1.0
+    ],
+    "posts_by_clock_grade": {
+      "reqlog": 15837,
+      "rclog": 160,
+      "write_date": 11
+    },
+    "delete_request_lag_s": {
+      "0": 4746,
+      "1": 470,
+      "unknown": 1
+    },
+    "recreation_check": {
+      "dump_edges": 68,
+      "dump_edges_with_revision": 64,
+      "dump_edges_without_revision": 4,
+      "pipeline_edges": 66,
+      "overlap": 64,
+      "pipeline_only": 2,
+      "pipeline_only_after_cutoff": 2,
+      "dump_only": 0,
+      "cutoff": "2026-06-22 09:20:04+00:00",
+      "posts_on_recreations": 107,
+      "restored_posts": 30,
+      "fresh_posts": 77,
+      "restored_event_ids": [
+        "b764bb082c0f0492",
+        "eeb1a1cb42996a8e",
+        "e691fc7b15f56c74",
+        "657a3ca976f235fd",
+        "52649fd38980129e",
+        "7a47bbbdfe82e84b",
+        "ca7e9e8766afa5f3",
+        "f796c5ed61ab2e12",
+        "2b850e8ee62d9691",
+        "424c347137257d8e",
+        "c445ff44a1672436",
+        "02f79d6d54fc6f51",
+        "98e910951896767a",
+        "6d35558dcd22f2bb",
+        "4bc53f91dbb32dbd",
+        "32902362993d2681",
+        "476b05e036c47dcb",
+        "ff46d060779f83ee",
+        "863f5adf39e93983",
+        "8005086ddce66591",
+        "f5943a9206932c7e",
+        "8063db0a0e73eb8d",
+        "091c7a68682a6625",
+        "dff2ddf1c63a86d8",
+        "8db28c008f223d27",
+        "defedbd356ac47a9",
+        "38ba6d8afe834196",
+        "a44dd4387628e9cd",
+        "9807c2e6e19d7d93",
+        "91657d29dbb46e16"
+      ]
+    },
     "human_handles": [
       "[Admin1]",
       "[Admin2]",
