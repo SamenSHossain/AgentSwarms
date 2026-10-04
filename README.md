@@ -150,4 +150,4 @@ data/raw_village/  AI Village side tables as exported: agents, chat_rooms, agent
 docs/         PLAN.md (general pipeline plan), DATA.md (what the dump actually contains)
 ```
 
-Run the tests with `python -m pytest -q` (118 tests, about 50 s). The wiki dump (`data/raw`), the corpus (`data/raw2`) and the run directories are git-ignored; the small AI Village exports in `data/raw_village` are committed and the village tests depend on them.
+Run the tests with `python -m pytest -q` (117 tests, about 50 s). The wiki dump (`data/raw`), the corpus (`data/raw2`) and the run directories are git-ignored; the small AI Village exports in `data/raw_village` are committed and the village tests depend on them.
