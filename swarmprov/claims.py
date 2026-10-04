@@ -117,7 +117,7 @@ def index_mentions(events: pd.DataFrame, families: pd.Series, agents: pd.DataFra
                     rows.append({**base, "channel": ev.channel, "family": fam, "item": item,
                                  "value_norm": norm_value(v)})
         if with_urls:
-            for u in set(URL_RE.findall(text)):
+            for u in sorted(set(URL_RE.findall(text))):   # deterministic order: set order follows the hash seed
                 u = u.rstrip(".,;")
                 dom = re.sub(r"^https?://", "", u).split("/")[0]
                 rows.append({**base, "channel": ev.channel, "family": "url", "item": dom, "value_norm": u})

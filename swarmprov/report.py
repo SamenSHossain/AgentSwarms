@@ -28,7 +28,7 @@ def md_table(df: pd.DataFrame, floatfmt: str = "{:.2f}", pct: tuple[str, ...] = 
             return str(int(v)) if float(v).is_integer() and abs(v) >= 1 and c in ("n", "episode") else floatfmt.format(v)
         if isinstance(v, pd.Timestamp):
             return v.strftime("%Y-%m-%d %H:%M")
-        return str(v).replace("|", "\\|")
+        return " ".join(str(v).split()).replace("|", "\\|")   # a line break would end the table row
 
     lines = ["| " + " | ".join(cols) + " |", "|" + "---|" * len(cols)]
     for rec in d.to_dict("records"):
@@ -45,8 +45,22 @@ def _roster_block(run: RunDir, prof: dict, summary: dict) -> list[str]:
     ev = run.read("events") if prof["n_events"] else None
     ann = run.read("roster_events") if run.has("roster_events") else None
     s = roster_mod.summary(ros, ev, ann)
-    summary["roster"] = {k: v for k, v in s.items() if not isinstance(v, pd.DataFrame)}
+    summary["roster"] = _jsonable(s)
     return roster_mod.section(s, md_table, prof.get("roster_notes", {}).get("timestamp_issues"))
+
+
+def _jsonable(obj):
+    """Nested tables as records, so summary.json never holds a truncated DataFrame repr."""
+    if isinstance(obj, pd.DataFrame):
+        return obj.reset_index().to_dict("records") if obj.index.name or not isinstance(obj.index, pd.RangeIndex) \
+            else obj.to_dict("records")
+    if isinstance(obj, pd.Series):
+        return obj.to_dict()
+    if isinstance(obj, dict):
+        return {k: _jsonable(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_jsonable(v) for v in obj]
+    return obj
 
 
 def _village_block(run: RunDir, prof: dict, summary: dict) -> list[str]:
@@ -64,9 +78,10 @@ def _village_block(run: RunDir, prof: dict, summary: dict) -> list[str]:
     notes = prof.get("notes", {})
     summaries = run.read("summaries") if run.has("summaries") else None
     digest = run.read("digest") if run.has("digest") else None
+    cfg = load_config(run)
     s = village_mod.summary(directory, channels, ev, activity, roster, notes.get("unrecognised"), eras, era_ann,
-                            notes.get("village"), load_config(run).schedule_tz, summaries, digest)
-    summary["village"] = {k: v for k, v in s.items() if not isinstance(v, pd.DataFrame)}
+                            notes.get("village"), cfg.schedule_tz, summaries, digest, cfg.family_from_roster)
+    summary["village"] = _jsonable(s)
     return village_mod.section(s, md_table)
 
 
@@ -139,11 +154,12 @@ def build(run: RunDir, mapping: str = "merged") -> str:
         # page-level deletions (the wiki dump records each with an event id); room deletions are covered in the Village block
         if len(dels) and "event_id" in dels and dels["event_id"].notna().any():
             ds = lifecycle_mod.deletion_summary(lc, run.read("events"), notes.get("recreation_check"))
-            summary["deletions"] = {k: v for k, v in ds.items() if k != "check"} | {"check": {k: v for k, v in (ds.get("check") or {}).items() if k != "restored_event_ids"}}
+            summary["deletions"] = _jsonable({k: v for k, v in ds.items() if k != "check"}
+                                             | {"check": {k: v for k, v in (ds.get("check") or {}).items() if k != "restored_event_ids"}})
             L += lifecycle_mod.deletion_section(ds, _pct)
     if run.has("probes"):
         ps = lifecycle_mod.probe_summary(run.read("probes"))
-        summary["probes"] = ps
+        summary["probes"] = _jsonable(ps)
         L += lifecycle_mod.probe_section(ps)
 
     # A1
@@ -369,5 +385,5 @@ def _relay_tie_note(edges: pd.DataFrame) -> str:
     rel = edges[edges["kind"].isin(["relay", "relay_xchannel"])]
     url = rel["family"].astype(str).str.startswith("url")
     tie = rel["within_clock_res"].fillna(False).astype(bool)
-    return (f" {int((tie & ~url).sum()):,} of {int((~url).sum()):,} answer relay hops (and {int((tie & url).sum()):,} URL hops) "
-            f"fall within 2 s of their source and carry no reliable direction.")
+    return (f" {int((tie & ~url).sum()):,} of {int((~url).sum()):,} answer relay hops (and {int((tie & url).sum()):,} of "
+            f"{int(url.sum()):,} URL hops) fall within 2 s of their source and carry no reliable direction.")

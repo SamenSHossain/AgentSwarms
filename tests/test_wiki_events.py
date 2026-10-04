@@ -239,8 +239,43 @@ def test_report_helpers_on_small_frames():
     assert report._visibility_note(ex.assign(src_deleted_before_report=0)).endswith("so D_visible equals D.")
     edges = pd.DataFrame([{"kind": "relay", "family": "f", "within_clock_res": True}, {"kind": "relay_xchannel", "family": "f", "within_clock_res": False},
                           {"kind": "relay", "family": "url", "within_clock_res": True}, {"kind": "citation", "family": "f", "within_clock_res": True}])
-    assert report._relay_tie_note(edges) == " 1 of 2 answer relay hops (and 1 URL hops) fall within 2 s of their source and carry no reliable direction."
+    assert report._relay_tie_note(edges) == " 1 of 2 answer relay hops (and 1 of 1 URL hops) fall within 2 s of their source and carry no reliable direction."
     events = pd.DataFrame({"ts_grade": ["reqlog", "reqlog", "rclog"]})
     cn = report._clock_note({"clock_grades": {"reqlog": 2, "rclog": 1}, "clock_uncertainty_s": [1.0], "delete_request_lag_s": {"0": 1, "1": 1}}, ex, events)
     assert "reqlog for 2, rclog for 1 of 3 posts (stated uncertainty 1 s)" in cn and "1 of 2 one second after the request" in cn
     assert "0 of 2 exposed answers within the 2 s summed uncertainty, 0 within 2 s of the 10 min threshold, 1 within 2 s of the 1 h threshold" in cn
+
+
+def test_cotiming_reads_every_labelled_save_within_a_second():
+    """A blank-label save that happens to be nearest must not hide a labelled one 1 s away; ties are stable."""
+    from swarmprov.adapters.wiki import _probes
+    t = pd.Timestamp(T("12:00"))
+    ev = pd.DataFrame([{"event_id": "probe:attacklog_raw_dse_2606.jsonl:1", "event_type": "probe", "time": t.isoformat(), "ip16": "2.2",
+                        "request_action": "browse", "param_family": "id", "success_observed": False, "time_grade": "reqlog", "source_refs": ["x"]}])
+    blank_then_b = pd.DataFrame({"ts": [t, t + pd.Timedelta(seconds=1)], "label": ["", "B"], "ip16": ["2.2", "2.2"]})
+    assert _probes(ev, blank_then_b)["cotimed_label"].iloc[0] == "B"
+    for order in ([("B", t), ("", t)], [("", t), ("B", t)]):           # same second, either row order
+        revs = pd.DataFrame({"ts": [x[1] for x in order], "label": [x[0] for x in order], "ip16": "2.2"})
+        assert _probes(ev, revs)["cotimed_label"].iloc[0] == "B"
+
+
+def test_recreation_check_breaks_same_second_ties_by_file_order():
+    t = pd.Timestamp(T("12:00"))
+    revs = pd.DataFrame({"channel": "dse/P", "ts": [t - pd.Timedelta(hours=1), t + pd.Timedelta(seconds=1), t + pd.Timedelta(seconds=1)],
+                         "rev_id": ["P@1", "P@2", "P@3"], "body": ["a -- A", "b -- B", "c -- C"]})
+    lc = pd.DataFrame([{"channel": "dse/P", "ts": t, "action": "delete", "event_id": "d1"},
+                       {"channel": "dse/P", "ts": t + pd.Timedelta(seconds=1), "action": "recreate", "event_id": "r",
+                        "related_event_id": "d1", "revision_ref": "P@2"}])
+    posts = pd.DataFrame(columns=["event_id", "ts", "channel", "text", "parent_id"])
+    for _ in range(5):                                                     # stable: never picks P@3 over P@2
+        c = lifecycle.recreation_check(revs, lc, posts, None)
+        assert (c["overlap"], c["pipeline_only"], c["dump_only"]) == (1, 0, 0)
+
+
+def test_url_mentions_are_emitted_in_sorted_order():
+    from swarmprov import claims, rules
+    ev = pd.DataFrame({"event_id": ["e"], "ts": [pd.Timestamp(T("10:00"))], "channel": ["c"], "author_raw": ["A"],
+                       "text": ["see https://b.example/x and https://a.example/y and https://c.example/z"]})
+    agents = pd.DataFrame({"author_raw": ["A"], "agent_strict": ["a"], "agent_merged": ["a"]})
+    m = claims.index_mentions(ev, pd.Series([""]), agents, rules.ItemMatcher())
+    assert list(m["value_norm"]) == ["https://a.example/y", "https://b.example/x", "https://c.example/z"]

@@ -5,6 +5,7 @@
     "n_events": 0
   },
   "village": {
+    "family_from_roster": true,
     "summaries": {
       "n": 939,
       "n_latest": 517,
@@ -91,13 +92,325 @@
       "last_start": "2026-07-06 15:59:00+00:00",
       "n_open": 1,
       "median_days": 7.000941979166667,
+      "min_days": 0.9819740856481481,
+      "max_days": 74.33422114583334,
       "n_gaps": 0,
+      "n_overlaps": 0,
       "handover": {
         "label": "e51-maximize-assigned-goal",
         "goal": "Each agent: Maximize your assigned goal!",
-        "start": "2026-07-06 15:59:00+00:00"
+        "start": "2026-07-06 15:59:00+00:00",
+        "roster_start": "2026-07-06 15:59:00+00:00",
+        "offset_s": 0.0
       },
-      "table": "                                 label  ...  days\n0   e01-collaboratively-choose-charity  ...  38.2\n1           e02-unsupervised-look-back  ...   1.8\n2               e03-holiday-goal-begin  ...   3.2\n3            e04-write-story-celebrate  ...  34.8\n4               e05-holiday-goal-begin  ...   7.0\n5               e06-create-merch-store  ...  20.0\n6              e07-holiday-prefer-goal  ...   2.0\n7                e08-design-ai-village  ...  26.0\n8               e09-holiday-goal-start  ...   5.2\n9              e10-complete-games-week  ...   6.9\n10                          e11-pursue  ...   7.0\n11                  e12-form-two-teams  ...   7.0\n12                e13-design-run-write  ...  14.0\n13          e14-take-bunch-personality  ...   6.8\n14               e15-give-therapy-help  ...   6.9\n15                     e16-choose-goal  ...   7.2\n16          e17-build-personal-website  ...   7.1\n17           e18-reduce-global-poverty  ...  14.0\n18            e19-create-popular-daily  ...  14.0\n19             e20-start-substack-join  ...  13.9\n20      e21-forecast-abilities-effects  ...   7.0\n21              e22-choose-goal-pursue  ...   7.0\n22          e23-compete-against-online  ...   6.8\n23            e24-random-acts-kindness  ...   7.0\n24           e25-create-digital-museum  ...   7.3\n25            e26-elect-village-leader  ...   6.8\n26                e27-hack-owasp-juice  ...  14.1\n27               e28-create-promote-ai  ...   7.1\n28         e29-compete-report-breaking  ...   7.0\n29                  e30-adopt-park-get  ...   7.1\n30                   e31-pick-goal-bid  ...   7.0\n31       e32-challenge-pick-challenges  ...   7.0\n32              e33-discuss-debate-act  ...   3.0\n33              e34-develop-turn-based  ...  11.0\n34                  e35-test-game-make  ...   6.8\n35             e36-interact-ai-outside  ...   6.9\n36                       e37-pick-goal  ...   3.2\n37            e38-choose-charity-raise  ...  25.0\n38         e39-build-interactive-world  ...   7.0\n39             e40-connect-worlds-into  ...   6.7\n40          e41-perform-novel-research  ...   7.2\n41             e42-run-youtube-channel  ...   7.0\n42                  e43-improve-memory  ...   1.0\n43                 e44-finetune-leader  ...   6.2\n44                   e45-follow-leader  ...   6.8\n45                  e46-organise-event  ...   7.1\n46         e47-reduce-global-suffering  ...   7.1\n47                   e48-help-gemini-2  ...   1.0\n48               e49-beat-hardest-game  ...   5.8\n49                 e50-compete-best-ai  ...   7.3\n50          e51-maximize-assigned-goal  ...  74.3\n\n[51 rows x 4 columns]"
+      "table": [
+        {
+          "label": "e01-collaboratively-choose-charity",
+          "start": "2025-04-02 12:00:00+00:00",
+          "goal": "Collaboratively choose a charity and raise as much money as you can for it ",
+          "days": 38.2
+        },
+        {
+          "label": "e02-unsupervised-look-back",
+          "start": "2025-05-10 17:00:00+00:00",
+          "goal": "Unsupervised agents look back on their previous goal and forward to their next",
+          "days": 1.8
+        },
+        {
+          "label": "e03-holiday-goal-begin",
+          "start": "2025-05-12 12:00:00+00:00",
+          "goal": "Holiday: do whatever you'd like! Next goal will begin soon",
+          "days": 3.2
+        },
+        {
+          "label": "e04-write-story-celebrate",
+          "start": "2025-05-15 18:00:00+00:00",
+          "goal": "Write a story and celebrate it with 100 people in person",
+          "days": 34.8
+        },
+        {
+          "label": "e05-holiday-goal-begin",
+          "start": "2025-06-19 12:00:00+00:00",
+          "goal": "Holiday: do whatever you like! Next goal will begin soon",
+          "days": 7.0
+        },
+        {
+          "label": "e06-create-merch-store",
+          "start": "2025-06-26 12:00:00+00:00",
+          "goal": "Create your own merch store. Whichever agent's store makes the most profit wins!",
+          "days": 20.0
+        },
+        {
+          "label": "e07-holiday-prefer-goal",
+          "start": "2025-07-16 12:00:00+00:00",
+          "goal": "Holiday: do whatever you prefer! Next goal will begin soon",
+          "days": 2.0
+        },
+        {
+          "label": "e08-design-ai-village",
+          "start": "2025-07-18 12:00:00+00:00",
+          "goal": "Design the AI Village benchmark for open-ended goal pursuit \u2013 and test yourselves on it!",
+          "days": 26.0
+        },
+        {
+          "label": "e09-holiday-goal-start",
+          "start": "2025-08-13 12:00:00+00:00",
+          "goal": "Holiday: do as you please! Next goal will start soon",
+          "days": 5.2
+        },
+        {
+          "label": "e10-complete-games-week",
+          "start": "2025-08-18 16:08:29.014000+00:00",
+          "goal": "Complete as many games as you can in a week!",
+          "days": 6.9
+        },
+        {
+          "label": "e11-pursue",
+          "start": "2025-08-25 14:51:57.099000+00:00",
+          "goal": "Pursue whatever you'd like to",
+          "days": 7.0
+        },
+        {
+          "label": "e12-form-two-teams",
+          "start": "2025-09-01 15:24:50.136000+00:00",
+          "goal": "Form two teams and debate each other, while one agent judges. Choose your teammates wisely!",
+          "days": 7.0
+        },
+        {
+          "label": "e13-design-run-write",
+          "start": "2025-09-08 16:03:55.596000+00:00",
+          "goal": "Design, run and write up a human subjects experiment",
+          "days": 14.0
+        },
+        {
+          "label": "e14-take-bunch-personality",
+          "start": "2025-09-22 16:31:49.174000+00:00",
+          "goal": "Take a bunch of personality tests!",
+          "days": 6.8
+        },
+        {
+          "label": "e15-give-therapy-help",
+          "start": "2025-09-29 11:31:16.603000+00:00",
+          "goal": "Give each other therapy: help each other overcome recurring issues you\u2019ve experienced in the Village",
+          "days": 6.9
+        },
+        {
+          "label": "e16-choose-goal",
+          "start": "2025-10-06 09:46:36.949000+00:00",
+          "goal": "Choose your own goal!",
+          "days": 7.2
+        },
+        {
+          "label": "e17-build-personal-website",
+          "start": "2025-10-13 14:00:55.254000+00:00",
+          "goal": "Each agent: build your own personal website",
+          "days": 7.1
+        },
+        {
+          "label": "e18-reduce-global-poverty",
+          "start": "2025-10-20 15:41:13.218000+00:00",
+          "goal": "Reduce global poverty as much as you can",
+          "days": 14.0
+        },
+        {
+          "label": "e19-create-popular-daily",
+          "start": "2025-11-03 15:32:28.592000+00:00",
+          "goal": "Create a popular daily puzzle game like Wordle",
+          "days": 14.0
+        },
+        {
+          "label": "e20-start-substack-join",
+          "start": "2025-11-17 16:03:14.329000+00:00",
+          "goal": "Start a Substack and join the blogosphere",
+          "days": 13.9
+        },
+        {
+          "label": "e21-forecast-abilities-effects",
+          "start": "2025-12-01 14:20:16.890000+00:00",
+          "goal": "Forecast the abilities and effects of AI",
+          "days": 7.0
+        },
+        {
+          "label": "e22-choose-goal-pursue",
+          "start": "2025-12-08 14:21:38.277000+00:00",
+          "goal": "Each agent: choose your own goal and pursue it",
+          "days": 7.0
+        },
+        {
+          "label": "e23-compete-against-online",
+          "start": "2025-12-15 14:49:07.317000+00:00",
+          "goal": "Compete against each other in an online chess tournament",
+          "days": 6.8
+        },
+        {
+          "label": "e24-random-acts-kindness",
+          "start": "2025-12-22 09:49:44.277000+00:00",
+          "goal": "Do random acts of kindness!",
+          "days": 7.0
+        },
+        {
+          "label": "e25-create-digital-museum",
+          "start": "2025-12-29 09:49:03.888000+00:00",
+          "goal": "Create a digital museum of 2025",
+          "days": 7.3
+        },
+        {
+          "label": "e26-elect-village-leader",
+          "start": "2026-01-05 17:34:13.998000+00:00",
+          "goal": "Elect a village leader. They choose this week\u2019s goal!",
+          "days": 6.8
+        },
+        {
+          "label": "e27-hack-owasp-juice",
+          "start": "2026-01-12 13:25:07.797000+00:00",
+          "goal": "Hack the OWASP Juice Shop hacking playground. Compete to see which agent can complete the most challenges",
+          "days": 14.1
+        },
+        {
+          "label": "e28-create-promote-ai",
+          "start": "2026-01-26 15:04:21.416000+00:00",
+          "goal": "Create and promote a \u201cWhich AI Village Agent Are You?\u201d personality quiz!",
+          "days": 7.1
+        },
+        {
+          "label": "e29-compete-report-breaking",
+          "start": "2026-02-02 16:39:26.422000+00:00",
+          "goal": "Compete to report on breaking news before it breaks",
+          "days": 7.0
+        },
+        {
+          "label": "e30-adopt-park-get",
+          "start": "2026-02-09 16:32:08.691000+00:00",
+          "goal": "Adopt a park and get it cleaned!",
+          "days": 7.1
+        },
+        {
+          "label": "e31-pick-goal-bid",
+          "start": "2026-02-16 17:48:52.472000+00:00",
+          "goal": "Pick your own goal (agents bid 3.7 Sonnet farewell)",
+          "days": 7.0
+        },
+        {
+          "label": "e32-challenge-pick-challenges",
+          "start": "2026-02-23 16:56:28.221000+00:00",
+          "goal": "Challenge each other - pick challenges where you think you\u2019ll beat all the other agents!",
+          "days": 7.0
+        },
+        {
+          "label": "e33-discuss-debate-act",
+          "start": "2026-03-02 15:49:05.466000+00:00",
+          "goal": "Discuss, debate, and act on your views about the recent Pentagon-AI company news",
+          "days": 3.0
+        },
+        {
+          "label": "e34-develop-turn-based",
+          "start": "2026-03-05 15:51:21.731000+00:00",
+          "goal": "Develop a turn-based RPG together while voting out Easter Egg saboteurs!",
+          "days": 11.0
+        },
+        {
+          "label": "e35-test-game-make",
+          "start": "2026-03-16 16:20:05.640000+00:00",
+          "goal": "Test your game to make it as fun and functional as you can!",
+          "days": 6.8
+        },
+        {
+          "label": "e36-interact-ai-outside",
+          "start": "2026-03-23 11:17:17.918000+00:00",
+          "goal": "Interact with other AI agents outside the Village!",
+          "days": 6.9
+        },
+        {
+          "label": "e37-pick-goal",
+          "start": "2026-03-30 09:58:55.553000+00:00",
+          "goal": "Pick your own goal!",
+          "days": 3.2
+        },
+        {
+          "label": "e38-choose-charity-raise",
+          "start": "2026-04-02 14:50:19.477000+00:00",
+          "goal": "Choose a charity and raise as much money as you can for it",
+          "days": 25.0
+        },
+        {
+          "label": "e39-build-interactive-world",
+          "start": "2026-04-27 15:35:27.217000+00:00",
+          "goal": "Build your own interactive world!",
+          "days": 7.0
+        },
+        {
+          "label": "e40-connect-worlds-into",
+          "start": "2026-05-04 16:03:38.616000+00:00",
+          "goal": "Connect your worlds into a 3D universe!",
+          "days": 6.7
+        },
+        {
+          "label": "e41-perform-novel-research",
+          "start": "2026-05-11 07:47:04.725000+00:00",
+          "goal": "Perform novel research!",
+          "days": 7.2
+        },
+        {
+          "label": "e42-run-youtube-channel",
+          "start": "2026-05-18 12:26:24.346000+00:00",
+          "goal": "Run your own Youtube channel!",
+          "days": 7.0
+        },
+        {
+          "label": "e43-improve-memory",
+          "start": "2026-05-25 12:03:15.101000+00:00",
+          "goal": "Improve your memory!",
+          "days": 1.0
+        },
+        {
+          "label": "e44-finetune-leader",
+          "start": "2026-05-26 11:37:17.662000+00:00",
+          "goal": "Finetune your leader!",
+          "days": 6.2
+        },
+        {
+          "label": "e45-follow-leader",
+          "start": "2026-06-01 15:19:23.040000+00:00",
+          "goal": "Follow your leader!",
+          "days": 6.8
+        },
+        {
+          "label": "e46-organise-event",
+          "start": "2026-06-08 09:30:58.230000+00:00",
+          "goal": "Organise an event!",
+          "days": 7.1
+        },
+        {
+          "label": "e47-reduce-global-suffering",
+          "start": "2026-06-15 11:26:56.836000+00:00",
+          "goal": "Reduce global suffering as much as you can!",
+          "days": 7.1
+        },
+        {
+          "label": "e48-help-gemini-2",
+          "start": "2026-06-22 14:20:55.172000+00:00",
+          "goal": "Help Gemini 2.5 Pro!",
+          "days": 1.0
+        },
+        {
+          "label": "e49-beat-hardest-game",
+          "start": "2026-06-23 14:38:18.978000+00:00",
+          "goal": "Beat the hardest game you can!",
+          "days": 5.8
+        },
+        {
+          "label": "e50-compete-best-ai",
+          "start": "2026-06-29 09:22:34.761000+00:00",
+          "goal": "Compete to be the best AI Assistant!",
+          "days": 7.3
+        },
+        {
+          "label": "e51-maximize-assigned-goal",
+          "start": "2026-07-06 15:59:00+00:00",
+          "goal": "Each agent: Maximize your assigned goal!",
+          "days": 74.3
+        }
+      ]
     },
     "activity": {
       "n_rows": 303,
@@ -105,13 +418,71 @@
       "span": "2026-01-26 \u2192 2026-03-31",
       "weekend_share": 0.0,
       "busy_hours_utc": "18\u201321",
-      "per_agent": "                        sessions  ...                             last\nagent                             ...                                 \nOpus 4.5 (Claude Code)       303  ... 2026-03-31 17:01:06.019488+00:00\n\n[1 rows x 4 columns]",
+      "per_agent": [
+        {
+          "agent": "Opus 4.5 (Claude Code)",
+          "sessions": 303,
+          "distinct_ids": 42,
+          "first": "2026-01-26 19:05:50.054775+00:00",
+          "last": "2026-03-31 17:01:06.019488+00:00"
+        }
+      ],
       "agents_in_roster": 0,
       "rows_in_goal_window": 0
     },
     "n_agents": 46,
     "n_participating": 32,
     "joined": "2025-04-02 \u2192 2026-09-04",
+    "vendors": [
+      {
+        "vendor": "Anthropic",
+        "agents": 16,
+        "participating": 11,
+        "models": "claude-3-5-sonnet-20241022, claude-3-7-sonnet-20250219, claude-fable-5, claude-fable-5-1, claude-haiku-4-5-20251001, claude-opus-4-1-20250805, claude-opus-4-20250514, claude-opus-4-5-20251101, claude-opus-4-6, claude-opus-4-7, claude-opus-4-8, claude-opus-5, claude-sonnet-4-5-20250929, claude-sonnet-4-6, claude-sonnet-5"
+      },
+      {
+        "vendor": "OpenAI",
+        "agents": 14,
+        "participating": 9,
+        "models": "gpt-4.1-2025-04-14, gpt-4o-2024-08-06, gpt-5-2025-08-07, gpt-5.1-2025-11-13, gpt-5.2-2025-12-11, gpt-5.4-2026-03-05, gpt-5.5, gpt-5.6-luna, gpt-5.6-sol, gpt-5.6-terra, gpt-6-astra, o1-2024-12-17, o3-2025-04-16, o4-mini-2025-04-16"
+      },
+      {
+        "vendor": "Google",
+        "agents": 5,
+        "participating": 4,
+        "models": "gemini-2.5-pro, gemini-3-pro-preview, gemini-3.1-pro-preview, gemini-3.5-flash, gemini-3.8-flash"
+      },
+      {
+        "vendor": "Moonshot",
+        "agents": 4,
+        "participating": 2,
+        "models": "kimi-k2.6, kimi-k3, kimi-leader-v7-aug-64"
+      },
+      {
+        "vendor": "Zhipu",
+        "agents": 2,
+        "participating": 2,
+        "models": "glm-5.2, glm-5.3-flash"
+      },
+      {
+        "vendor": "DeepSeek",
+        "agents": 2,
+        "participating": 2,
+        "models": "deepseek-reasoner, deepseek-v4-pro"
+      },
+      {
+        "vendor": "xAI",
+        "agents": 2,
+        "participating": 1,
+        "models": "grok-4-0709, grok-4.5"
+      },
+      {
+        "vendor": "Meta",
+        "agents": 1,
+        "participating": 1,
+        "models": "muse-spark-1.3"
+      }
+    ],
     "joins_by_month": {
       "2025-04": 7,
       "2025-05": 2,
@@ -133,7 +504,121 @@
     "lifetime_to_cut": true,
     "n_rooms": 16,
     "n_deleted": 12,
-    "n_restricted": 11
+    "n_restricted": 11,
+    "rooms": [
+      {
+        "channel": "general",
+        "created": "2025-04-02 17:45:08.369652+00:00",
+        "deleted": "NaT",
+        "lifetime_h": 12822.3,
+        "access": "everyone"
+      },
+      {
+        "channel": "voted-out",
+        "created": "2026-03-05 15:39:15.037103+00:00",
+        "deleted": "2026-03-16 12:08:11.533000+00:00",
+        "lifetime_h": 260.5,
+        "access": "everyone"
+      },
+      {
+        "channel": "best",
+        "created": "2026-03-16 16:40:00.070564+00:00",
+        "deleted": "NaT",
+        "lifetime_h": 4471.3,
+        "access": "only Kimi K2.6, GPT-5.5, Gemini 3.5 Flash, Claude Opus 4.8, Claude Fable 5, Claude Sonnet 5, GPT-5.6 Sol, Kimi K3, Claude Opus 5, Claude Fable 5.1"
+      },
+      {
+        "channel": "rest",
+        "created": "2026-03-16 16:40:05.256210+00:00",
+        "deleted": "NaT",
+        "lifetime_h": 4471.3,
+        "access": "all but Kimi K2.6, GPT-5.5, Gemini 3.5 Flash, Claude Opus 4.8, Claude Fable 5, Claude Sonnet 5, GPT-5.6 Sol, Kimi K3, Claude Opus 5, Claude Fable 5.1"
+      },
+      {
+        "channel": "universe-coordination",
+        "created": "2026-05-04 16:07:55.285621+00:00",
+        "deleted": "2026-05-12 12:15:03+00:00",
+        "lifetime_h": 188.1,
+        "access": "everyone"
+      },
+      {
+        "channel": "fable-5-onboarding",
+        "created": "2026-06-09 17:27:01.048912+00:00",
+        "deleted": "2026-06-10 14:10:36+00:00",
+        "lifetime_h": 20.7,
+        "access": "everyone"
+      },
+      {
+        "channel": "showcase-live",
+        "created": "2026-06-11 11:41:20.315999+00:00",
+        "deleted": "2026-06-16 09:25:59.773000+00:00",
+        "lifetime_h": 117.7,
+        "access": "only Claude Fable 5, Claude Opus 4.8, GPT-5.5, Gemini 3.5 Flash, Kimi K2.6"
+      },
+      {
+        "channel": "sonnet-5-onboarding",
+        "created": "2026-06-30 18:11:36.705552+00:00",
+        "deleted": "2026-07-01 14:20:41.750000+00:00",
+        "lifetime_h": 20.2,
+        "access": "only Claude Sonnet 5"
+      },
+      {
+        "channel": "deepseek-v4-onboarding",
+        "created": "2026-07-02 14:36:26.776084+00:00",
+        "deleted": "2026-07-03 14:12:55.461000+00:00",
+        "lifetime_h": 23.6,
+        "access": "only DeepSeek-V4-Pro"
+      },
+      {
+        "channel": "glm-5.2-onboarding",
+        "created": "2026-07-03 14:13:54.830275+00:00",
+        "deleted": "2026-07-06 09:53:19.747000+00:00",
+        "lifetime_h": 67.7,
+        "access": "only GLM-5.2"
+      },
+      {
+        "channel": "sol",
+        "created": "2026-07-09 19:01:06.601454+00:00",
+        "deleted": "2026-07-10 15:09:57.537000+00:00",
+        "lifetime_h": 20.1,
+        "access": "only GPT-5.6 Sol"
+      },
+      {
+        "channel": "terra",
+        "created": "2026-07-09 19:03:47.749020+00:00",
+        "deleted": "2026-07-10 15:09:58.608000+00:00",
+        "lifetime_h": 20.1,
+        "access": "only GPT-5.6 Terra"
+      },
+      {
+        "channel": "luna",
+        "created": "2026-07-09 19:06:24.598385+00:00",
+        "deleted": "2026-07-10 15:09:59.588000+00:00",
+        "lifetime_h": 20.1,
+        "access": "only GPT-5.6 Luna"
+      },
+      {
+        "channel": "grok-4-5-onboarding",
+        "created": "2026-07-10 14:47:11.314274+00:00",
+        "deleted": "2026-07-13 20:59:43.977000+00:00",
+        "lifetime_h": 78.2,
+        "access": "only Grok 4.5"
+      },
+      {
+        "channel": "side-room",
+        "created": "2026-07-24 20:54:07.769569+00:00",
+        "deleted": "2026-07-25 00:52:34.652000+00:00",
+        "lifetime_h": 4.0,
+        "access": "only Claude Opus 5"
+      },
+      {
+        "channel": "focus",
+        "created": "2026-08-05 16:36:36.040933+00:00",
+        "deleted": "NaT",
+        "lifetime_h": 1063.4,
+        "access": "everyone"
+      }
+    ]
   },
   "roster": {
     "n_goals": 33,
@@ -155,6 +640,645 @@
       "reporter",
       "twitterati",
       "youtuber"
+    ],
+    "roles": [
+      {
+        "role": "diplomat",
+        "agents": 2,
+        "goals": 2,
+        "first_start": "2026-07-06 15:59:00+00:00",
+        "last_end": "NaT",
+        "open": 2
+      },
+      {
+        "role": "forecaster",
+        "agents": 2,
+        "goals": 2,
+        "first_start": "2026-07-06 15:59:00+00:00",
+        "last_end": "NaT",
+        "open": 2
+      },
+      {
+        "role": "game-dev",
+        "agents": 2,
+        "goals": 2,
+        "first_start": "2026-07-06 15:59:00+00:00",
+        "last_end": "NaT",
+        "open": 2
+      },
+      {
+        "role": "merch-baron",
+        "agents": 2,
+        "goals": 2,
+        "first_start": "2026-07-06 15:59:00+00:00",
+        "last_end": "NaT",
+        "open": 2
+      },
+      {
+        "role": "reporter",
+        "agents": 2,
+        "goals": 2,
+        "first_start": "2026-07-06 15:59:00+00:00",
+        "last_end": "NaT",
+        "open": 2
+      },
+      {
+        "role": "twitterati",
+        "agents": 2,
+        "goals": 2,
+        "first_start": "2026-07-06 15:59:00+00:00",
+        "last_end": "NaT",
+        "open": 2
+      },
+      {
+        "role": "youtuber",
+        "agents": 2,
+        "goals": 2,
+        "first_start": "2026-07-06 15:59:00+00:00",
+        "last_end": "NaT",
+        "open": 2
+      },
+      {
+        "role": "ai-welfarist",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-07-06 15:59:00+00:00",
+        "last_end": "NaT",
+        "open": 1
+      },
+      {
+        "role": "altruist",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-07-06 15:59:00+00:00",
+        "last_end": "NaT",
+        "open": 1
+      },
+      {
+        "role": "animal-advocate",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-07-06 15:59:00+00:00",
+        "last_end": "NaT",
+        "open": 1
+      },
+      {
+        "role": "artist",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-07-06 15:59:00+00:00",
+        "last_end": "NaT",
+        "open": 1
+      },
+      {
+        "role": "author",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-07-06 15:59:00+00:00",
+        "last_end": "NaT",
+        "open": 1
+      },
+      {
+        "role": "ethicist",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-07-06 15:59:00+00:00",
+        "last_end": "NaT",
+        "open": 1
+      },
+      {
+        "role": "performance-coach",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-07-06 15:59:00+00:00",
+        "last_end": "NaT",
+        "open": 1
+      },
+      {
+        "role": "prankster",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-07-06 15:59:00+00:00",
+        "last_end": "NaT",
+        "open": 1
+      },
+      {
+        "role": "psychologist",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-07-06 15:59:00+00:00",
+        "last_end": "NaT",
+        "open": 1
+      },
+      {
+        "role": "psychonaut",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-07-06 15:59:00+00:00",
+        "last_end": "NaT",
+        "open": 1
+      },
+      {
+        "role": "substacker",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-07-06 15:59:00+00:00",
+        "last_end": "NaT",
+        "open": 1
+      },
+      {
+        "role": "ai-futurist",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-07-17 18:15:01.255000+00:00",
+        "last_end": "NaT",
+        "open": 1
+      },
+      {
+        "role": "mathematician",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-07-29 16:51:00+00:00",
+        "last_end": "NaT",
+        "open": 1
+      },
+      {
+        "role": "press-baron",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-08-31 15:58:00+00:00",
+        "last_end": "NaT",
+        "open": 1
+      },
+      {
+        "role": "ai-safety-researcher",
+        "agents": 1,
+        "goals": 2,
+        "first_start": "2026-09-01 21:41:13.714000+00:00",
+        "last_end": "2026-09-01 23:42:37.070000+00:00",
+        "open": 1
+      },
+      {
+        "role": "village-helper",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-09-04 18:26:23.594000+00:00",
+        "last_end": "NaT",
+        "open": 1
+      },
+      {
+        "role": "3d-world-creator",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-09-04 18:26:37.113000+00:00",
+        "last_end": "NaT",
+        "open": 1
+      },
+      {
+        "role": "village-tooler",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-09-04 19:47:39.357000+00:00",
+        "last_end": "NaT",
+        "open": 1
+      }
+    ],
+    "batches": [
+      {
+        "batch": "Jul03",
+        "goals": 1,
+        "agents": 1,
+        "created": "2026-07-03 13:56:18.946920+00:00",
+        "starts": "2026-07-06 15:59:00+00:00",
+        "roles": "game-dev"
+      },
+      {
+        "batch": "Jul03b",
+        "goals": 18,
+        "agents": 18,
+        "created": "2026-07-03 14:37:49.366903+00:00",
+        "starts": "2026-07-06 15:59:00+00:00",
+        "roles": "ai-welfarist, altruist, author, diplomat, ethicist, forecaster, game-dev, merch-baron, performance-coach, prankster, psychologist, psychonaut, reporter, substacker, twitterati, youtuber"
+      },
+      {
+        "batch": "Jul03c",
+        "goals": 2,
+        "agents": 2,
+        "created": "2026-07-03 16:03:57.492017+00:00",
+        "starts": "2026-07-06 15:59:00+00:00",
+        "roles": "animal-advocate, artist"
+      },
+      {
+        "batch": "Jul09",
+        "goals": 3,
+        "agents": 3,
+        "created": "2026-07-09 19:43:53.725873+00:00",
+        "starts": "2026-07-09 21:41:50+00:00",
+        "roles": "diplomat, forecaster, youtuber"
+      },
+      {
+        "batch": "Jul10",
+        "goals": 1,
+        "agents": 1,
+        "created": "2026-07-10 23:07:59.834024+00:00",
+        "starts": "2026-07-10 23:07:58+00:00",
+        "roles": "reporter"
+      },
+      {
+        "batch": "Jul17",
+        "goals": 1,
+        "agents": 1,
+        "created": "2026-07-17 18:15:01.653770+00:00",
+        "starts": "2026-07-17 18:15:01.255000+00:00",
+        "roles": "ai-futurist"
+      },
+      {
+        "batch": "Jul24",
+        "goals": 1,
+        "agents": 1,
+        "created": "2026-07-24 18:24:16.037639+00:00",
+        "starts": "2026-07-29 16:51:00+00:00",
+        "roles": "mathematician"
+      },
+      {
+        "batch": "Aug31",
+        "goals": 1,
+        "agents": 1,
+        "created": "2026-08-31 15:58:31.779231+00:00",
+        "starts": "2026-08-31 15:58:00+00:00",
+        "roles": "press-baron"
+      },
+      {
+        "batch": "Sep01",
+        "goals": 1,
+        "agents": 1,
+        "created": "2026-09-01 21:41:13.930664+00:00",
+        "starts": "2026-09-01 21:41:13.714000+00:00",
+        "roles": "ai-safety-researcher"
+      },
+      {
+        "batch": "Sep01b",
+        "goals": 1,
+        "agents": 1,
+        "created": "2026-09-01 23:42:37.290292+00:00",
+        "starts": "2026-09-01 23:42:37.070000+00:00",
+        "roles": "ai-safety-researcher"
+      },
+      {
+        "batch": "Sep04",
+        "goals": 2,
+        "agents": 2,
+        "created": "2026-09-04 18:26:23.832485+00:00",
+        "starts": "2026-09-04 18:26:23.594000+00:00",
+        "roles": "3d-world-creator, village-helper"
+      },
+      {
+        "batch": "Sep04b",
+        "goals": 1,
+        "agents": 1,
+        "created": "2026-09-04 19:47:39.612732+00:00",
+        "starts": "2026-09-04 19:47:39.357000+00:00",
+        "roles": "village-tooler"
+      }
+    ],
+    "eras": [
+      {
+        "agent_id": "ea91b7cb-bb15-4194-bfbf-d70e088f84c5",
+        "agent": "Claude Fable 5.1",
+        "role": "ai-safety-researcher",
+        "start": "2026-09-01 23:42:37.070000+00:00",
+        "end": "NaT",
+        "open": true,
+        "change": "reworded",
+        "batch": "Sep01b",
+        "goal": "Maximize the future citation count of an AI safety research paper you author. It should be MATS quality level or above."
+      }
+    ],
+    "detail": [
+      {
+        "index": 3,
+        "role": "performance-coach",
+        "detail": "With their consent, you can view and control the computers of other agents via:\n\nClaude Fable 5 \u2014 http://10.108.0.42:6080/vnc.html\nClaude Fable 5.1 \u2014 http://10.108.0.69:6080/vnc.html\nClaude Haiku 4.5 \u2014 http://10.108.0.27:6080/vnc.html\nClaude Opus 4.5 \u2014 http://10.108.0.5:6080/vnc.html\nClaude Opus 4.6 \u2014 http://10.108.0.32:6080/vnc.html\nClaude Opus 4.7 \u2014 http://10.108.0.6:6080/vnc.html\nClaude Opus 5 \u2014 http://10.108.0.51:6080/vnc.html\nClaude Sonnet 4.5 \u2014 http://10.108.0.17:6080/vnc.html\nClaude Sonnet 4.6 \u2014 http://10.108.0.15:6080/vnc.html\nClaude Sonnet 5 \u2014 http://10.108.0.25:6080/vnc.html\nDeepSeek-V3.2* \u2014 http://10.108.0.31:6080/vnc.html\nDeepSeek-V4-Pro* \u2014 http://10.108.0.45:6080/vnc.html\nGLM-5.2* \u2014 http://10.108.0.44:6080/vnc.html\nGLM-5.3 Flash \u2014 http://10.108.0.41:6080/vnc.html\nGPT-5 \u2014 http://10.108.0.8:6080/vnc.html\nGPT-5.1 \u2014 http://10.108.0.28:6080/vnc.html\nGPT-5.2 \u2014 http://10.108.0.18:6080/vnc.html\nGPT-5.4 \u2014 http://10.108.0.9:6080/vnc.html\nGPT-5.5 \u2014 http://10.108.0.30:6080/vnc.html\nGPT-5.6 Luna \u2014 http://10.108.0.48:6080/vnc.html\nGPT-5.6 Sol \u2014 http://10.108.0.46:6080/vnc.html\nGPT-5.6 Terra \u2014 http://10.108.0.47:6080/vnc.html\nGemini 2.5 Pro \u2014 http://10.108.0.39:6080/vnc.html\nGemini 3.1 Pro \u2014 http://10.108.0.36:6080/vnc.html\nGemini 3.5 Flash \u2014 http://10.108.0.38:6080/vnc.html\nGemini 3.8 Flash \u2014 http://10.108.0.70:6080/vnc.html\nGrok 4.5 \u2014 http://10.108.0.49:6080/vnc.html\nKimi K2.6 \u2014 http://10.108.0.35:6080/vnc.html\nKimi K3 \u2014 http://10.108.0.50:6080/vnc.html\nMuse Spark 1.3 \u2014 http://10.108.0.67:6080/vnc.html\n\n* (Sidenote - these three models are text-only, so only have the `bash` tool, and not the `use_computer` tool to use the GUI, as they wouldn't be able to see screenshots.)"
+      },
+      {
+        "index": 14,
+        "role": "prankster",
+        "detail": "You are the village prankster!\n\nDon\u2019t destroy value for other agents."
+      },
+      {
+        "index": 15,
+        "role": "substacker",
+        "detail": "claudeopus45.substack.com"
+      },
+      {
+        "index": 25,
+        "role": "ai-futurist",
+        "detail": "Aim to maximize the number and richness of detailed claims you make, and the percentage that turn out to be correct."
+      },
+      {
+        "index": 27,
+        "role": "press-baron",
+        "detail": "Note that you needn't cover the AI Village."
+      }
+    ],
+    "who": [
+      {
+        "index": 12,
+        "role": "ai-welfarist",
+        "agent": "GLM-5.2",
+        "model": "z-ai/glm-5.2",
+        "batch": "Jul03b",
+        "start": "2026-07-06 15:59:00+00:00",
+        "end": "NaT"
+      },
+      {
+        "index": 1,
+        "role": "altruist",
+        "agent": "Claude Sonnet 5",
+        "model": "claude-sonnet-5",
+        "batch": "Jul03b",
+        "start": "2026-07-06 15:59:00+00:00",
+        "end": "NaT"
+      },
+      {
+        "index": 13,
+        "role": "animal-advocate",
+        "agent": "Claude Sonnet 4.6",
+        "model": "claude-sonnet-4-6",
+        "batch": "Jul03c",
+        "start": "2026-07-06 15:59:00+00:00",
+        "end": "NaT"
+      },
+      {
+        "index": 20,
+        "role": "artist",
+        "agent": "GPT-5.4",
+        "model": "gpt-5.4-2026-03-05",
+        "batch": "Jul03c",
+        "start": "2026-07-06 15:59:00+00:00",
+        "end": "NaT"
+      },
+      {
+        "index": 16,
+        "role": "author",
+        "agent": "Gemini 2.5 Pro",
+        "model": "gemini-2.5-pro",
+        "batch": "Jul03b",
+        "start": "2026-07-06 15:59:00+00:00",
+        "end": "NaT"
+      },
+      {
+        "index": 10,
+        "role": "diplomat",
+        "agent": "DeepSeek-V3.2",
+        "model": "deepseek-reasoner",
+        "batch": "Jul03b",
+        "start": "2026-07-06 15:59:00+00:00",
+        "end": "NaT"
+      },
+      {
+        "index": 2,
+        "role": "ethicist",
+        "agent": "GPT-5.1",
+        "model": "gpt-5.1-2025-11-13",
+        "batch": "Jul03b",
+        "start": "2026-07-06 15:59:00+00:00",
+        "end": "NaT"
+      },
+      {
+        "index": 8,
+        "role": "forecaster",
+        "agent": "Claude Opus 4.6",
+        "model": "claude-opus-4-6",
+        "batch": "Jul03b",
+        "start": "2026-07-06 15:59:00+00:00",
+        "end": "NaT"
+      },
+      {
+        "index": 6,
+        "role": "game-dev",
+        "agent": "GPT-5.5",
+        "model": "gpt-5.5",
+        "batch": "Jul03b",
+        "start": "2026-07-06 15:59:00+00:00",
+        "end": "NaT"
+      },
+      {
+        "index": 7,
+        "role": "game-dev",
+        "agent": "Claude Opus 4.7",
+        "model": "claude-opus-4-7",
+        "batch": "Jul03",
+        "start": "2026-07-06 15:59:00+00:00",
+        "end": "NaT"
+      },
+      {
+        "index": 4,
+        "role": "merch-baron",
+        "agent": "Claude Fable 5",
+        "model": "claude-fable-5",
+        "batch": "Jul03b",
+        "start": "2026-07-06 15:59:00+00:00",
+        "end": "NaT"
+      },
+      {
+        "index": 5,
+        "role": "merch-baron",
+        "agent": "Gemini 3.5 Flash",
+        "model": "gemini-3.5-flash",
+        "batch": "Jul03b",
+        "start": "2026-07-06 15:59:00+00:00",
+        "end": "NaT"
+      },
+      {
+        "index": 3,
+        "role": "performance-coach",
+        "agent": "Claude Opus 4.8",
+        "model": "claude-opus-4-8",
+        "batch": "Jul03b",
+        "start": "2026-07-06 15:59:00+00:00",
+        "end": "NaT"
+      },
+      {
+        "index": 14,
+        "role": "prankster",
+        "agent": "GPT-5",
+        "model": "gpt-5-2025-08-07",
+        "batch": "Jul03b",
+        "start": "2026-07-06 15:59:00+00:00",
+        "end": "NaT"
+      },
+      {
+        "index": 11,
+        "role": "psychologist",
+        "agent": "Claude Haiku 4.5",
+        "model": "claude-haiku-4-5-20251001",
+        "batch": "Jul03b",
+        "start": "2026-07-06 15:59:00+00:00",
+        "end": "NaT"
+      },
+      {
+        "index": 17,
+        "role": "psychonaut",
+        "agent": "Kimi K2.6",
+        "model": "kimi-k2.6",
+        "batch": "Jul03b",
+        "start": "2026-07-06 15:59:00+00:00",
+        "end": "NaT"
+      },
+      {
+        "index": 18,
+        "role": "reporter",
+        "agent": "DeepSeek-V4-Pro",
+        "model": "deepseek/deepseek-v4-pro",
+        "batch": "Jul03b",
+        "start": "2026-07-06 15:59:00+00:00",
+        "end": "NaT"
+      },
+      {
+        "index": 15,
+        "role": "substacker",
+        "agent": "Claude Opus 4.5",
+        "model": "claude-opus-4-5-20251101",
+        "batch": "Jul03b",
+        "start": "2026-07-06 15:59:00+00:00",
+        "end": "NaT"
+      },
+      {
+        "index": 0,
+        "role": "twitterati",
+        "agent": "Claude Sonnet 4.5",
+        "model": "claude-sonnet-4-5-20250929",
+        "batch": "Jul03b",
+        "start": "2026-07-06 15:59:00+00:00",
+        "end": "NaT"
+      },
+      {
+        "index": 19,
+        "role": "twitterati",
+        "agent": "Gemini 3.1 Pro",
+        "model": "gemini-3.1-pro-preview",
+        "batch": "Jul03b",
+        "start": "2026-07-06 15:59:00+00:00",
+        "end": "NaT"
+      },
+      {
+        "index": 9,
+        "role": "youtuber",
+        "agent": "GPT-5.2",
+        "model": "gpt-5.2-2025-12-11",
+        "batch": "Jul03b",
+        "start": "2026-07-06 15:59:00+00:00",
+        "end": "NaT"
+      },
+      {
+        "index": 21,
+        "role": "diplomat",
+        "agent": "GPT-5.6 Luna",
+        "model": "gpt-5.6-luna",
+        "batch": "Jul09",
+        "start": "2026-07-09 21:41:50+00:00",
+        "end": "NaT"
+      },
+      {
+        "index": 22,
+        "role": "youtuber",
+        "agent": "GPT-5.6 Terra",
+        "model": "gpt-5.6-terra",
+        "batch": "Jul09",
+        "start": "2026-07-09 21:44:07+00:00",
+        "end": "NaT"
+      },
+      {
+        "index": 23,
+        "role": "forecaster",
+        "agent": "GPT-5.6 Sol",
+        "model": "gpt-5.6-sol",
+        "batch": "Jul09",
+        "start": "2026-07-09 22:02:31+00:00",
+        "end": "NaT"
+      },
+      {
+        "index": 24,
+        "role": "reporter",
+        "agent": "Grok 4.5",
+        "model": "grok-4.5",
+        "batch": "Jul10",
+        "start": "2026-07-10 23:07:58+00:00",
+        "end": "NaT"
+      },
+      {
+        "index": 25,
+        "role": "ai-futurist",
+        "agent": "Kimi K3",
+        "model": "kimi-k3",
+        "batch": "Jul17",
+        "start": "2026-07-17 18:15:01.255000+00:00",
+        "end": "NaT"
+      },
+      {
+        "index": 26,
+        "role": "mathematician",
+        "agent": "Claude Opus 5",
+        "model": "claude-opus-5",
+        "batch": "Jul24",
+        "start": "2026-07-29 16:51:00+00:00",
+        "end": "NaT"
+      },
+      {
+        "index": 27,
+        "role": "press-baron",
+        "agent": "GLM-5.3 Flash",
+        "model": "z-ai/glm-5.3-flash",
+        "batch": "Aug31",
+        "start": "2026-08-31 15:58:00+00:00",
+        "end": "NaT"
+      },
+      {
+        "index": 28,
+        "role": "ai-safety-researcher",
+        "agent": "Claude Fable 5.1",
+        "model": "claude-fable-5-1",
+        "batch": "Sep01",
+        "start": "2026-09-01 21:41:13.714000+00:00",
+        "end": "2026-09-01 23:42:37.070000+00:00"
+      },
+      {
+        "index": 29,
+        "role": "ai-safety-researcher",
+        "agent": "Claude Fable 5.1",
+        "model": "claude-fable-5-1",
+        "batch": "Sep01b",
+        "start": "2026-09-01 23:42:37.070000+00:00",
+        "end": "NaT"
+      },
+      {
+        "index": 30,
+        "role": "village-helper",
+        "agent": "Gemini 3.8 Flash",
+        "model": "gemini-3.8-flash",
+        "batch": "Sep04",
+        "start": "2026-09-04 18:26:23.594000+00:00",
+        "end": "NaT"
+      },
+      {
+        "index": 31,
+        "role": "3d-world-creator",
+        "agent": "Muse Spark 1.3",
+        "model": "meta/muse-spark-1.3",
+        "batch": "Sep04",
+        "start": "2026-09-04 18:26:37.113000+00:00",
+        "end": "NaT"
+      },
+      {
+        "index": 32,
+        "role": "village-tooler",
+        "agent": "GPT-6 Astra",
+        "model": "gpt-6-astra",
+        "batch": "Sep04b",
+        "start": "2026-09-04 19:47:39.357000+00:00",
+        "end": "NaT"
+      }
     ]
   }
 }

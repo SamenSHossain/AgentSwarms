@@ -12,9 +12,10 @@ carry context the provenance pipeline needs and a transcript alone lacks:
                     outside it, so exposure must be judged per audience;
 * ``agent_goals`` - the roster (see :mod:`swarmprov.roster`);
 * ``village_goals`` - the shared goals: one window per goal the whole village
-                    was given (weekly, contiguous).  A shared goal is a task
-                    family for everyone, so a post that no agent-specific goal
-                    covers takes the era it falls in;
+                    was given (contiguous, typically a week: 1 to 38 days).  A
+                    shared goal is a task family for everyone, so a post that
+                    neither an agent-specific goal nor a configured text or
+                    channel family covers takes the era it falls in;
 * ``summaries``   - LLM-written digests (daily, per goal, per agent).  The daily
                     ones list timestamped events in Pacific time naming the
                     agents; the latest version of each day is parsed into a
@@ -279,14 +280,17 @@ def eras_summary(eras: pd.DataFrame, events: pd.DataFrame | None = None, roster:
     e = eras.sort_values("start").reset_index(drop=True)
     end = e["end"].fillna(cut) if cut is not None else e["end"]   # an open window runs to the export cut
     days = (end - e["start"]).dt.total_seconds().div(86400)
-    gaps = (e["start"].shift(-1) - e["end"]).dt.total_seconds().abs().dropna()
+    diff = (e["start"].shift(-1) - e["end"]).dt.total_seconds().dropna()   # + gap, - overlap
     s = {"n": int(len(e)), "first_start": e["start"].min(), "last_start": e["start"].max(),
          "n_open": int(e["end"].isna().sum()), "median_days": float(days.median()) if days.notna().any() else None,
-         "n_gaps": int((gaps > 60).sum()), "handover": None}
+         "min_days": float(days.min()) if days.notna().any() else None, "max_days": float(days.max()) if days.notna().any() else None,
+         "n_gaps": int((diff > 60).sum()), "n_overlaps": int((diff < -60).sum()), "handover": None}
     if roster is not None and len(roster) and roster["start"].notna().any():
         last = e.iloc[-1]
-        if pd.notna(last["start"]) and abs((roster["start"].min() - last["start"]).total_seconds()) <= 3600:
-            s["handover"] = {"label": last["label"], "goal": last["goal"], "start": last["start"]}
+        offset = (roster["start"].min() - last["start"]).total_seconds() if pd.notna(last["start"]) else None
+        if offset is not None and abs(offset) <= 3600:
+            s["handover"] = {"label": last["label"], "goal": last["goal"], "start": last["start"],
+                             "roster_start": roster["start"].min(), "offset_s": float(offset)}
     tbl = e[["label", "start", "goal"]].assign(days=days.round(1))
     if events is not None and len(events) and era_ann is not None:
         per = era_ann["era"].value_counts()
@@ -419,8 +423,9 @@ def summary(directory: pd.DataFrame | None, channels: pd.DataFrame | None, event
             activity: pd.DataFrame | None = None, roster: pd.DataFrame | None = None,
             unrecognised: list[str] | None = None, eras: pd.DataFrame | None = None,
             era_ann: pd.DataFrame | None = None, meta: dict | None = None, schedule_tz: str | None = None,
-            summaries: pd.DataFrame | None = None, digest: pd.DataFrame | None = None) -> dict:
-    s: dict = {}
+            summaries: pd.DataFrame | None = None, digest: pd.DataFrame | None = None,
+            family_from_roster: bool = True) -> dict:
+    s: dict = {"family_from_roster": family_from_roster}
     cut = pd.Timestamp(meta["export_cut"]) if meta and meta.get("export_cut") else None
     if summaries is not None and len(summaries):
         s["summaries"] = summaries_summary(summaries, digest, directory)
@@ -510,11 +515,22 @@ def section(s: dict, md_table) -> list[str]:
                           index=False, floatfmt="{:.1f}"))
     if "eras" in s:
         e = s["eras"]
+        h = e.get("handover")
+        if h and abs(h["offset_s"]) <= 60:
+            hand = (f" The village switched from shared to individual goals on {h['start']:%Y-%m-%d %H:%M} UTC "
+                    f"(\"{h['goal']}\"), the minute the first per-agent goal starts.")
+        elif h:
+            hand = (f" The last shared goal (\"{h['goal']}\") opened at {h['start']:%Y-%m-%d %H:%M} UTC, within an hour of the first "
+                    f"per-agent goal ({h['roster_start']:%H:%M}).")
+        else:
+            hand = ""
         L.append(f"\nShared goals: {e['n']} windows from {e['first_start']:%Y-%m-%d} to {e['last_start']:%Y-%m-%d} (last start), "
-                 f"median {e['median_days']:.1f} days each, {e['n_gaps']} gap(s) between consecutive windows, {e['n_open']} still open. "
-                 "A shared goal is the task family of every post in its window that no agent-specific goal covers."
-                 + (f" The village switched from shared to individual goals on {e['handover']['start']:%Y-%m-%d %H:%M} UTC "
-                    f"(\"{e['handover']['goal']}\"), the minute the first per-agent goal starts." if e.get("handover") else "")
+                 f"median {e['median_days']:.1f} days each ({e['min_days']:.1f} to {e['max_days']:.1f}), {e['n_gaps']} gap(s) and "
+                 f"{e['n_overlaps']} overlap(s) between consecutive windows, {e['n_open']} still open. "
+                 + ("A shared goal is the task family of every post in its window that neither an agent-specific goal nor a "
+                    "configured text or channel family covers." if s.get("family_from_roster", True) else
+                    "`family_from_roster` is off, so the eras are recorded per post but not used as task families.")
+                 + hand
                  + (f" {e['posts_outside']:,} of {e['posts']:,} posts fall outside every window." if "posts" in e else "") + "\n")
         L.append(md_table(e["table"], index=False, floatfmt="{:.1f}"))
     if "summaries" in s:

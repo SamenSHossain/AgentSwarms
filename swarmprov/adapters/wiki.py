@@ -145,7 +145,7 @@ def _probes(events: pd.DataFrame, revs: pd.DataFrame) -> pd.DataFrame:
     p["ip16"] = p["ip16"].astype(str)
     saves = revs[["ts", "label", "ip16"]].copy()
     saves["ip16"] = saves["ip16"].astype(str)
-    by_ip = {ip: g.sort_values("ts") for ip, g in saves.groupby("ip16")}
+    by_ip = {ip: g.sort_values("ts", kind="stable") for ip, g in saves.groupby("ip16")}
     labels_on = {ip: int(g.loc[g["label"].astype(bool), "label"].nunique()) for ip, g in by_ip.items()}
     near_label, near_dt, n_labels, cotimed = [], [], [], []
     for ip, ts in zip(p["ip16"], p["ts"]):
@@ -154,10 +154,12 @@ def _probes(events: pd.DataFrame, revs: pd.DataFrame) -> pd.DataFrame:
             near_label.append(None); near_dt.append(None); n_labels.append(0); cotimed.append(None)
             continue
         dt = (g["ts"] - ts).dt.total_seconds()
-        i = dt.abs().idxmin()
+        i = dt.abs().idxmin()                       # first row at the minimum distance (stable order)
         lab, d, n = g.loc[i, "label"] or None, float(dt.loc[i]), labels_on[ip]
         near_label.append(lab); near_dt.append(d); n_labels.append(n)
-        cotimed.append(lab if lab and abs(d) <= 1 and n == 1 else None)
+        # the rule reads over every labelled save within 1 s, not only the nearest row (which may be unlabelled)
+        within = g.loc[(dt.abs() <= 1) & g["label"].astype(bool), "label"]
+        cotimed.append(within.iloc[0] if n == 1 and len(within) else None)
     site = p["event_id"].astype(str).str.extract(r"attacklog_raw_([a-z0-9]+)_")[0]
     out = pd.DataFrame({
         "probe_id": p["event_id"], "ts": p["ts"], "site": site.where(site.notna(), p.get("wiki")),

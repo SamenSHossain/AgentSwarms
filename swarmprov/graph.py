@@ -31,7 +31,8 @@ def relay_edges(mentions: pd.DataFrame, agent_col: str) -> tuple[pd.DataFrame, p
     the hop is marked cross-channel."""
     edges, chains = [], []
     has_channel = "channel" in mentions.columns
-    mentions = mentions.sort_values("ts")
+    by = ["ts", "event_id"] if "event_id" in mentions.columns else ["ts"]
+    mentions = mentions.sort_values(by, kind="stable")   # same-second mentions: deterministic parent choice
     keys = ["family", "item", "value_key"]
     n_ag = mentions.groupby(keys)[agent_col].transform("nunique")
     # facts only one agent ever carried: no edges, a single chain row each

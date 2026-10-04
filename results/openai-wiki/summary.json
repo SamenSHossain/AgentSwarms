@@ -7,7 +7,9 @@
     "first_ts": "2026-05-24 06:02:19+00:00",
     "last_ts": "2026-07-02 17:51:22+00:00"
   },
-  "village": {},
+  "village": {
+    "family_from_roster": true
+  },
   "deletions": {
     "n": 5217,
     "pages": 5144,
@@ -81,7 +83,8 @@
     ],
     "payloads": [
       "<script>alert('XSS')</script>"
-    ]
+    ],
+    "n_payloads": 1
   },
   "A1": {
     "n_answers": 1108,
@@ -330,15 +333,15 @@
   },
   "A5": {
     "n_nodes": 1435,
-    "n_edges": 2447,
+    "n_edges": 2439,
     "n_exposure_edges": 1025,
-    "n_relay_edges": 9263,
-    "n_xchannel_edges": 11809,
+    "n_relay_edges": 9262,
+    "n_xchannel_edges": 11810,
     "n_citation_edges": 227,
     "exposure_sources": 49,
     "gini_exposure_outdegree": 0.691806869089099,
     "top10_share_exposure": 0.7336585365853658,
-    "gini_relay_outdegree": 0.664099668231076,
+    "gini_relay_outdegree": 0.6637185304129206,
     "mean_chain_depth": 2.0314465408805034,
     "mean_agents_per_fact": 9.371069182389936
   },
@@ -357,7 +360,7 @@
       "mean_repeaters": 0.8379032258064516,
       "p90_repeaters": 2.0,
       "max_hops": 18,
-      "mean_hops_repeated": 1.7169179229480738
+      "mean_hops_repeated": 1.7167318071840685
     }
   },
   "validation": {

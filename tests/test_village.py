@@ -177,6 +177,18 @@ def test_era_label_is_short_and_stable():
     assert village.era_label(5, "???") == "e05-goal"
 
 
+def test_eras_summary_counts_gaps_and_overlaps_separately():
+    t0 = pd.Timestamp("2026-01-01T00:00:00Z")
+    d = pd.Timedelta(days=1)
+    e = pd.DataFrame({"era_id": list("abcd"), "label": ["e1-a", "e2-b", "e3-c", "e4-d"], "goal": list("abcd"),
+                      "start": [t0, t0 + 7 * d, t0 + 13 * d, t0 + 21 * d],                 # c starts a day before b ends
+                      "end": [t0 + 7 * d, t0 + 14 * d, t0 + 20 * d, pd.NaT],              # a day's gap before d
+                      "created": pd.NaT, "updated": pd.NaT})
+    s = village.eras_summary(e, None, None, None, cut=t0 + 30 * d)
+    assert (s["n_gaps"], s["n_overlaps"], s["n_open"]) == (1, 1, 0 + 1)
+    assert s["table"]["days"].iloc[-1] == 9.0                                            # open window measured to the cut
+
+
 def test_annotate_eras_picks_the_window(bundle):
     e = bundle.eras
     ev = pd.DataFrame({"ts": pd.to_datetime(["2026-06-16T12:00:00Z", "2025-01-01T00:00:00Z", "2026-09-01T00:00:00Z"], utc=True)})
@@ -184,6 +196,17 @@ def test_annotate_eras_picks_the_window(bundle):
     assert a["era"].iloc[0] == e.set_index("goal").loc["Reduce global suffering as much as you can!", "label"]
     assert a["era"].iloc[1] is None                                                       # before the first window
     assert a["era"].iloc[2] == e.sort_values("start")["label"].iloc[-1]                   # the open window runs on
+
+
+def _strings(obj):
+    if isinstance(obj, str):
+        yield obj
+    elif isinstance(obj, dict):
+        for v in obj.values():
+            yield from _strings(v)
+    elif isinstance(obj, list):
+        for v in obj:
+            yield from _strings(v)
 
 
 def test_family_precedence_agent_goal_then_era(tmp_path):
@@ -195,15 +218,23 @@ def test_family_precedence_agent_goal_then_era(tmp_path):
         _post(0, SONNET45, GENERAL, pd.Timestamp("2026-07-07T10:00:00Z"), "R1 CONFIRMED: Utah arrived 09:58:00; answered 73.74"),
         _post(1, SONNET45, GENERAL, pd.Timestamp("2026-06-16T12:00:00Z"), "Working on suffering reduction, 12 ideas"),
         _post(2, "", GENERAL, pd.Timestamp("2026-06-16T13:00:00Z"), "Observer note 1"),
+        _post(3, "", GENERAL, pd.Timestamp("2026-06-16T13:30:00Z"), "Fundraiser update: donations at 40%"),   # a configured text family
     ]
     (tmp_path / "chat_messages.jsonl").write_text("\n".join(json.dumps(m) for m in msgs))
-    run = pipeline.run_all(tmp_path, tmp_path / "run")
+    (tmp_path / "cfg.json").write_text(json.dumps({"families": {"fundraiser": "donat|fundrais"}}))
+    run = pipeline.run_all(tmp_path, tmp_path / "run", config=str(tmp_path / "cfg.json"))
     ev = run.read("events").set_index("event_id")
     eras = run.read("eras").set_index("goal")
     suffering = eras.loc["Reduce global suffering as much as you can!", "label"]
     assert ev.loc["m0", "family"] == "twitterati"
     assert ev.loc["m1", "family"] == suffering                       # not the nearest agent goal: it was not in force yet
     assert ev.loc["m2", "family"] == suffering
+    assert ev.loc["m3", "family"] == "fundraiser"                    # a configured text family beats the era
+    summ = json.loads((run.path / "summary.json").read_text())
+    assert isinstance(summ["village"]["eras"]["table"], list) and isinstance(summ["roster"]["roles"], list)
+    assert not any(" rows x " in v or v.startswith("Empty DataFrame") for v in _strings(summ))   # no DataFrame repr leaked
+    report_text = (run.path / "report.md").read_text()
+    assert "control the computers of other agents via: Claude Fable 5" in report_text            # multi-line cell kept on one row
     re_ = run.read("roster_events")
     assert {"roster_agent", "role", "in_window", "era_id", "era"} <= set(re_.columns)
     text = (run.path / "report.md").read_text()

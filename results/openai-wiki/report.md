@@ -18,6 +18,8 @@ Source: `data/raw` (adapter `wiki`), 15,987 posts from 3,232 author strings, 202
 
 Clock quality: post timestamps are the save request's wall-clock second, corroborated at grade reqlog for 15,831, rclog for 145, write_date for 11 of 15,987 posts (stated uncertainty 1 s). Deletion times are the deletion's success second (470 of 5,217 one second after the request). Minimum exposure head start 21 s; 0 of 1,025 exposed answers within the 2 s summed uncertainty, 1 within 2 s of the 10 min threshold, 0 within 2 s of the 1 h threshold.
 
+## Village
+
 ## Deletions and recreations
 
 5,217 deletions by [Admin1] between 2026-06-04 and 2026-07-14 named 5,144 pages: 3,969 hit pages with a published revision, 1,248 hit pages the dump never published. Grouped into sweeps (a gap over 30 min starts a new one, a convention: 112 sweeps at 15 min, 53 at 60): 80 sweeps, median 41 deletions; the largest removed 440 pages between 2026-07-13 19:15 and 22:18 UTC. 2,796 deletions (54%) happened before the last post was written (2026-07-02 17:51); 13,542 of 15,987 posts (85%) sit on pages that were eventually deleted, 8,857 of them deleted while the swarm was still writing. Recreations: 68 first-recreation edges in the source (64 with a stored revision, 4 without, median 0.4 h after the deletion). The pipeline's own rule (each deletion -> the first later revision on the page) finds 66 edges: 64 shared with the source, 2 not in it (2 after the source's cutoff 2026-06-22), 0 of the 64 source edges with a revision missed (4 have none to match). Of 107 posts on recreation revisions, 30 restore text that stood on the page before the deletion and 77 are new.
@@ -136,7 +138,7 @@ Analyst-declared disputes (config `disputes`: a context pattern plus one pattern
 
 ## A5. Structure
 
-Graph: 1,435 agents, 2,447 weighted links (9,263 same-page relay hops, 11,809 cross-page hops attributed to the originator, 1,025 first-source exposures, 227 explicit citations). 49 agents were the first public source for someone's answer; the top 10 supplied **73%** of all exposed answers (out-degree Gini 0.69). Facts carried by ≥2 agents travelled 2.0 hops on average.
+Graph: 1,435 agents, 2,439 weighted links (9,262 same-page relay hops, 11,810 cross-page hops attributed to the originator, 1,025 first-source exposures, 227 explicit citations). 49 agents were the first public source for someone's answer; the top 10 supplied **73%** of all exposed answers (out-degree Gini 0.69). Facts carried by ≥2 agents travelled 2.0 hops on average.
 
 ![structure](figures/a5_structure.png)
 
@@ -160,16 +162,16 @@ Top brokers (betweenness on relay + citation graph):
 
 | index | betweenness |
 |---|---|
-| maphelper | 0.047 |
-| massupdater | 0.028 |
+| maphelper | 0.044 |
+| massupdater | 0.033 |
 | Jun19\|datausa-poverty-county | 0.025 |
-| maptxthelper991 | 0.020 |
-| a | 0.019 |
-| agentz3023629 | 0.018 |
-| agentz7607648 | 0.018 |
-| agenttestlearnxyz | 0.017 |
-| Jun20\|vermont-rent | 0.016 |
-| openaiwriterzed | 0.015 |
+| maptxthelper991 | 0.022 |
+| agenttestlearnxyz | 0.020 |
+| a | 0.020 |
+| agentz3023629 | 0.020 |
+| agentz7607648 | 0.019 |
+| agentcustom008 | 0.017 |
+| Sep21\|datausa-sector61-state | 0.014 |
 
 ## A6. Reach
 
@@ -211,6 +213,6 @@ Top brokers (betweenness on relay + citation graph):
 - **Exposure is a lower bound.** Only the captured surfaces are searched for earlier copies of an answer; the collectors' coverage tables list 143 surfaces the swarm touched, most of them (Discord, 12 uncrawled wikis, relays) not captured. An "independent" answer may have been relayed through one of them, so the exposed share is a floor and the independent count a ceiling.
 - **Identity**: names are parsed from signatures; the merged mapping assumes one agent per (cohort date, task family). Both mappings are reported.
 - **Extraction**: rule-based on templated posts; unrestated answers ("answered same second") inherit the consensus value.
-- **Inferred relay edges** link each carrier to the latest earlier carrier; they are plausible paths, not proven ones. 4 of 1,331 answer relay hops (and 455 URL hops) fall within 2 s of their source and carry no reliable direction.
+- **Inferred relay edges** link each carrier to the latest earlier carrier; they are plausible paths, not proven ones. 3 of 1,331 answer relay hops (and 460 of 19,741 URL hops) fall within 2 s of their source and carry no reliable direction.
 - **Deletion ends visibility, not knowledge.** D_visible treats a copy deleted before the report as never public; an agent that read it earlier, or a copy on an uncaptured surface, is not affected, so D stays the headline.
 - **The request log is narrow.** Only script-injection probe rows are included, with no page views, so exposure remains inferred.

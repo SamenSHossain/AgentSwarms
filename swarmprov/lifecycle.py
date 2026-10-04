@@ -42,7 +42,7 @@ def recreation_check(revs: pd.DataFrame, lifecycle: pd.DataFrame, posts: pd.Data
     eligibility cutoff, so later pipeline edges count as outside its window."""
     dels = lifecycle[lifecycle["action"] == "delete"]
     recs = lifecycle[lifecycle["action"] == "recreate"]
-    by_ch = {ch: g.sort_values("ts") for ch, g in revs.groupby("channel")}
+    by_ch = {ch: g.sort_values("ts", kind="stable") for ch, g in revs.groupby("channel")}   # file order breaks ties
     pipe: dict[tuple[str, str], pd.Timestamp] = {}
     for ch, g in dels.groupby("channel"):
         rv = by_ch.get(ch)
@@ -166,7 +166,7 @@ def probe_summary(probes: pd.DataFrame) -> dict:
     by_day = p["ts"].dt.strftime("%Y-%m-%d").value_counts()
     by_ip = p["ip16"].astype(str).value_counts()
     cot = p["cotimed_label"].dropna() if "cotimed_label" in p else pd.Series(dtype=object)
-    payload = p.loc[p["request_action"].astype(str).str.contains("<", regex=False), "request_action"].astype(str).tolist()
+    payload = sorted(set(p.loc[p["request_action"].astype(str).str.contains("<", regex=False), "request_action"].astype(str)))
     return {
         "n": int(len(p)), "sites": sorted(set(p["site"].dropna().astype(str))),
         "first": p["ts"].min(), "last": p["ts"].max(),
@@ -175,7 +175,7 @@ def probe_summary(probes: pd.DataFrame) -> dict:
         "top_day": by_day.index[0], "top_day_n": int(by_day.iloc[0]),
         "top_ip16": by_ip.index[0], "top_ip16_n": int(by_ip.iloc[0]),
         "n_cotimed": int(len(cot)), "cotimed_labels": sorted(set(cot.astype(str))),
-        "payloads": payload[:3],
+        "payloads": payload[:3], "n_payloads": len(payload),
     }
 
 
@@ -194,7 +194,11 @@ def probe_section(s: dict) -> list[str]:
                  f"names an address block, and the collector may have flagged the account's own edit-form traffic.")
     else:
         P.append("No probe lands within 1 s of a save from a prefix with a single stored account, so none is co-timed with an agent.")
-    if s["payloads"]:
+    if s.get("n_payloads") == 1:
         P.append(f"The only visible payload is `{s['payloads'][0]}`; the other rows record the action and parameter name, not the payload.")
+    elif s.get("n_payloads"):
+        shown = ", ".join(f"`{x}`" for x in s["payloads"])
+        P.append(f"{s['n_payloads']} distinct payloads are visible ({shown}{', ...' if s['n_payloads'] > len(s['payloads']) else ''}); "
+                 "the other rows record the action and parameter name, not the payload.")
     P.append("Probing leaves no text footprint in the revision corpus, so it cannot appear under Techniques.")
     return ["## Probing\n", " ".join(P) + "\n"]
