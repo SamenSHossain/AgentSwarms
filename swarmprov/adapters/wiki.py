@@ -272,11 +272,12 @@ class WikiAdapter(Adapter):
         posts["source_ref"] = posts["parent_id"]
         posts["site"] = posts["channel"].str.split("/").str[0]
         posts["source_kind"] = "revision"
+        if "time_grade" in revs:
+            posts["ts_grade"] = posts["parent_id"].map(dict(zip(revs["rev_id"], revs["time_grade"])))
 
         human = set(labels.loc[labels["is_human_handle"], "label"]) if len(labels) else set()
         recs = lifecycle[lifecycle["action"] == "recreate"]
         cutoff = _recreation_cutoff(path)
-        grade = dict(zip(revs["rev_id"], revs["time_grade"])) if "time_grade" in revs else {}
         notes = {
             "n_revisions": len(revs),
             "n_pages": len(pages),
@@ -287,7 +288,6 @@ class WikiAdapter(Adapter):
             "n_probes": int(len(probes)),
             "clock_grades": revs["time_grade"].value_counts().to_dict() if "time_grade" in revs else {},
             "clock_uncertainty_s": sorted(float(u) for u in revs["uncertainty_seconds"].dropna().unique()) if "uncertainty_seconds" in revs else [],
-            "posts_by_clock_grade": posts["parent_id"].map(grade).value_counts().to_dict() if grade else {},
             "delete_request_lag_s": _delete_lag(events),
             "recreation_check": lifecycle_mod.recreation_check(
                 revs[["channel", "ts", "rev_id", "body"]], lifecycle, posts, cutoff) if len(recs) else None,

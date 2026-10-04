@@ -13,7 +13,8 @@
     "has_threading": false,
     "has_episodes": false,
     "has_activity": false,
-    "has_request_log": true
+    "has_request_log": true,
+    "derived_text": false
   },
   "n_events": 15987,
   "n_authors": 3232,
@@ -63,11 +64,6 @@
     "clock_uncertainty_s": [
       1.0
     ],
-    "posts_by_clock_grade": {
-      "reqlog": 15837,
-      "rclog": 160,
-      "write_date": 11
-    },
     "delete_request_lag_s": {
       "0": 4746,
       "1": 470,

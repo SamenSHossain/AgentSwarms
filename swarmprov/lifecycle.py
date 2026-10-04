@@ -35,7 +35,8 @@ def recreation_check(revs: pd.DataFrame, lifecycle: pd.DataFrame, posts: pd.Data
     """Compare the dump's first-recreation edges with the pipeline's own rule.
 
     Pipeline rule: each deletion -> the first revision saved on the same channel
-    strictly after it.  Also splits the posts attributed to recreation revisions
+    at or after its second, the same tie rule as the segmenter's reset
+    (``ch_dels[di] <= r.ts``).  Also splits the posts attributed to recreation revisions
     into *restored* (their text stood on the page before the deletion) and
     *fresh*.  ``revs`` needs channel, ts, rev_id, body; ``cutoff`` is the dump's
     eligibility cutoff, so later pipeline edges count as outside its window."""
@@ -48,7 +49,7 @@ def recreation_check(revs: pd.DataFrame, lifecycle: pd.DataFrame, posts: pd.Data
         if rv is None:
             continue
         for eid, ts in zip(g["event_id"], g["ts"]):
-            later = rv[rv["ts"] > ts]
+            later = rv[rv["ts"] >= ts]
             if len(later):
                 pipe[(str(eid), str(later["rev_id"].iloc[0]))] = later["ts"].iloc[0]
     dump = {(str(e), str(r)) for e, r in zip(recs["related_event_id"], recs["revision_ref"]) if isinstance(r, str) and r}
@@ -136,7 +137,8 @@ def deletion_section(s: dict, pct) -> list[str]:
              f"{s['pages']:,} pages{held}. Grouped into sweeps (a gap over {SWEEP_GAP_MIN} min starts a new one, a convention: "
              f"{s['sweeps_15']} sweeps at 15 min, {s['sweeps_60']} at 60): {s['n_sweeps']} sweeps, median {s['sweep_median']:.0f} deletions; "
              f"the largest removed {s['largest']['pages']:,} pages between {s['largest']['start']:%Y-%m-%d %H:%M} and "
-             f"{s['largest']['end']:%H:%M} UTC.")
+             + (f"{s['largest']['end']:%H:%M}" if s['largest']['end'].date() == s['largest']['start'].date()
+                else f"{s['largest']['end']:%Y-%m-%d %H:%M}") + " UTC.")
     if "posts" in s:
         P.append(f"{s['deleted_before_last_write']:,} deletions ({pct(s['deleted_before_last_write'] / s['n'])}) happened before the "
                  f"last post was written ({s['last_write']:%Y-%m-%d %H:%M}); {s['posts_on_deleted_pages']:,} of {s['posts']:,} posts "
@@ -151,7 +153,8 @@ def deletion_section(s: dict, pct) -> list[str]:
         P.append(f"The pipeline's own rule (each deletion -> the first later revision on the page) finds {c['pipeline_edges']} edges: "
                  f"{c['overlap']} shared with the source, {c['pipeline_only']} not in it"
                  + (f" ({c['pipeline_only_after_cutoff']} after the source's cutoff {c['cutoff'][:10]})" if c.get("cutoff") else "")
-                 + f", {c['dump_only']} source edges missed. Of {c['posts_on_recreations']} posts on recreation revisions, "
+                 + f", {c['dump_only']} of the {c['dump_edges_with_revision']} source edges with a revision missed "
+                 f"({c['dump_edges_without_revision']} have none to match). Of {c['posts_on_recreations']} posts on recreation revisions, "
                  f"{c['restored_posts']} restore text that stood on the page before the deletion and {c['fresh_posts']} are new.")
     return ["## Deletions and recreations\n", " ".join(P) + "\n"]
 
@@ -183,7 +186,8 @@ def probe_section(s: dict) -> list[str]:
     acts = ", ".join(f"{k} {v}" for k, v in sorted(s["actions"].items(), key=lambda kv: -kv[1]))
     P.append(f"The request log contributes {s['n']} script-injection probe requests against {', '.join(s['sites']) or 'the wiki'} "
              f"({s['first']:%Y-%m-%d} to {s['last']:%Y-%m-%d}) from {s['n_ip16']} /16 prefixes; {s['n_success']} succeeded. "
-             f"By request action: {acts}. {s['top_day_n']} fall on {s['top_day']}, {s['top_ip16_n']} from one prefix ({s['top_ip16']}).")
+             f"By request action: {acts}. {s['top_day_n']} fall on {s['top_day']}; one prefix ({s['top_ip16']}) accounts for "
+             f"{s['top_ip16_n']} of the {s['n']}.")
     if s["n_cotimed"]:
         P.append(f"{s['n_cotimed']} probes land within 1 s of a save from a prefix that holds a single stored account "
                  f"({', '.join(s['cotimed_labels'])}); they are *co-timed with* that account, not attributed to it: a shared /16 "

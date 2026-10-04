@@ -28,6 +28,7 @@ TABLES: dict[str, list[str]] = {
         "source_ref",
         "site",           # surface the post lives on: "dse", "paste.linuxiarz.pl", "rmn.re", ...
         "source_kind",    # adapter-specific provenance of the row: "revision", "paste", "shortener_link", ...
+        "ts_grade",       # how the timestamp was corroborated (wiki dump: reqlog / rclog / write_date), None if unknown
     ],
     # Channel deletions / recreations (wiki admin deletions, archived rooms).  The
     # last five columns come from sources that record them (the wiki dump):

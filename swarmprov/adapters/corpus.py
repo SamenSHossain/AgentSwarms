@@ -168,7 +168,7 @@ class CorpusAdapter(Adapter):
         self._coverage(path, notes)
 
         cols = ["event_id", "ts", "channel", "author_raw", "author_alt", "text", "parent_id",
-                "visible_until", "channel_family", "source_ref", "site", "source_kind"]
+                "visible_until", "channel_family", "source_ref", "site", "source_kind", "ts_grade"]
         frames = [f for f in (rec_rows, short_rows, wiki_rows) if f is not None and len(f)]
         if frames:
             ev = pd.concat(frames, ignore_index=True)
@@ -177,6 +177,7 @@ class CorpusAdapter(Adapter):
         ev["ts"] = pd.to_datetime(ev["ts"], utc=True)
         ev["visible_until"] = pd.Series(pd.NaT, index=ev.index, dtype="datetime64[ns, UTC]")
         ev["channel_family"] = ""
+        ev["ts_grade"] = None   # the corpus states no clock corroboration
         ev["author_alt"] = ev["author_alt"].fillna("") if "author_alt" in ev else ""
         ev = ev.sort_values(["ts", "site", "channel"], kind="stable").reset_index(drop=True)[cols]
 
