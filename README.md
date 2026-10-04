@@ -144,4 +144,4 @@ data/village/ agent_goals.jsonl (AI Village roster, 33 goal assignments); agent_
 docs/         PLAN.md (general pipeline plan), DATA.md (what the dump actually contains)
 ```
 
-Run the tests with `python -m pytest -q` (79 tests, about 20 s). The raw data and run directories are git-ignored.
+Run the tests with `python -m pytest -q` (78 tests, about 20 s). The raw data and run directories are git-ignored.
