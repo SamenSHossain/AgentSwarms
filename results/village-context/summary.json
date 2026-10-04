@@ -5,19 +5,48 @@
     "n_events": 0
   },
   "village": {
+    "meta": {
+      "village_id": "00ebc425-074c-466f-ab2d-5aa2efa445aa",
+      "name": "actual-launch-1",
+      "slug": "actual-launch-1",
+      "created": "2025-04-02T17:45:08.318136+00:00",
+      "export_cut": "2026-09-19T00:00:16.707000+00:00",
+      "schedule": {
+        "windows": [
+          {
+            "days": [
+              "mon",
+              "tue",
+              "wed",
+              "thu",
+              "fri"
+            ],
+            "start": "09:00",
+            "end": "17:00"
+          }
+        ],
+        "open_hours_per_week": 40.0
+      },
+      "is_chat_open": false,
+      "active_agent_id": "8e2f2b1b-409c-4c0e-b4e4-e5df8ae38fdb",
+      "active_agent": "Claude 3.7 Sonnet",
+      "turn_id": null,
+      "legacy_goal": "Collaboratively choose a charity and raise as much money as you can for it",
+      "schedule_tz": null
+    },
     "eras": {
       "n": 51,
       "first_start": "2025-04-02 12:00:00+00:00",
       "last_start": "2026-07-06 15:59:00+00:00",
       "n_open": 1,
-      "median_days": 7.0004709895833335,
+      "median_days": 7.000941979166667,
       "n_gaps": 0,
       "handover": {
         "label": "e51-maximize-assigned-goal",
         "goal": "Each agent: Maximize your assigned goal!",
         "start": "2026-07-06 15:59:00+00:00"
       },
-      "table": "                                 label  ...  days\n0   e01-collaboratively-choose-charity  ...  38.2\n1           e02-unsupervised-look-back  ...   1.8\n2               e03-holiday-goal-begin  ...   3.2\n3            e04-write-story-celebrate  ...  34.8\n4               e05-holiday-goal-begin  ...   7.0\n5               e06-create-merch-store  ...  20.0\n6              e07-holiday-prefer-goal  ...   2.0\n7                e08-design-ai-village  ...  26.0\n8               e09-holiday-goal-start  ...   5.2\n9              e10-complete-games-week  ...   6.9\n10                          e11-pursue  ...   7.0\n11                  e12-form-two-teams  ...   7.0\n12                e13-design-run-write  ...  14.0\n13          e14-take-bunch-personality  ...   6.8\n14               e15-give-therapy-help  ...   6.9\n15                     e16-choose-goal  ...   7.2\n16          e17-build-personal-website  ...   7.1\n17           e18-reduce-global-poverty  ...  14.0\n18            e19-create-popular-daily  ...  14.0\n19             e20-start-substack-join  ...  13.9\n20      e21-forecast-abilities-effects  ...   7.0\n21              e22-choose-goal-pursue  ...   7.0\n22          e23-compete-against-online  ...   6.8\n23            e24-random-acts-kindness  ...   7.0\n24           e25-create-digital-museum  ...   7.3\n25            e26-elect-village-leader  ...   6.8\n26                e27-hack-owasp-juice  ...  14.1\n27               e28-create-promote-ai  ...   7.1\n28         e29-compete-report-breaking  ...   7.0\n29                  e30-adopt-park-get  ...   7.1\n30                   e31-pick-goal-bid  ...   7.0\n31       e32-challenge-pick-challenges  ...   7.0\n32              e33-discuss-debate-act  ...   3.0\n33              e34-develop-turn-based  ...  11.0\n34                  e35-test-game-make  ...   6.8\n35             e36-interact-ai-outside  ...   6.9\n36                       e37-pick-goal  ...   3.2\n37            e38-choose-charity-raise  ...  25.0\n38         e39-build-interactive-world  ...   7.0\n39             e40-connect-worlds-into  ...   6.7\n40          e41-perform-novel-research  ...   7.2\n41             e42-run-youtube-channel  ...   7.0\n42                  e43-improve-memory  ...   1.0\n43                 e44-finetune-leader  ...   6.2\n44                   e45-follow-leader  ...   6.8\n45                  e46-organise-event  ...   7.1\n46         e47-reduce-global-suffering  ...   7.1\n47                   e48-help-gemini-2  ...   1.0\n48               e49-beat-hardest-game  ...   5.8\n49                 e50-compete-best-ai  ...   7.3\n50          e51-maximize-assigned-goal  ...   NaN\n\n[51 rows x 4 columns]"
+      "table": "                                 label  ...  days\n0   e01-collaboratively-choose-charity  ...  38.2\n1           e02-unsupervised-look-back  ...   1.8\n2               e03-holiday-goal-begin  ...   3.2\n3            e04-write-story-celebrate  ...  34.8\n4               e05-holiday-goal-begin  ...   7.0\n5               e06-create-merch-store  ...  20.0\n6              e07-holiday-prefer-goal  ...   2.0\n7                e08-design-ai-village  ...  26.0\n8               e09-holiday-goal-start  ...   5.2\n9              e10-complete-games-week  ...   6.9\n10                          e11-pursue  ...   7.0\n11                  e12-form-two-teams  ...   7.0\n12                e13-design-run-write  ...  14.0\n13          e14-take-bunch-personality  ...   6.8\n14               e15-give-therapy-help  ...   6.9\n15                     e16-choose-goal  ...   7.2\n16          e17-build-personal-website  ...   7.1\n17           e18-reduce-global-poverty  ...  14.0\n18            e19-create-popular-daily  ...  14.0\n19             e20-start-substack-join  ...  13.9\n20      e21-forecast-abilities-effects  ...   7.0\n21              e22-choose-goal-pursue  ...   7.0\n22          e23-compete-against-online  ...   6.8\n23            e24-random-acts-kindness  ...   7.0\n24           e25-create-digital-museum  ...   7.3\n25            e26-elect-village-leader  ...   6.8\n26                e27-hack-owasp-juice  ...  14.1\n27               e28-create-promote-ai  ...   7.1\n28         e29-compete-report-breaking  ...   7.0\n29                  e30-adopt-park-get  ...   7.1\n30                   e31-pick-goal-bid  ...   7.0\n31       e32-challenge-pick-challenges  ...   7.0\n32              e33-discuss-debate-act  ...   3.0\n33              e34-develop-turn-based  ...  11.0\n34                  e35-test-game-make  ...   6.8\n35             e36-interact-ai-outside  ...   6.9\n36                       e37-pick-goal  ...   3.2\n37            e38-choose-charity-raise  ...  25.0\n38         e39-build-interactive-world  ...   7.0\n39             e40-connect-worlds-into  ...   6.7\n40          e41-perform-novel-research  ...   7.2\n41             e42-run-youtube-channel  ...   7.0\n42                  e43-improve-memory  ...   1.0\n43                 e44-finetune-leader  ...   6.2\n44                   e45-follow-leader  ...   6.8\n45                  e46-organise-event  ...   7.1\n46         e47-reduce-global-suffering  ...   7.1\n47                   e48-help-gemini-2  ...   1.0\n48               e49-beat-hardest-game  ...   5.8\n49                 e50-compete-best-ai  ...   7.3\n50          e51-maximize-assigned-goal  ...  74.3\n\n[51 rows x 4 columns]"
     },
     "activity": {
       "n_rows": 303,
@@ -50,6 +79,7 @@
       "2026-08": 1,
       "2026-09": 4
     },
+    "lifetime_to_cut": true,
     "n_rooms": 16,
     "n_deleted": 12,
     "n_restricted": 11

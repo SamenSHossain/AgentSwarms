@@ -60,7 +60,10 @@ def _village_block(run: RunDir, prof: dict, summary: dict) -> list[str]:
     era_ann = None
     if eras is not None and run.has("roster_events") and "era" in run.read("roster_events").columns:
         era_ann = run.read("roster_events")
-    s = village_mod.summary(directory, channels, ev, activity, roster, prof.get("notes", {}).get("unrecognised"), eras, era_ann)
+    from .pipeline import load_config
+    notes = prof.get("notes", {})
+    s = village_mod.summary(directory, channels, ev, activity, roster, notes.get("unrecognised"), eras, era_ann,
+                            notes.get("village"), load_config(run).schedule_tz)
     summary["village"] = {k: v for k, v in s.items() if not isinstance(v, pd.DataFrame)}
     return village_mod.section(s, md_table)
 

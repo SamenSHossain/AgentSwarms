@@ -14,7 +14,12 @@ carry context the provenance pipeline needs and a transcript alone lacks:
 * ``village_goals`` - the shared goals: one window per goal the whole village
                     was given (weekly, contiguous).  A shared goal is a task
                     family for everyone, so a post that no agent-specific goal
-                    covers takes the era it falls in.
+                    covers takes the era it falls in;
+* ``villages``    - one row of metadata: the export cut (``updated_at``), the
+                    operating schedule (daily windows, timezone not stated),
+                    whether chat was open, and which agent held the turn.  The
+                    village runs one agent at a time; turn boundaries are not
+                    exported, so timing stays on the wall clock.
 
 Tables are recognised by their columns, not file names, so an upload prefix
 or a rename does not matter.
@@ -54,10 +59,56 @@ def classify(rows: list[dict]) -> str | None:
     keys = set().union(*(r.keys() for r in rows[:20]))
     if keys & TEXT_KEYS:
         return "messages"
+    if {"id", "name"} <= keys and keys & {"schedule", "village_goal", "is_chat_open"}:
+        return "meta"
     for kind, sig in SIGNATURES.items():
         if sig <= keys and (kind != "goals" or ("short_name" in keys or "name" in keys)):
             return kind
     return None
+
+
+DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+
+
+def _hhmm(s: str) -> float:
+    h, m = str(s).split(":")[:2]
+    return int(h) + int(m) / 60
+
+
+def normalize_meta(rows: list[dict], directory: pd.DataFrame | None = None) -> dict:
+    """The village row as JSON-ready facts: export cut, schedule, turn holder."""
+    r = next((x for x in rows if isinstance(x, dict) and x.get("id")), None)
+    if r is None:
+        raise ValueError("no village row with an id")
+    names = dict(zip(directory["agent_id"], directory["name"])) if directory is not None else {}
+    windows = [{"days": [str(d).lower()[:3] for d in w.get("days", [])], "start": str(w.get("start")), "end": str(w.get("end"))}
+               for w in ((r.get("schedule") or {}).get("windows") or []) if isinstance(w, dict)]
+    hours = sum(max(0.0, _hhmm(w["end"]) - _hhmm(w["start"])) * len(w["days"]) for w in windows if w["start"] and w["end"])
+    created, cut = _ts(r.get("created_at")), _ts(r.get("updated_at"))
+    return {
+        "village_id": str(r["id"]), "name": str(r.get("name") or r.get("slug") or r["id"]), "slug": r.get("slug"),
+        "created": None if pd.isna(created) else created.isoformat(),
+        "export_cut": None if pd.isna(cut) else cut.isoformat(),
+        "schedule": {"windows": windows, "open_hours_per_week": hours},
+        "is_chat_open": bool(r.get("is_chat_open")) if r.get("is_chat_open") is not None else None,
+        "active_agent_id": r.get("active_agent_id"),
+        "active_agent": names.get(str(r.get("active_agent_id"))),
+        "turn_id": r.get("turn_id"),
+        "legacy_goal": (r.get("village_goal") or "").strip() or None,
+    }
+
+
+def in_schedule(ts: pd.Series, windows: list[dict], tz: str) -> pd.Series:
+    """True for timestamps inside one of the schedule's daily windows, read in ``tz``."""
+    local = pd.to_datetime(ts, utc=True, errors="coerce").dt.tz_convert(tz)
+    day = local.dt.dayofweek.map(lambda d: DAYS[int(d)] if pd.notna(d) else None)
+    hour = local.dt.hour + local.dt.minute / 60
+    ok = pd.Series(False, index=ts.index)
+    for w in windows:
+        if not (w.get("start") and w.get("end")):
+            continue
+        ok |= day.isin(w["days"]) & (hour >= _hhmm(w["start"])) & (hour < _hhmm(w["end"]))
+    return ok
 
 
 def era_label(n: int, goal: str) -> str:
@@ -98,9 +149,10 @@ def annotate_eras(events: pd.DataFrame, eras: pd.DataFrame) -> pd.DataFrame:
 
 
 def eras_summary(eras: pd.DataFrame, events: pd.DataFrame | None = None, roster: pd.DataFrame | None = None,
-                 era_ann: pd.DataFrame | None = None) -> dict:
+                 era_ann: pd.DataFrame | None = None, cut: pd.Timestamp | None = None) -> dict:
     e = eras.sort_values("start").reset_index(drop=True)
-    days = (e["end"] - e["start"]).dt.total_seconds().div(86400)
+    end = e["end"].fillna(cut) if cut is not None else e["end"]   # an open window runs to the export cut
+    days = (end - e["start"]).dt.total_seconds().div(86400)
     gaps = (e["start"].shift(-1) - e["end"]).dt.total_seconds().abs().dropna()
     s = {"n": int(len(e)), "first_start": e["start"].min(), "last_start": e["start"].max(),
          "n_open": int(e["end"].isna().sum()), "median_days": float(days.median()) if days.notna().any() else None,
@@ -240,12 +292,20 @@ def audience(channels: pd.DataFrame, agents: pd.DataFrame, agent_col: str,
 def summary(directory: pd.DataFrame | None, channels: pd.DataFrame | None, events: pd.DataFrame | None = None,
             activity: pd.DataFrame | None = None, roster: pd.DataFrame | None = None,
             unrecognised: list[str] | None = None, eras: pd.DataFrame | None = None,
-            era_ann: pd.DataFrame | None = None) -> dict:
+            era_ann: pd.DataFrame | None = None, meta: dict | None = None, schedule_tz: str | None = None) -> dict:
     s: dict = {}
+    cut = pd.Timestamp(meta["export_cut"]) if meta and meta.get("export_cut") else None
+    if meta:
+        s["meta"] = dict(meta)
+        s["meta"]["schedule_tz"] = schedule_tz
+        if events is not None and len(events) and schedule_tz and meta["schedule"]["windows"]:
+            inside = in_schedule(events["ts"], meta["schedule"]["windows"], schedule_tz)
+            s["meta"]["posts_outside_schedule"] = int((~inside).sum())
+            s["meta"]["posts"] = int(len(events))
     if unrecognised:
         s["unrecognised"] = list(unrecognised)
     if eras is not None and len(eras):
-        s["eras"] = eras_summary(eras, events, roster, era_ann)
+        s["eras"] = eras_summary(eras, events, roster, era_ann, cut)
     if activity is not None and len(activity):
         s["activity"] = activity_summary(activity, roster, events)
     if directory is not None and len(directory):
@@ -259,7 +319,9 @@ def summary(directory: pd.DataFrame | None, channels: pd.DataFrame | None, event
         s["joins_by_month"] = d["joined"].dt.strftime("%Y-%m").value_counts().sort_index().to_dict()
     if channels is not None and len(channels):
         c = channels.copy()
-        c["lifetime_h"] = ((c["deleted"] - c["created"]).dt.total_seconds() / 3600).round(1)  # blank while open
+        end = c["deleted"].fillna(cut) if cut is not None else c["deleted"]   # open rooms: to the export cut
+        c["lifetime_h"] = ((end - c["created"]).dt.total_seconds() / 3600).round(1)
+        s["lifetime_to_cut"] = cut is not None
         c["access"] = [("only " + ", ".join(a)) if a else (("all but " + ", ".join(dn)) if dn else "everyone")
                        for a, dn in zip(c["allow"], c["deny"])]
         s["n_rooms"] = int(len(c))
@@ -274,10 +336,32 @@ def summary(directory: pd.DataFrame | None, channels: pd.DataFrame | None, event
     return s
 
 
+def _schedule_text(sch: dict) -> str:
+    parts = []
+    for w in sch.get("windows", []):
+        days = w["days"]
+        run = f"{days[0]}–{days[-1]}" if len(days) > 2 and days == DAYS[DAYS.index(days[0]):DAYS.index(days[0]) + len(days)] else ", ".join(days)
+        parts.append(f"{run} {w['start']}–{w['end']}")
+    return "; ".join(parts) or "no windows"
+
+
 def section(s: dict, md_table) -> list[str]:
     if not s:
         return []
     L = ["## Village\n"]
+    if "meta" in s:
+        m = s["meta"]
+        tz = m.get("schedule_tz")
+        L.append(f"Village `{m['name']}`, created {m['created'][:16] if m.get('created') else '?'} UTC, exported "
+                 f"{m['export_cut'][:16] if m.get('export_cut') else '?'} UTC (the export cut: open goals, rooms and windows are measured to it). "
+                 f"Operating schedule: {_schedule_text(m['schedule'])} ({m['schedule']['open_hours_per_week']:.0f} h/week), "
+                 + (f"read in {tz}: {m['posts_outside_schedule']:,} of {m['posts']:,} posts fall outside it. " if "posts_outside_schedule" in m
+                    else "timezone not stated in the export (set `schedule_tz` in the config to check posts against it). ")
+                 + "The village runs one agent at a time"
+                 + (f"; at export the turn was held by {m['active_agent']}" if m.get("active_agent") else "")
+                 + f" and chat was {'open' if m.get('is_chat_open') else 'closed'}. Turn boundaries are not exported, so timing stays on the wall clock."
+                 + (f" The row's `village_goal` field still reads \"{m['legacy_goal']}\", the first shared goal, not the current one." if m.get("legacy_goal") else "")
+                 + "\n")
     if "n_agents" in s:
         L.append(f"Directory: {s['n_agents']} agents ({s['n_participating']} participating at export), joined {s['joined']}.\n")
         L.append(md_table(s["vendors"]))
@@ -288,7 +372,8 @@ def section(s: dict, md_table) -> list[str]:
         if "posts_in_restricted" in s:
             L.append(f"{s['posts_in_restricted']:,} transcript posts are in restricted rooms"
                      + (f"; channels not in the room table: {', '.join(s['unknown_channels'])}" if s["unknown_channels"] else "") + ".\n")
-        L.append(md_table(s["rooms"], index=False, floatfmt="{:.1f}"))
+        L.append(md_table(s["rooms"].rename(columns={"lifetime_h": "lifetime_h (open: to export)" if s.get("lifetime_to_cut") else "lifetime_h"}),
+                          index=False, floatfmt="{:.1f}"))
     if "eras" in s:
         e = s["eras"]
         L.append(f"\nShared goals: {e['n']} windows from {e['first_start']:%Y-%m-%d} to {e['last_start']:%Y-%m-%d} (last start), "

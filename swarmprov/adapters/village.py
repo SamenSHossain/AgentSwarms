@@ -46,8 +46,8 @@ class VillageAdapter(Adapter):
         path = Path(path)
         found = discover(path)
         if path.is_dir():
-            return bool(found.keys() & {"goals", "agents", "rooms", "sessions", "eras"})
-        return bool(found.keys() & {"agents", "rooms", "sessions", "eras"})   # a lone goals file is the roster adapter's
+            return bool(found.keys() & {"goals", "agents", "rooms", "sessions", "eras", "meta"})
+        return bool(found.keys() & {"agents", "rooms", "sessions", "eras", "meta"})   # a lone goals file is the roster adapter's
 
     def load(self, path: Path) -> Bundle:
         path = Path(path)
@@ -60,6 +60,8 @@ class VillageAdapter(Adapter):
         notes = {"tables": {k: v.name for k, v in found.items()}, "unrecognised": unrecognised}
         activity = village_mod.normalize_activity(read_rows(found["sessions"]), directory) if "sessions" in found else None
         eras = village_mod.normalize_eras(read_rows(found["eras"])) if "eras" in found else None
+        if "meta" in found:
+            notes["village"] = village_mod.normalize_meta(read_rows(found["meta"]), directory)
         if "goals" in found:
             rows = read_rows(found["goals"])
             roster = roster_mod.normalize(rows)

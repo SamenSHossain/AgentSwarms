@@ -24,7 +24,7 @@ def test_tables_are_recognised_by_columns():
     found = discover(RAW)
     assert {k: v.name for k, v in found.items()} == {
         "goals": "agent_goals.jsonl.gz", "agents": "agents.jsonl.gz", "rooms": "chat_rooms.jsonl.gz",
-        "sessions": "claude_code_sessions.jsonl.gz", "eras": "village_goals.jsonl.gz"}
+        "sessions": "claude_code_sessions.jsonl.gz", "eras": "village_goals.jsonl.gz", "meta": "villages.jsonl.gz"}
     assert adapters.detect(RAW / "village_goals.jsonl.gz").name == "village"
     assert adapters.detect(RAW).name == "village"
     assert adapters.detect(RAW / "agents.jsonl.gz").name == "village"
@@ -207,3 +207,50 @@ def test_family_precedence_agent_goal_then_era(tmp_path):
     assert {"roster_agent", "role", "in_window", "era_id", "era"} <= set(re_.columns)
     text = (run.path / "report.md").read_text()
     assert "Shared goals: 51 windows" in text and "switched from shared to individual goals on 2026-07-06 15:59" in text
+
+
+# --- village metadata (villages) -------------------------------------------------------
+
+def test_village_row_becomes_metadata(bundle):
+    m = bundle.notes["village"]
+    assert m["name"] == "actual-launch-1" and m["export_cut"].startswith("2026-09-19T00:00:16")
+    assert m["created"].startswith("2025-04-02T17:45:08")
+    assert m["schedule"] == {"windows": [{"days": ["mon", "tue", "wed", "thu", "fri"], "start": "09:00", "end": "17:00"}],
+                             "open_hours_per_week": 40.0}
+    assert m["is_chat_open"] is False and m["active_agent"] == "Claude 3.7 Sonnet"
+    assert m["legacy_goal"].startswith("Collaboratively choose a charity")
+    assert adapters.detect(RAW / "villages.jsonl.gz").name == "village"
+    assert village.classify([{"id": "x", "name": "r", "deleted_at": None}]) == "rooms"       # rooms are not metadata
+
+
+def test_export_cut_measures_open_rooms_and_the_open_era(bundle):
+    s = village.summary(bundle.directory, bundle.channels, None, None, bundle.roster, None, bundle.eras, None,
+                        bundle.notes["village"], None)
+    rooms = s["rooms"].set_index("channel")
+    assert s["lifetime_to_cut"] and rooms.loc["general", "lifetime_h"] > 12_000 and rooms.loc["focus", "lifetime_h"] > 1000
+    assert rooms.loc["side-room", "lifetime_h"] == 4.0                                          # deleted rooms unchanged
+    last = s["eras"]["table"].iloc[-1]
+    assert last["label"].startswith("e51-") and 70 < last["days"] < 80                           # 2026-07-06 -> 2026-09-19
+    text = "\n".join(village.section(s, lambda df, **k: ""))
+    assert "mon–fri 09:00–17:00 (40 h/week)" in text and "timezone not stated" in text and "turn was held by Claude 3.7 Sonnet" in text
+
+
+def test_in_schedule_with_a_timezone():
+    ts = pd.Series(pd.to_datetime(["2026-07-07T17:00:00Z",    # Tue 10:00 Los Angeles -> inside
+                                   "2026-07-07T15:30:00Z",    # Tue 08:30 -> before opening
+                                   "2026-07-11T18:00:00Z",    # Sat -> outside
+                                   None], utc=True))
+    w = [{"days": ["mon", "tue", "wed", "thu", "fri"], "start": "09:00", "end": "17:00"}]
+    assert list(village.in_schedule(ts, w, "America/Los_Angeles")) == [True, False, False, False]
+
+
+def test_schedule_tz_config_counts_posts_outside(tmp_path):
+    for f in RAW.glob("*.jsonl.gz"):
+        shutil.copy(f, tmp_path / f.name)
+    msgs = [_post(0, SONNET45, GENERAL, pd.Timestamp("2026-07-07T17:00:00Z"), "R1 CONFIRMED: Utah arrived; answered 73.74"),
+            _post(1, SONNET45, GENERAL, pd.Timestamp("2026-07-11T18:00:00Z"), "weekend note")]
+    (tmp_path / "chat_messages.jsonl").write_text("\n".join(json.dumps(m) for m in msgs))
+    (tmp_path / "cfg.json").write_text(json.dumps({"schedule_tz": "America/Los_Angeles"}))
+    run = pipeline.run_all(tmp_path, tmp_path / "run", config=str(tmp_path / "cfg.json"))
+    text = (run.path / "report.md").read_text()
+    assert "read in America/Los_Angeles: 1 of 2 posts fall outside it" in text

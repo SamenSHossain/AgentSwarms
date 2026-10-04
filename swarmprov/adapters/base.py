@@ -71,6 +71,9 @@ class AdapterConfig:
     family_from_roster: bool = True
     # author strings -> roster agent ids, for transcripts that carry names but no agent id
     roster_aliases: dict[str, str] = field(default_factory=dict)
+    # IANA zone of the village's operating schedule (the export does not state it); when set, the
+    # report counts posts outside the schedule's windows
+    schedule_tz: str | None = None
 
     @classmethod
     def from_dict(cls, d: dict, base: "AdapterConfig | None" = None) -> "AdapterConfig":
