@@ -85,6 +85,73 @@ def _village_block(run: RunDir, prof: dict, summary: dict) -> list[str]:
     return village_mod.section(s, md_table)
 
 
+def _swarmtraces_block(prof: dict, st: dict, summary: dict) -> list[str]:
+    """Reconstruction report for the Swarm traces redacted payload release.
+
+    The release has no wall clock and no agent identity, so the provenance
+    analyses cannot run; this reports what the file *does* contain — the
+    reconstruction tree, tags, de-duplication and redaction coverage — and says
+    plainly what is not computable.
+    """
+    summary["swarmtraces"] = st
+    k, tree, tags, txt, red, integ = (st["by_kind"], st["tree"], st["tags"],
+                                      st["text"], st["redaction"], st["integrity"])
+    n = st["n_records"]
+    kinds_txt = ", ".join(f"{v:,} {kk}" for kk, v in k.items())
+    L = ["# Reconstruction report — Swarm traces redacted payload release\n",
+         f"Source: `{prof['source']}` (adapter `{prof['adapter']}`), **{n:,} recovered records** "
+         f"({kinds_txt}). This is a reconstruction corpus, not a timed multi-agent transcript: it carries no "
+         "wall clock and no agent identity, so swarmprov's provenance analyses (A1–A6) do not run on it. "
+         "Every number below is a count of records and fields; no payload was executed, decoded or interpreted.\n"]
+
+    edge_txt = "; ".join(f"{v:,} {e}" for e, v in tree["child_of_parent_kind"].items()) or "none"
+    L.append("## Reconstruction tree\n")
+    L.append(f"The records form a two-level tree, not a timeline: {tree['roots']:,} root records "
+             f"and {tree['children']:,} linked to a parent by `parent_id` (reconstruction links: {edge_txt}; "
+             f"max depth {tree['max_depth']}). {tree['parents_with_children']:,} record(s) are a reconstruction parent"
+             + (f"; {tree['orphan_children']:,} child record(s) name a parent not present in the release" if tree["orphan_children"] else "")
+             + ". `parent_id` records which payload a response or recovered text was rebuilt from; it is not an "
+             "ordering in time, so it cannot stand in for the missing clock.\n")
+    fan = tree["fanout_dist"]
+    if fan:
+        fan_df = pd.DataFrame({"children (10 = 10+)": list(fan.keys()), "parents": list(fan.values())})
+        L.append(md_table(fan_df, index=False))
+
+    L.append("\n## Tags, text and redaction\n")
+    if tags["n_tagged"]:
+        fam_txt = ", ".join(f"{kk} {v}" for kk, v in tags["families"].items())
+        L.append(f"Tags: {tags['n_tagged']:,} of {n:,} records carry a `;`-joined tag string "
+                 f"({tags['n_families']} tag famil{'y' if tags['n_families'] == 1 else 'ies'}: {fam_txt}); "
+                 "the rest are untagged.\n")
+    else:
+        L.append(f"Tags: none of the {n:,} records carry a tag string.\n")
+    L.append(f"Text: {txt['distinct']:,} distinct bodies, so {txt['repeated']:,} record(s) repeat content already "
+             "seen (identical reconstructed text recovered from more than one place).\n")
+    L.append(f"Redaction: {red['records_with_placeholder']:,} of {n:,} records contain at least one bracketed "
+             f"placeholder ({red['placeholder_occurrences']:,} occurrences across {red['n_categories']} categories), "
+             "so every content count is a lower bound — the publishers removed credentials, hosts, encoded blobs and "
+             "shortener codes before release. The categories are the publishers' own redaction labels:\n")
+    if red["top_categories"]:
+        red_df = pd.DataFrame({"redaction category": list(red["top_categories"].keys()),
+                               "occurrences": list(red["top_categories"].values())})
+        L.append(md_table(red_df, index=False))
+
+    L.append("\n## Integrity\n")
+    L.append(f"Record ids {'are' if integ['ids_unique'] else 'are NOT'} all unique; "
+             f"citation handles {'are' if integ['cites_unique'] else 'are NOT'} all unique; "
+             f"every citation {'is' if integ['cite_prefixes_match_id'] else 'is not always'} prefixed by its record id.\n")
+
+    L.append("## What is not computable here\n")
+    L.append("- **No wall clock.** `time_utc` is null on every record, so there is no ordering in time: "
+             "patient-zero, head start, adoption order and diffusion speed cannot be computed. A provenance run "
+             "needs a timed transcript (the wiki dump or an AI Village message table).\n"
+             "- **No agent identity.** The acting account is redacted and the record id is a record, not an actor, "
+             "so there is no \"who\": hub structure, relay chains and per-agent reach do not apply.\n"
+             "- **Outbound-heavy.** Most records are requests; a response was not always recovered, and redaction "
+             "removes the values that would tie records together. Treat the counts as a floor, not a census.\n")
+    return L
+
+
 def _write(run: RunDir, L: list[str], summary: dict) -> str:
     text = "\n".join(L)
     (run.path / "report.md").write_text(text)
@@ -100,6 +167,10 @@ def build(run: RunDir, mapping: str = "merged") -> str:
     caps = prof["capabilities"]
     if not prof["n_events"]:
         summary = {"profile": {k: prof[k] for k in ("adapter", "source", "n_events")}}
+        notes = prof.get("notes") or {}
+        if notes.get("swarmtraces"):
+            L = _swarmtraces_block(prof, notes["swarmtraces"], summary)
+            return _write(run, L, summary)
         L = ["# Context report (no posts)\n",
              f"Source: `{prof['source']}` (adapter `{prof['adapter']}`) holds no posts, so there is no provenance to "
              "analyse. The tables below become task families, cohorts, channel lifecycle and audiences once a "

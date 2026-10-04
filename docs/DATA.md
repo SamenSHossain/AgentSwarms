@@ -129,3 +129,31 @@ What it tells us:
 2. **Cross-site diffusion results are bounded samples.** "First seen on site X" means first seen *in the captured material*.
 3. **Absence is not evidence.** Sites with `no_selected_agent_text_in_compilation` were mostly not searched, not searched and found empty.
 4. If more data ever arrives, the highest-value gaps for provenance are **Discord** (an explicit coordination channel), the 12 inventoried wikiservice farms, and **Wiki4D** revision bodies.
+
+---
+
+# Fourth source: the Swarm traces redacted payload release (read 2026-10-04)
+
+A separate public release (`redacted.jsonl.gz`, 15 MB gz / 92.8 MB; 189,579 JSON records) reconstructed from public artifacts by an independent group. It is **not** a transcript of the wiki swarm; it is a corpus of recovered requests and responses, published with sensitive spans redacted. The `swarmtraces` adapter reads it (`swarmprov run redacted.jsonl.gz -o runs/swarmtraces`).
+
+| field | what it is |
+|---|---|
+| `id` | record id (`R0000001`), unique, file order (ids are sorted; 189,579 distinct) |
+| `cite` | `id:hash` citation handle, unique; the prefix equals `id` on every row |
+| `kind` | `payload` 91,037, `recovered_text` 75,534, `response` 23,008 |
+| `parent_id` | the `payload` a response or recovered text was rebuilt from, or null; set on 61,125 rows, null on 128,454 |
+| `time_utc` | **null on every row** |
+| `tags` | a `;`-joined label string; non-empty on only 37 rows (all `article-evidence;…`) |
+| `text` | the recovered content, with sensitive spans replaced by bracketed placeholders |
+
+## What the shape means
+
+- **It is a two-level reconstruction tree, not a timeline.** `parent_id` links a `response`/`recovered_text` child to its `payload`; max depth is 1 (42,707 `recovered_text <- payload`, 18,417 `response <- payload`, 1 `recovered_text <- recovered_text`). One child points at a parent not in the release. `parent_id` says *which payload a record was rebuilt from*, which is not an order in time.
+- **No wall clock.** `time_utc` is null throughout, so there is no patient-zero, head start, adoption order or diffusion speed. (The same limit the `patient-zero` project's own cross-incident run states: "time-free mode … no propagation tracing.")
+- **No agent identity.** The acting account is redacted and the record id is a record, not an actor, so there is no "who": hubs, relay chains and per-agent reach do not apply.
+- **Heavy redaction.** 182,955 of 189,579 records carry at least one bracketed placeholder (≈875k occurrences). The bracket labels are the publishers' own redaction categories (`[ENCODED BLOB n]`, `[REDACTED:destination:n]`, `[SHORTENER CODE n]`, `[SERVICE URL n]`, `[CREDENTIAL n]`, …), so every content count is a lower bound.
+- **De-duplication.** 163,851 distinct `text` bodies, so 25,728 rows (13.6%) repeat content recovered from more than one place.
+
+## Consequences for the tool
+
+Because the release has neither of the two capabilities swarmprov's provenance analyses depend on (a wall clock and an agent identity), the adapter sets `has_wall_clock=False` and `has_explicit_author=False` and emits **no** `events`. The pipeline therefore writes a **reconstruction report** instead of A1–A6: record kinds, the reconstruction tree and its fan-out, the tag families, the de-duplication, the redaction coverage by category, and record/citation integrity, with an explicit "what is not computable here" section. The adapter never executes, decodes or interprets a payload; every figure is a count of records and fields. To trace provenance, use a timed, attributed transcript (the wiki dump, or an AI Village message table).

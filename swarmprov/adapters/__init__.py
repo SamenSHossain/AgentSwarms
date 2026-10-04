@@ -7,18 +7,21 @@ from pathlib import Path
 from .base import Adapter, AdapterConfig, Bundle, Capabilities, Technique
 from .chat import ChatAdapter
 from .roster import RosterAdapter
+from .swarmtraces import SwarmTracesAdapter
 from .village import VillageAdapter
 from .wiki import WikiAdapter
 
-# detection order: wiki (revisions.jsonl) before corpus (records.jsonl) before village
-# (a directory of AI Village tables, or its agents/chat_rooms files) before roster
-# (agent_goals: ids and windows, no text) before generic chat
+# detection order: wiki (revisions.jsonl) before corpus (records.jsonl) before
+# swarmtraces (redacted.jsonl: id/cite/kind/parent_id/time_utc/tags/text) before
+# village (a directory of AI Village tables, or its agents/chat_rooms files)
+# before roster (agent_goals: ids and windows, no text) before generic chat
 ADAPTERS: dict[str, type[Adapter]] = {"wiki": WikiAdapter}
 try:  # the cross-site corpus adapter is optional
     from .corpus import CorpusAdapter
     ADAPTERS["corpus"] = CorpusAdapter
 except ImportError:  # pragma: no cover
     pass
+ADAPTERS["swarmtraces"] = SwarmTracesAdapter
 ADAPTERS["village"] = VillageAdapter
 ADAPTERS["roster"] = RosterAdapter
 ADAPTERS["chat"] = ChatAdapter

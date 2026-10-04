@@ -41,6 +41,12 @@ swarmprov run hf://datasets/aidigestorg/ai-village/chat_messages.jsonl.gz -o run
 swarmprov run data/raw2 -o runs/corpus                 # standard pipeline on the corpus alone (reach, techniques)
 swarmprov crosssite runs/wiki data/raw2 -o runs/crosssite   # wiki run + corpus: technique spread between surfaces
 
+# the Swarm traces redacted payload release (redacted.jsonl.gz): a reconstruction corpus, not a
+# timed transcript. No wall clock and no agent identity, so the provenance analyses (A1–A6) do not
+# run; the report is a reconstruction summary (record kinds, the payload->response/recovered-text
+# tree, tag families, de-duplication, redaction coverage) that states what is not computable.
+swarmprov run redacted.jsonl.gz -o runs/swarmtraces
+
 # synthetic swarm with known provenance (used by the tests)
 swarmprov synth -o data/synth/transcript.jsonl --agents 60 --seed 2
 swarmprov run data/synth/transcript.jsonl -o runs/synth --config data/synth/config.json
@@ -135,6 +141,7 @@ All source-specific knowledge lives in one adapter plus an `AdapterConfig`, whic
 ```
 swarmprov/
   adapters/   base.py (Adapter, AdapterConfig, Capabilities)  wiki.py  chat.py  corpus.py (records/shortener/other-wikis)
+              swarmtraces.py (the redacted payload release: a reconstruction corpus, no clock/no identity)
               roster.py (agent_goals tables)  village.py (a directory of AI Village tables)
   segment.py  identity.py  roster.py (goal windows -> families, cohorts)  village.py (directory, rooms, audiences)
   lifecycle.py (deletion sweeps, recreation check, probes)  rules.py  gazetteer.py  claims.py  exposure.py  graph.py
@@ -150,4 +157,4 @@ data/raw_village/  AI Village side tables as exported: agents, chat_rooms, agent
 docs/         PLAN.md (general pipeline plan), DATA.md (what the dump actually contains)
 ```
 
-Run the tests with `python -m pytest -q` (117 tests, about 50 s). The wiki dump (`data/raw`), the corpus (`data/raw2`) and the run directories are git-ignored; the small AI Village exports in `data/raw_village` are committed and the village tests depend on them.
+Run the tests with `python -m pytest -q` (125 tests, about 50 s). The wiki dump (`data/raw`), the corpus (`data/raw2`) and the run directories are git-ignored; the small AI Village exports in `data/raw_village` are committed and the village tests depend on them.
