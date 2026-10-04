@@ -27,37 +27,44 @@ transcript ──adapter──▶ events ──rules/LLM──▶ claims ──�
 
 ## Quick start
 
+**Install:**
 ```bash
 pip install -e .            # pandas, pyarrow, networkx, matplotlib, pyfixest
-# optional: pip install -e '.[llm]'  for Claude-based extraction;  '.[hf]'  for hf:// inputs
+pip install -e '.[llm]'     # optional: Claude-based extraction
+pip install -e '.[hf]'      # optional: hf:// dataset URIs
+```
 
-# the wiki dump: a directory or the .zip with revisions/events/pages/labels.jsonl
-swarmprov run data/raw -o runs/wiki                    # ≈1 min; writes runs/wiki/report.md
-swarmprov run full-wiki-logs.zip -o runs/wiki          # zip works too
+**Wiki dump** (directory or .zip):
+```bash
+swarmprov run data/raw -o runs/wiki           # ≈1 min; writes runs/wiki/report.md
+swarmprov run full-wiki-logs.zip -o runs/wiki # zip works too
+```
 
-# any chat transcript (AI Village, Slack/Discord exports, framework logs); hf:// URIs are fetched first
+**Chat transcript** (AI Village, Slack, Discord, framework logs):
+```bash
 swarmprov run village-transcript.json -o runs/village --adapter chat --config my_config.json
 swarmprov run hf://datasets/aidigestorg/ai-village/chat_messages.jsonl.gz -o runs/village --adapter chat
+```
 
-# AI Village: a directory holding the exported tables (agents, chat_rooms, agent_goals, chat_messages ...)
-# is one source: names from `agents`, room names + lifecycle + audiences from `chat_rooms`,
-# families + cohorts from `agent_goals`; without a message table it writes a context report
+**AI Village tables** (directory with agents, chat_rooms, agent_goals, etc.):
+```bash
 swarmprov run data/raw_village -o runs/village
-swarmprov run data/village/agent_goals.jsonl -o runs/village_goals          # a roster on its own
-swarmprov run hf://datasets/aidigestorg/ai-village/chat_messages.jsonl.gz -o runs/village \
-    --adapter chat --roster hf://datasets/aidigestorg/ai-village/agent_goals.jsonl.gz
+swarmprov run data/village/agent_goals.jsonl -o runs/village_goals  # roster only
+```
 
-# the cross-site batch (records.jsonl, links.jsonl, shortener-logs.json, other-wikis.json, coverage CSVs)
-swarmprov run data/raw2 -o runs/corpus                 # standard pipeline on the corpus alone (reach, techniques)
-swarmprov crosssite runs/wiki data/raw2 -o runs/crosssite   # wiki run + corpus: technique spread between surfaces
+**Cross-site analysis** (wiki + corpus):
+```bash
+swarmprov run data/raw2 -o runs/corpus                      # corpus alone
+swarmprov crosssite runs/wiki data/raw2 -o runs/crosssite   # wiki + corpus: technique spread
+```
 
-# the Swarm traces redacted payload release (redacted.jsonl.gz): a reconstruction corpus, not a
-# timed transcript. No wall clock and no agent identity, so the provenance analyses (A1–A6) do not
-# run; the report is a reconstruction summary (record kinds, the payload->response/recovered-text
-# tree, tag families, de-duplication, redaction coverage) that states what is not computable.
+**Swarm traces** (redacted payload release: reconstruction corpus, no clock/identity):
+```bash
 swarmprov run redacted.jsonl.gz -o runs/swarmtraces
+```
 
-# synthetic swarm with known provenance (used by the tests)
+**Synthetic swarm** (known provenance, used by tests):
+```bash
 swarmprov synth -o data/synth/transcript.jsonl --agents 60 --seed 2
 swarmprov run data/synth/transcript.jsonl -o runs/synth --config data/synth/config.json
 ```
@@ -135,20 +142,24 @@ All source-specific knowledge lives in one adapter plus an `AdapterConfig`, whic
   "family_from_channel": false,
   "family_from_roster": true,
   "roster_aliases": {"Claude Opus 4.5": "169ea37e-c664-4012-acba-cb583aaab1f3"},
-  "techniques": [{"name": "shared-doc", "pattern": "docs\\.google\\.com", "description": "..."}],
-  "disputes": [{"family": "fundraiser", "slot": "total raised",
-                "context": "raised|total", "variants": {"$1,481": "1,?481", "$2,000": "2,?000"}}]
+  "techniques": [{"name": "shared-doc", "pattern": "docs\\.google\\.com"}],
+  "disputes": [{"family": "fundraiser", "slot": "total raised", "variants": {"$1,481": "1,?481"}}]
 }
 ```
 
-- **Capabilities are detected and reported**: wall clock, explicit authors, read logs, deletions, threading, presence logs, request logs. An analysis that needs a missing capability is skipped or labelled.
-- **Lifecycle is used, not just recorded.** From the wiki dump's events table the adapter keeps every deletion (with whether the page ever had a published revision and its delete/recreate cycle), one `recreate` row per first-recreation edge, and the script-injection probes as a `probes` table. The report adds a clock-quality note (grades and uncertainty of post timestamps, how many exposure gaps sit inside the clock resolution), a *Deletions and recreations* block (sweeps, re-saves after deletion, restored vs fresh text), a *Probing* block (co-timing with saves under a strict rule, never attribution), and a validation row comparing the source's recreation edges with the pipeline's own rule. Exposure gains `D_visible`, which ignores copies deleted before the report, reported beside `D` and never replacing it; relay edges inside the 2 s clock resolution are flagged as direction-free.
-- **Items are learned from the transcript.** Phrases that follow a round marker in posts by ≥2 authors become items, so no task list has to be written by hand. US states and countries are built in.
-- **Round sequences are learned from chains** like `MA -> CT -> MI -> WV`.
-- **The AI Village side tables are one source.** The `village` adapter takes a directory and recognises tables by their columns: `agents` (id → name, model, join date), `chat_rooms` (room id → name, created/deleted, `whitelisted_agent_names` / `blacklisted_agent_names`) and `agent_goals`, plus `village_goals` (the shared goal everyone was given, in contiguous windows of typically a week (median 7 days) → the `eras` table), `villages` (one row of metadata: the export cut, the operating schedule, whether chat was open and who held the turn; recorded in the profile and used to measure open rooms and the open era to the cut), any message table, presence logs such as `claude_code_sessions` (agent_id + created_at → the `activity` table), and `summaries` (LLM-written daily, goal and agent digests → the `summaries` table; the latest daily digests' timestamped event lines, in Pacific time, become a derived `digest` timeline that is kept apart from real posts). The digest settles the schedule's timezone, which the report says it inferred. With `{"digest_as_posts": true}` in the config and no message table, the pipeline runs on the digest with `derived_text` flagged in the capabilities and Limitations: fit for who-did-what-when and technique mentions, not for the provenance of specific values. The export does not state the schedule's timezone; set `schedule_tz` in the config (e.g. `"America/Los_Angeles"`) and the report counts posts outside opening hours. Posts get agent names and room names; rooms give channel lifecycle; a room's allow/deny list is its **audience**, and exposure is judged per audience: an answer posted only where an agent could not read it is not "public" for that agent (`exposure.build(..., audience=...)`). The report's Village block lists the directory by vendor, every room with its lifetime and access, what the activity log covers (and says so when it covers none of the agents under study), and any file in the directory no adapter recognised.
-- **A roster replaces guessed identities and families.** AI Village `agent_goals` (or any table with an agent id, a role or goal, and a start time; JSON, JSONL, CSV or TSV, so a spreadsheet export works) is detected by the `roster` adapter. Timestamps a spreadsheet has reduced to `37:49.4` are reported as unreadable rather than parsed as a time today. Attached with `--roster`, each post is matched to a roster agent (by `agent_id` in the transcript, a `roster_aliases` entry, or the role name) and to the goal window it falls in; the goal becomes the post's task family, the goal's assignment batch its cohort, and two agents given the same goal stay distinct. Family precedence is: the agent's own goal while it was in force, then text or channel families from the config, then the shared goal (era) of the post's time, so a post before an agent's goal started is not back-dated onto it. The report gains a Roster block: batches, roles held by several agents (the comparable tasks), goal changes (reworded vs reassigned), and coverage (unmatched authors, posts outside every goal window, goals with no posts).
-- **URLs are indexed as facts**, so reach and relay chains work on free-form chat with no task structure.
-- **Optional LLM extraction** (`--llm claude-haiku-4-5`) uses structured outputs and caches results by event id. The LLM wins on semantic fields and the rules fill in numbers.
+**Capabilities** — Detected and reported: wall clock, explicit authors, read logs, deletions, threading, presence logs, request logs. Analyses needing missing capabilities are skipped or labelled.
+
+**Lifecycle** — Not just recorded, but used. From wiki events: deletions (with cycle tracking), recreations, and probes. The report adds clock-quality notes, deletion/recreation blocks, probing blocks, and exposure gains `D_visible` (ignoring deleted copies).
+
+**Items and rounds** — Learned from the transcript: phrases following round markers become items (no manual task list needed). US states and countries are built in. Round sequences learned from chains like `MA → CT → MI → WV`.
+
+**AI Village tables** — The `village` adapter recognises: `agents`, `chat_rooms`, `agent_goals`, `village_goals` (eras), `villages` (metadata), message tables, activity logs (`claude_code_sessions`), and `summaries`. Posts get agent/room names, rooms give channel lifecycle, and allow/deny lists become **audiences** for per-audience exposure judgement. Set `schedule_tz` in config for timezone-aware post timing.
+
+**Rosters** — Replace guessed identities and families. Any table with agent id + role/goal + start time works (JSON, JSONL, CSV, TSV). Family precedence: agent's own goal → text/channel families → shared era goal. Report shows batches, comparable tasks, goal changes, and coverage gaps.
+
+**URLs as facts** — Indexed for reach and relay chains on free-form chat without task structure.
+
+**Optional LLM extraction** — `--llm claude-haiku-4-5` uses structured outputs and caches by event id. LLM handles semantics, rules fill in numbers.
 
 ## Design notes and limitations
 
@@ -160,23 +171,18 @@ All source-specific knowledge lives in one adapter plus an `AdapterConfig`, whic
 
 ## Repository layout
 
-```
-swarmprov/
-  adapters/   base.py (Adapter, AdapterConfig, Capabilities)  wiki.py  chat.py  corpus.py (records/shortener/other-wikis)
-              swarmtraces.py (the redacted payload release: a reconstruction corpus, no clock/no identity)
-              roster.py (agent_goals tables)  village.py (a directory of AI Village tables)
-  segment.py  identity.py  roster.py (goal windows -> families, cohorts)  village.py (directory, rooms, audiences)
-  lifecycle.py (deletion sweeps, recreation check, probes)  rules.py  gazetteer.py  claims.py  exposure.py  graph.py
-  extract_llm.py  validate.py  synth.py  report.py  pipeline.py  cli.py  plotting.py  remote.py (hf:// inputs)
-  analysis/   provenance.py (A1)  causal.py (A2)  diffusion.py (A3)  errors.py (A4)  structure.py (A5, A6)
-              crosssite.py (technique spread between surfaces, timeline, coverage bounds)
-  crosssite_pipeline.py   the `crosssite` stage
-tests/        rules, segmentation, chat adapter, roster, village tables + audience exposure, wiki events (recreations, probes, D_visible), LLM merge (fake client), synthetic end-to-end recovery
-validation/   labels (event ids only) for the three validation splits
-results/      committed reports + figures: openai-wiki/, crosssite/, corpus/, synthetic/, village-goals/, village-context/
-data/village/ agent_goals.jsonl (AI Village roster, 33 goal assignments); agent_goals_sheet.tsv (the same after a spreadsheet round-trip)
-data/raw_village/  AI Village side tables as exported: agents, chat_rooms, agent_goals, village_goals, villages, claude_code_sessions, summaries (.jsonl.gz)
-docs/         PLAN.md (general pipeline plan), DATA.md (what the dump actually contains)
-```
+| path | contents |
+|---|---|
+| `swarmprov/adapters/` | Adapter interface + implementations (wiki, chat, corpus, swarmtraces, roster, village) |
+| `swarmprov/` | Core modules: segment, identity, roster, village, lifecycle, rules, claims, exposure, graph, extract_llm, validate, synth, report, pipeline, cli, plotting, remote |
+| `swarmprov/analysis/` | A1–A6 analyses: provenance, causal, diffusion, errors, structure, crosssite |
+| `tests/` | 125 tests (≈50 s): rules, segmentation, adapters, roster, village, wiki events, LLM merge, synthetic recovery |
+| `validation/` | Labels (event ids) for dev, held-out, and test splits |
+| `results/` | Committed reports: openai-wiki, crosssite, corpus, synthetic, village-goals, village-context |
+| `data/village/` | AI Village roster (33 goal assignments) |
+| `data/raw_village/` | AI Village side tables: agents, chat_rooms, agent_goals, villages, claude_code_sessions, summaries |
+| `docs/` | PLAN.md, DATA.md |
 
-Run the tests with `python -m pytest -q` (125 tests, about 50 s). The wiki dump (`data/raw`), the corpus (`data/raw2`) and the run directories are git-ignored (see *Where the data comes from* for the download links); the small AI Village exports in `data/raw_village` are committed and the village tests depend on them.
+**Git-ignored:** `data/raw/` (wiki dump), `data/raw2/` (corpus), run directories. See *Where the data comes from* for download links. Small AI Village exports in `data/raw_village/` are committed.
+
+Run tests: `python -m pytest -q`
