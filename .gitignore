@@ -8,3 +8,4 @@ data/raw2/
 runs/
 .swarmprov/
 data/synth/
+.coverage
