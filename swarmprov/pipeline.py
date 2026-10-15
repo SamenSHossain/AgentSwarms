@@ -11,6 +11,7 @@ from pathlib import Path
 import pandas as pd
 
 from . import adapters, claims as claims_mod, exposure, graph, identity, remote, roster as roster_mod, rules, village
+from .adapters.base import read_capabilities
 from .schema import RunDir, conform
 
 AGENT_COLS = {"merged": "agent_merged", "strict": "agent_strict"}
@@ -112,8 +113,8 @@ def extract(run: RunDir, llm: str | None = None) -> None:
         run.write("roster_events", ann)
     ev["family"] = fam
     run.write("events", ev)
-    caps = json.loads((run.path / "profile.json").read_text())["capabilities"]
-    agents = identity.resolve(ev, fam, cfg, explicit_author=bool(caps.get("has_explicit_author")))
+    caps = read_capabilities(json.loads((run.path / "profile.json").read_text()))
+    agents = identity.resolve(ev, fam, cfg, explicit_author=caps.get("has_explicit_author", False))
     if ann is not None and "roster_agent" in ann:
         agents = roster_mod.merge_agents(agents, ev, ann, ros)
     run.write("agents", agents)

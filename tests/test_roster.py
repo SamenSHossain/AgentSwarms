@@ -109,6 +109,8 @@ def test_roster_report_coverage(village_run):
     text = (village_run.path / "report.md").read_text()
     assert "## Roster" in text and "30/31 posts by 2/3 authors matched" in text
     assert "`Observer` (1)" in text
+    assert "the roster fixes cohort (assignment batch) and family (goal) for matched authors; unmatched authors fall back " \
+           "to their author field." in text
     prof = json.loads((village_run.path / "profile.json").read_text())
     assert prof["roster"].endswith("agent_goals.jsonl")
     ann = village_run.read("roster_events")

@@ -28,6 +28,11 @@ class Capabilities:
         return {k: bool(v) for k, v in self.__dict__.items()}   # a numpy bool would reach profile.json as "False"
 
 
+def read_capabilities(profile: dict) -> dict[str, bool]:
+    """Capabilities from profile.json; runs written before ``as_dict`` cast to bool may hold the string "False"."""
+    return {k: v is True or str(v).lower() == "true" for k, v in profile["capabilities"].items()}
+
+
 @dataclass
 class Technique:
     name: str

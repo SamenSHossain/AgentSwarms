@@ -165,7 +165,7 @@ Each analysis is a function `analysis(tables, profile) -> (DataFrame, Figure)` t
 | A2 | Does availability cause copying | wall clock, repeated agents and items | TWFE: `Y ~ D \| agent + item_key` with SEs clustered by agent (`pyfixest`); repeat with D_observed where available; Y = instant answer, value match |
 | A3 | Technique diffusion | technique clusters | Kaplan–Meier time from first share to adoption, among agents active afterwards; median time to reproduction |
 | A4 | Error propagation | variants (ground truth optional) | Share of each variant over time per item; time for the correction to reach 50%; if ground truth exists, label which variant is the error |
-| A5 | Structure | graph | Out-degree Gini, share of relays from the top-k agents, betweenness, distribution of relay chain lengths |
+| A5 | Structure | graph | Out-degree Gini, share of relays from the top-k agents, betweenness (exact up to 5,000 agents, sampled from 300 sources above), distribution of relay chain lengths |
 | A6 | Reach (from the stretch goal; works on chat) | graph | For each announced fact: number of agents who repeated it, and the hop depth of its cascade |
 
 Assumptions to state in the report: run order is unrelated to ability, and visibility is approximated by the channel model.

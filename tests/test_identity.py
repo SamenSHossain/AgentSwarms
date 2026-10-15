@@ -6,7 +6,7 @@ import json
 import pandas as pd
 import pytest
 
-from swarmprov import identity, pipeline
+from swarmprov import identity, pipeline, report
 from swarmprov.adapters import AdapterConfig
 
 AGENTS = ["planner", "coder", "analyst", "critic"]
@@ -106,7 +106,37 @@ def test_explicit_authors_with_date_leads_stay_distinct(datelead_runs):
 def test_merges_on_an_explicit_author_source_are_flagged(datelead_runs):
     run = datelead_runs["opt_in"]
     text = (run.path / "report.md").read_text()
-    assert "Identity merges: 1 of 1 merged ids join more than one author string (4 strings in all); largest: `May05|gdp` (4)." in text
-    assert "**Warning:** this source names its authors explicitly" in text
+    assert "Identity merges: 1 of 1 merged ids joins more than one author string (4 strings in all); largest: `May05|gdp` (4)." in text
+    assert ("**Warning:** this source names its authors explicitly. 1 merge joins handles it keeps apart (a shared cohort "
+            "date token and task family, or a roster); compare the strict-mapping sensitivity lines.") in text
     al = pd.read_csv(run.path / "agent_aliases.csv")
     assert set(al["agent_merged"]) == {"May05|gdp"} and set(al["n_merged_aliases"]) == {4}
+
+
+def _agents(rows):
+    """rows: (author_raw, agent_strict, agent_merged)"""
+    return pd.DataFrame(rows, columns=["author_raw", "agent_strict", "agent_merged"])
+
+
+CASE = [("Planner", "planner", "planner"), ("planner", "planner", "planner"), ("Coder", "coder", "coder")]
+COHORT = [("AlphaNov27", "alphanov27", "Nov27|f"), ("BetaNov27", "betanov27", "Nov27|f")]
+
+
+def test_case_merges_are_counted_apart_from_cohort_merges():
+    """Both mappings fold case, so the strict sensitivity line cannot show a case merge; only cohort and roster
+    merges are pointed at it."""
+    line = report._identity_merges(_agents(CASE), explicit=True)
+    assert line.startswith("Identity merges: 1 of 2 merged ids joins more than one author string (2 strings in all)")
+    assert "Of these, 1 only joins case variants of one handle" in line
+    assert "differ only in case are one agent under both mappings" in line and "compare the strict-mapping" not in line
+    line = report._identity_merges(_agents(CASE + COHORT), explicit=True)
+    assert "2 of 3 merged ids join more than one" in line and "Of these, 1 only joins case variants" in line
+    assert "1 merge joins handles it keeps apart" in line and "compare the strict-mapping sensitivity lines" in line
+    line = report._identity_merges(_agents(COHORT), explicit=True)
+    assert "case" not in line and "1 merge joins handles it keeps apart" in line
+    assert "**Warning:**" not in report._identity_merges(_agents(CASE + COHORT), explicit=False)
+
+
+def test_identity_merges_none_reads_in_the_singular():
+    assert report._identity_merges(_agents(CASE[2:]), explicit=False) == (
+        "Identity merges: none; the only merged id is a single author string (`agent_aliases.csv` lists both mappings).")

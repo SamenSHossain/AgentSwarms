@@ -157,6 +157,7 @@ def test_full_run_reports_lifecycle_blocks(mini):
     assert "the collectors' coverage tables list 143 surfaces the swarm touched" in text
     assert "| has_explicit_author | no | authors are parsed from signatures in the text |" in text
     assert "- **Identity**: names are parsed from signatures;" in text and "Identity merges: " in text
+    assert "**Warning:**" not in text                                  # merges are only flagged on explicit-author sources
     assert "## Village" not in text and "village" not in json.loads((run.path / "summary.json").read_text())
     assert len(run.read("probes")) == 5
     ev = run.read("events")

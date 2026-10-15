@@ -231,6 +231,10 @@ def test_family_precedence_agent_goal_then_era(tmp_path):
     assert ev.loc["m1", "family"] == suffering                       # not the nearest agent goal: it was not in force yet
     assert ev.loc["m2", "family"] == suffering
     assert ev.loc["m3", "family"] == "fundraiser"                    # a configured text family beats the era
+    al = pd.read_csv(run.path / "agent_aliases.csv").dropna(subset=["roster_agent"])
+    # the audit's family is the roster role behind the merged label, not the majority of the author's posts
+    assert (al["agent_merged"].str.split("|").str[1] == al["family"]).all()
+    assert al.set_index("roster_agent").loc[SONNET45, "family"] == "twitterati"
     summ = json.loads((run.path / "summary.json").read_text())
     assert isinstance(summ["village"]["eras"]["table"], list) and isinstance(summ["roster"]["roles"], list)
     assert not any(" rows x " in v or v.startswith("Empty DataFrame") for v in _strings(summ))   # no DataFrame repr leaked

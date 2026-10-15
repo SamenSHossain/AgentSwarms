@@ -222,7 +222,8 @@ def test_config():
     cfg = CorpusAdapter().config()
     assert cfg.name == "cross-site-corpus"
     assert cfg.family_from_channel is False
-    assert cfg.coverage_note == adapters.get("wiki").config().coverage_note and "143 surfaces" in cfg.coverage_note   # same collection
+    assert "143 surfaces" in cfg.coverage_note and "not the wiki dump" in cfg.coverage_note   # same collection, dump not searched
+    assert cfg.coverage_note != adapters.get("wiki").config().coverage_note
     assert "iowa-health" in cfg.families and "oecd-equity" in cfg.families
     assert list(cfg.families)[0] == "oecd-equity"                 # wiki families first
     assert cfg.family_of_text("Q5 expected '85 and Older: NA'") == "iowa-health"

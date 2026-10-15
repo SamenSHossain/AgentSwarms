@@ -34,9 +34,15 @@ import pandas as pd
 
 from ..textutil import SIGNATURE_RE, norm_key, stable_id
 from .base import Adapter, AdapterConfig, Bundle, Capabilities, Technique
-from .wiki import COVERAGE_NOTE as WIKI_COVERAGE_NOTE
+from .wiki import INVENTORY_NOTE
 from .wiki import FAMILIES as WIKI_FAMILIES
 from .wiki import TECHNIQUES as WIKI_TECHNIQUES
+
+# The same collection as the wiki dump, but a corpus run does not search the dump itself.
+COVERAGE_NOTE = ("Only this corpus's own posts are searched for earlier copies of an answer, not the wiki dump, the largest "
+                 "captured surface (`swarmprov crosssite` joins the two, for technique spread only); " + INVENTORY_NOTE
+                 + " An \"independent\" answer may have been relayed through the wiki or one of those surfaces, so the "
+                 "exposed share is a floor and the independent count a ceiling.")
 
 # Origins dated after this are 2026-09 investigator re-captures of old text.
 LATE_CUTOFF = pd.Timestamp("2026-08-01", tz="UTC")
@@ -366,5 +372,5 @@ class CorpusAdapter(Adapter):
             families=dict(FAMILIES),
             techniques=list(TECHNIQUES),
             family_from_channel=False,
-            coverage_note=WIKI_COVERAGE_NOTE,   # the same collection: its own site-coverage.csv is the inventory
+            coverage_note=COVERAGE_NOTE,
         )

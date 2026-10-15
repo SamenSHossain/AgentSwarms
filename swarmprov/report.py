@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 
 from . import lifecycle as lifecycle_mod, roster as roster_mod, village as village_mod
+from .adapters.base import read_capabilities
 from .analysis import causal, diffusion, errors, provenance, structure
 from .schema import RunDir
 
@@ -26,7 +27,8 @@ CONSEQUENCES = {
                         "no request-level rows"),
     "derived_text": ("posts are an LLM digest of what agents did, not their words: values and quotes are second-hand",
                      "posts are the agents' own text"),
-    "has_threading": ("reply links usable as explicit edges", "no reply links: edges are inferred from timing"),
+    "has_threading": ("reply links are recorded but not used; edges are still inferred from timing",
+                      "no reply links: edges are inferred from timing"),
     "has_episodes": ("rounds are fields", "rounds are parsed from text"),
     "has_activity": ("a presence log says when each agent was running", "no presence log; activity is inferred from posts"),
 }
@@ -192,7 +194,7 @@ def build(run: RunDir, mapping: str = "merged") -> str:
     prof = json.loads((run.path / "profile.json").read_text())
     from .pipeline import load_config
     cfg = load_config(run)
-    caps = prof["capabilities"]
+    caps = read_capabilities(prof)
     if not prof["n_events"]:
         summary = {"profile": {k: prof[k] for k in ("adapter", "source", "n_events")}}
         notes = prof.get("notes") or {}
@@ -386,7 +388,9 @@ def build(run: RunDir, mapping: str = "merged") -> str:
             L.append(f"![structure](figures/{run.figure('a5_structure.png').name})\n")
         L.append("Top first-sources (answers they were first public source for):\n")
         L.append(md_table(r5["top_sources"].rename("answers").to_frame()))
-        L.append("\nTop brokers (betweenness on relay + citation graph):\n")
+        L.append("\nTop brokers (betweenness on relay + citation graph"
+                 + (f", estimated from {r5['betweenness_sampled_sources']} sampled sources" if r5["betweenness_sampled_sources"] else "")
+                 + "):\n")
         L.append(md_table(r5["top_brokers"].rename("betweenness").to_frame(), floatfmt="{:.3f}"))
         r6 = structure.reach(chains)
         if r6:
@@ -424,9 +428,9 @@ def build(run: RunDir, mapping: str = "merged") -> str:
         identity_note = ("- **Identity**: the roster fixes cohort (assignment batch) and family (goal) for matched authors; "
                          f"unmatched authors fall back to {'their author field' if explicit else 'parsed signatures'}.\n")
     elif explicit:
-        identity_note = ("- **Identity**: authors come from the source's author field; the merged mapping also joins handles that "
-                         "share a cohort date token and a task family (see Identity merges). "
-                         "Both mappings are reported.\n")
+        identity_note = ("- **Identity**: authors come from the source's author field, case-folded (`Planner` and `planner` are "
+                         "one agent under both mappings); the merged mapping also joins handles that share a cohort date token "
+                         "and a task family (see Identity merges). Both mappings are reported.\n")
     else:
         identity_note = ("- **Identity**: names are parsed from signatures; the merged mapping assumes one agent per "
                          "(cohort date, task family). Both mappings are reported.\n")
@@ -474,19 +478,31 @@ def _clock_note(notes: dict, ex: pd.DataFrame, events: pd.DataFrame) -> str:
 
 
 def _identity_merges(agents: pd.DataFrame, explicit: bool) -> str:
-    """How many merged ids join more than one author string, the largest five, and a warning on explicit-author sources."""
-    k = agents.groupby("agent_merged")["author_raw"].nunique()
-    multi = k[k > 1].reset_index(name="n").sort_values(["n", "agent_merged"], ascending=[False, True])
+    """How many merged ids join more than one author string, the largest five, how many of those only join case
+    variants of one handle (which the strict mapping joins too), and a warning on explicit-author sources."""
+    g = agents.groupby("agent_merged")
+    k = g["author_raw"].nunique()
+    multi = (k[k > 1].reset_index(name="n").assign(handles=lambda d: d["agent_merged"].map(g["agent_strict"].nunique()))
+             .sort_values(["n", "agent_merged"], ascending=[False, True]))
     if not len(multi):
-        return (f"Identity merges: none; each of the {len(k):,} merged ids is a single author string "
-                "(`agent_aliases.csv` lists both mappings).")
-    top = ", ".join(f"`{m}` ({n})" for m, n in zip(multi["agent_merged"].head(5), multi["n"].head(5)))
-    return (f"Identity merges: {len(multi):,} of {len(k):,} merged ids join more than one author string "
-            f"({int(multi['n'].sum()):,} strings in all); largest: {top}. `agent_aliases.csv` lists every author string "
-            "with its strict and merged id."
-            + (" **Warning:** this source names its authors explicitly, so these merges join authors it keeps apart "
-               "(by case, a shared cohort date token, or a roster); compare the strict-mapping sensitivity lines."
-               if explicit else ""))
+        ids = "the only merged id is" if len(k) == 1 else f"each of the {len(k):,} merged ids is"
+        return f"Identity merges: none; {ids} a single author string (`agent_aliases.csv` lists both mappings)."
+    n, case = len(multi), int((multi["handles"] == 1).sum())
+    other = n - case
+    top = ", ".join(f"`{m}` ({c})" for m, c in zip(multi["agent_merged"].head(5), multi["n"].head(5)))
+    out = (f"Identity merges: {n:,} of {len(k):,} merged ids join{'s' if n == 1 else ''} more than one author string "
+           f"({int(multi['n'].sum()):,} strings in all); largest: {top}. "
+           + (f"Of these, {case:,} only join{'s' if case == 1 else ''} case variants of one handle, which the strict "
+              "mapping folds together too. " if case else "")
+           + "`agent_aliases.csv` lists every author string with its strict and merged id.")
+    if not explicit:
+        return out
+    return (out + " **Warning:** this source names its authors explicitly. "
+            + (f"{other:,} merge{'' if other == 1 else 's'} join{'s' if other == 1 else ''} handles it keeps apart "
+               "(a shared cohort date token and task family, or a roster); compare the strict-mapping sensitivity lines. "
+               if other else "")
+            + ("Author strings that differ only in case are one agent under both mappings, so no sensitivity line "
+               "separates them." if case else "")).rstrip()
 
 
 def _visibility_counts(ex: pd.DataFrame) -> dict:

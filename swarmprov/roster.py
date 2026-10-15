@@ -230,7 +230,7 @@ def merged_id(roster: pd.DataFrame) -> dict[str, str]:
 
 
 def merge_agents(agents: pd.DataFrame, events: pd.DataFrame, ann: pd.DataFrame, roster: pd.DataFrame) -> pd.DataFrame:
-    """Rewrite ``agent_merged``/``cohort`` for authors the roster identifies.
+    """Rewrite ``agent_merged``/``cohort``/``family`` for authors the roster identifies.
 
     The roster is ground truth for the merge: cohort = the batch of the agent's
     first goal, family = its role, and distinct roster agents stay distinct."""
@@ -240,11 +240,12 @@ def merge_agents(agents: pd.DataFrame, events: pd.DataFrame, ann: pd.DataFrame, 
     if not hit.any():
         return agents
     labels = merged_id(roster)
-    first_batch = roster.sort_values("start").drop_duplicates("agent_id").set_index("agent_id")["batch"]
+    first = roster.sort_values("start").drop_duplicates("agent_id").set_index("agent_id")
     for author, g in ann[hit].assign(_a=events.loc[hit, "author_raw"]).groupby("_a"):
         aid = Counter(g["roster_agent"]).most_common(1)[0][0]
         sel = agents["author_raw"] == author
-        agents.loc[sel, "cohort"] = first_batch[aid] or None
+        agents.loc[sel, "cohort"] = first.at[aid, "batch"] or None
+        agents.loc[sel, "family"] = first.at[aid, "role"]
         agents.loc[sel, "agent_merged"] = labels[aid]
         agents.loc[sel, "roster_agent"] = aid
     return agents

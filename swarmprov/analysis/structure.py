@@ -11,11 +11,16 @@ from ..graph import gini, to_networkx
 from ..plotting import plt
 
 
+# exact betweenness up to this many nodes (seconds on the wiki's ~1,400); sampled from 300 sources above it
+EXACT_BETWEENNESS_NODES = 5000
+
+
 def analyze(edges: pd.DataFrame, chains: pd.DataFrame, top_k: int = 10) -> dict:
     outdeg = edges[edges["kind"] == "exposure"].groupby("src").size().sort_values(ascending=False)
     relay_out = edges[edges["kind"] == "relay"].groupby("src").size().sort_values(ascending=False)
     G = to_networkx(edges, kinds=("relay", "citation"))
-    btw = nx.betweenness_centrality(G, k=min(300, len(G)) if len(G) > 300 else None, seed=0) if len(G) else {}
+    k = 300 if len(G) > EXACT_BETWEENNESS_NODES else None
+    btw = nx.betweenness_centrality(G, k=k, seed=0) if len(G) else {}
     task_chains = chains[chains["family"] != "url"] if len(chains) else chains
     multi = task_chains[task_chains["n_agents"] >= 2] if len(task_chains) else task_chains
     res = {
@@ -30,6 +35,7 @@ def analyze(edges: pd.DataFrame, chains: pd.DataFrame, top_k: int = 10) -> dict:
         "gini_relay_outdegree": gini(relay_out.values) if len(relay_out) else float("nan"),
         "top_sources": outdeg.head(top_k),
         "top_brokers": pd.Series(btw).sort_values(ascending=False).head(top_k),
+        "betweenness_sampled_sources": k,
         "chain_depth": multi["max_depth"].value_counts().sort_index() if len(multi) else pd.Series(dtype=int),
         "mean_chain_depth": float(multi["max_depth"].mean()) if len(multi) else float("nan"),
         "mean_agents_per_fact": float(multi["n_agents"].mean()) if len(multi) else float("nan"),
