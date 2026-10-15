@@ -3,6 +3,7 @@
 > **Implementation status (this branch).** Every step below is implemented in `swarmprov/`. Where it differs from the plan:
 > - **Step 0**: the dump has **no read logs** (see `docs/DATA.md`), so `D_observed` is unused for this source. Capability flags are written to `profile.json` and printed in the report.
 > - **Step 1**: wiki events are *new paragraphs since the last deletion* rather than revision diffs (`segment.py`), because line diffs over-attribute on re-encoded pages.
+> - **Step 2**: no fuzzy name matching. `strict` is the case-folded handle; `merged` is (cohort, family) resolved per strict handle, so case variants share one id. A cohort is read from a post's opening date only where authors are parsed from signatures (`cohort_from_text` overrides). `extract` writes `agent_aliases.csv`, and the report counts the merges.
 > - **Step 3/4**: the rules reach P = 1.00, R = 0.91 on an untouched 40-post test set (labelled by Claude; needs human confirmation). LLM extraction (`--llm`) is built and unit-tested with a fake client but was not run (no API key in this environment).
 > - **Step 5**: items are *learned* (phrases after round markers, ≥2 authors) and rounds are learned from `A -> B -> C` chains.
 > - **Step 6**: added `D_cons` (consensus value public) as the causal treatment; the value-specific `D` mechanically biases the consensus-match outcome.

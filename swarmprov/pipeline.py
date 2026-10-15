@@ -112,10 +112,12 @@ def extract(run: RunDir, llm: str | None = None) -> None:
         run.write("roster_events", ann)
     ev["family"] = fam
     run.write("events", ev)
-    agents = identity.resolve(ev, fam, cfg)
+    caps = json.loads((run.path / "profile.json").read_text())["capabilities"]
+    agents = identity.resolve(ev, fam, cfg, explicit_author=bool(caps.get("has_explicit_author")))
     if ann is not None and "roster_agent" in ann:
         agents = roster_mod.merge_agents(agents, ev, ann, ros)
     run.write("agents", agents)
+    run.write_csv("agent_aliases", identity.alias_table(agents))
     learned = rules.learn_items(ev, fam, cfg)
     for f, items in cfg.extra_items.items():
         learned.setdefault(f, set()).update(items)

@@ -55,7 +55,7 @@ def figure(ex: pd.DataFrame, res: dict, path) -> str:
     ax.set_xticks([0, .25, .5, .75, 1])
     ax.set_xticklabels(["0%", "25%", "50%", "75%", "100%"])
     ax.grid(axis="y", visible=False)
-    ax.set_title("Was the answer already on the wiki?")
+    ax.set_title("Was the answer already public?")
     ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.06), ncol=3)
     ep = res["by_episode"]
     if len(ep):

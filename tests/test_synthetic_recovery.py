@@ -1,17 +1,5 @@
-"""End-to-end: the pipeline must recover known provenance from a synthetic swarm."""
-
-import pandas as pd
-import pytest
-
-from swarmprov import pipeline, synth
-
-
-@pytest.fixture(scope="module")
-def synth_run(tmp_path_factory):
-    d = tmp_path_factory.mktemp("synth")
-    path = synth.write(d / "transcript.jsonl", n_agents=60, copy_rate=0.7, seed=2)
-    run = pipeline.run_all(path, d / "run", adapter="chat", config=str(d / "config.json"))
-    return run, pd.read_csv(d / "truth.csv")
+"""End-to-end: the pipeline must recover known provenance from a synthetic swarm
+(``synth_run`` lives in conftest.py so the report checks reuse the same run)."""
 
 
 def test_every_round_is_extracted(synth_run):

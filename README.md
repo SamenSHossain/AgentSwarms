@@ -74,7 +74,7 @@ Stages can be rerun on their own; each one reads and writes Parquet tables in th
 | command | reads → writes |
 |---|---|
 | `swarmprov ingest INPUT -o RUN [--roster GOALS]` | source → `events`, `lifecycle`, `roster`, `profile.json` |
-| `swarmprov extract RUN [--llm claude-haiku-4-5]` | `events` (+ `roster`) → `agents`, `claims`, `tags`, `roster_events`, `items.json` |
+| `swarmprov extract RUN [--llm claude-haiku-4-5]` | `events` (+ `roster`) → `agents`, `agent_aliases.csv`, `claims`, `tags`, `roster_events`, `items.json` |
 | `swarmprov expose RUN` | → `mentions`, `exposures_{merged,strict}` |
 | `swarmprov graph RUN` | → `edges_*`, `chains_*`, `provenance_merged.graphml` |
 | `swarmprov report RUN [--mapping strict]` | → `report.md`, `summary.json`, `figures/` |
@@ -147,7 +147,11 @@ All source-specific knowledge lives in one adapter plus an `AdapterConfig`, whic
 }
 ```
 
-**Capabilities** — Detected and reported: wall clock, explicit authors, read logs, deletions, threading, presence logs, request logs. Analyses needing missing capabilities are skipped or labelled.
+**Capabilities** — Detected and reported: wall clock, explicit authors, read logs, deletions, threading, presence logs, request logs. The report's capability table states what each value, yes or no, means for the analyses. Analyses needing missing capabilities are skipped or labelled.
+
+**Identity** — An explicit author field is used as given; otherwise authors are parsed from signatures. Case variants of one handle (`OpenAIResearcher`, `OpenAiResearcher`) are resolved together, so each strict id has one merged id (variants naming different cohorts stay split and are flagged in the audit). The cohort date comes from the handle (`OpenAIOECDNov27`), and from the date a handle's posts open with (`Mar16 R3 …`) only when the source has no explicit author field; set `cohort_from_text` to override. `extract` writes `agent_aliases.csv` (every author string with its strict and merged id and the size of both groups). The report counts the merges, lists the largest, and warns when they join authors that an explicit-author source keeps apart.
+
+**Coverage** — `coverage_note` is the Limitations bullet on what the exposure search could not see. The wiki and corpus configs cite the collectors' inventory of 143 surfaces; without a note, the report says that only the transcript's own posts were searched, so the exposed share is a floor.
 
 **Lifecycle** — Not just recorded, but used. From wiki events: deletions (with cycle tracking), recreations, and probes. The report adds clock-quality notes, deletion/recreation blocks, probing blocks, and exposure gains `D_visible` (ignoring deleted copies).
 
@@ -166,7 +170,7 @@ All source-specific knowledge lives in one adapter plus an `AdapterConfig`, whic
 - **Unit of authorship.** A wiki revision stores the whole page, so the unit is the *paragraph a revision added*. A paragraph counts as new the first time its normalised text appears on the page since the page was last deleted. Line diffs would over-attribute, because repeated mis-decoding re-encodes every line on each save. The author is the trailing `-- Signature`, not the account that saved the page.
 - **Exposure is inferred.** The dump contains saves, deletions and probes but **no page views**, so "public" does not mean "read". `t_report` is an upper bound on arrival; the ≥1 h variant is robust to report lag. Only wiki timestamps are used as a clock, because the agents' task clocks are dilated.
 - **The causal treatment `D_cons`** asks whether the *consensus* value was public, regardless of what this agent answered. A first version used the agent's own value, which mechanically ties wrong answers to "unexposed" and produced a spurious +0.43 effect.
-- **Identity.** `merged` = (cohort date, task family), where the cohort date comes from names like `OpenAIOECDNov27` or the post's opening token. `strict` = the signature itself. Every headline number is reported under both.
+- **Identity.** `merged` = (cohort date, task family), where the cohort date comes from names like `OpenAIOECDNov27` or, for signature-parsed sources, the post's opening token. `strict` = the signature itself, case-folded; case variants share one merged id. Every headline number is reported under both, and `agent_aliases.csv` lists every merge for audit.
 - **Relay edges are plausible paths, not proven ones.** Each carrier is linked to the latest earlier carrier on the same page, and to the originator if there was none.
 
 ## Repository layout
@@ -176,7 +180,7 @@ All source-specific knowledge lives in one adapter plus an `AdapterConfig`, whic
 | `swarmprov/adapters/` | Adapter interface + implementations (wiki, chat, corpus, swarmtraces, roster, village) |
 | `swarmprov/` | Core modules: segment, identity, roster, village, lifecycle, rules, claims, exposure, graph, extract_llm, validate, synth, report, pipeline, cli, plotting, remote |
 | `swarmprov/analysis/` | A1–A6 analyses: provenance, causal, diffusion, errors, structure, crosssite |
-| `tests/` | 125 tests (≈50 s): rules, segmentation, adapters, roster, village, wiki events, LLM merge, synthetic recovery |
+| `tests/` | 152 tests (≈80 s): rules, segmentation, adapters, identity, roster, village, wiki events, LLM merge, synthetic recovery, report integrity |
 | `validation/` | Labels (event ids) for dev, held-out, and test splits |
 | `results/` | Committed reports: openai-wiki, crosssite, corpus, synthetic, village-goals, village-context |
 | `data/village/` | AI Village roster (33 goal assignments) |

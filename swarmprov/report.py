@@ -13,6 +13,24 @@ from .analysis import causal, diffusion, errors, provenance, structure
 from .schema import RunDir
 
 
+# capability -> (consequence when the source has it, consequence when it does not)
+CONSEQUENCES = {
+    "has_wall_clock": ("ordering by real time is possible", "no reliable wall clock, so posts cannot be ordered by real time"),
+    "has_explicit_author": ("authors come from fields, not parsed signatures", "authors are parsed from signatures in the text"),
+    "has_reads": ("read events are recorded; exposure is still inferred from what was public",
+                  "no read events, so exposure is inferred from what was public"),
+    "has_lifecycle": ("deletions are recorded, posts carry visible_until, and A1 states D_visible beside D",
+                      "no deletions are recorded, so D_visible equals D"),
+    "has_request_log": ("request-level rows exist; still no page views, so exposure stays inferred",
+                        "no request-level rows"),
+    "derived_text": ("posts are an LLM digest of what agents did, not their words: values and quotes are second-hand",
+                     "posts are the agents' own text"),
+    "has_threading": ("reply links usable as explicit edges", "no reply links: edges are inferred from timing"),
+    "has_episodes": ("rounds are fields", "rounds are parsed from text"),
+    "has_activity": ("a presence log says when each agent was running", "no presence log; activity is inferred from posts"),
+}
+
+
 def md_table(df: pd.DataFrame, floatfmt: str = "{:.2f}", pct: tuple[str, ...] = (), index: bool = True) -> str:
     if df is None or len(df) == 0:
         return "_(none)_\n"
@@ -81,8 +99,10 @@ def _village_block(run: RunDir, prof: dict, summary: dict) -> list[str]:
     cfg = load_config(run)
     s = village_mod.summary(directory, channels, ev, activity, roster, notes.get("unrecognised"), eras, era_ann,
                             notes.get("village"), cfg.schedule_tz, summaries, digest, cfg.family_from_roster)
-    summary["village"] = _jsonable(s)
-    return village_mod.section(s, md_table)
+    L = village_mod.section(s, md_table)
+    if L:  # no Village tables: no section and no stub in summary.json
+        summary["village"] = _jsonable(s)
+    return L
 
 
 def _swarmtraces_block(prof: dict, st: dict, summary: dict) -> list[str]:
@@ -188,30 +208,17 @@ def build(run: RunDir, mapping: str = "merged") -> str:
     L: list[str] = []
     L.append(f"# Copied or computed? — provenance report\n")
     L.append(f"Source: `{prof['source']}` (adapter `{prof['adapter']}`), {prof['n_events']:,} posts from "
-             f"{prof['n_authors']:,} author strings, {prof['first_ts'][:16]} → {prof['last_ts'][:16]} UTC. "
-             f"Agent identity mapping: **{mapping}** (sensitivity under the other mapping below).\n")
+             f"{prof['n_authors']:,} author strings, "
+             + (f"{prof['first_ts'][:16]} → {prof['last_ts'][:16]} UTC. " if prof.get("first_ts") else "no timestamps. ")
+             + f"Agent identity mapping: **{mapping}** (sensitivity under the other mapping below).\n")
     L.append("## Data capabilities\n")
     L.append("| capability | available | consequence |\n|---|---|---|")
-    conseq = {
-        "has_wall_clock": "ordering by real time is possible",
-        "has_explicit_author": "authors come from fields, not parsed signatures",
-        "has_reads": "exposure is *observed*; otherwise it is inferred from what was public",
-        "has_lifecycle": ("deletions are recorded, posts carry visible_until, and A1 states D_visible beside D",
-                          "no deletions are recorded, so D_visible equals D"),
-        "has_request_log": ("request-level rows exist; still no page views, so exposure stays inferred",
-                            "no request-level rows"),
-        "derived_text": ("posts are an LLM digest of what agents did, not their words: values and quotes are second-hand",
-                         "posts are the agents' own text"),
-        "has_threading": "reply links usable as explicit edges",
-        "has_episodes": "rounds are fields; otherwise parsed from text",
-        "has_activity": "a presence log says when each agent was running",
-    }
     for k, v in caps.items():
-        c = conseq.get(k, "")
-        if isinstance(c, tuple):
-            c = c[0] if v else c[1]
-        L.append(f"| {k} | {'yes' if v else 'no'} | {c} |")
+        yes, no = CONSEQUENCES.get(k, ("", ""))
+        L.append(f"| {k} | {'yes' if v else 'no'} | {yes if v else no} |")
     L.append("")
+    explicit = bool(caps.get("has_explicit_author"))
+    L.append(_identity_merges(run.read("agents"), explicit) + "\n")
 
     notes = prof.get("notes") or {}
     if notes.get("clock_grades"):
@@ -377,17 +384,22 @@ def build(run: RunDir, mapping: str = "merged") -> str:
                  "`swarmprov validate RUN gold.jsonl` scores the extractor against it.\n")
 
     L.append("## Limitations\n")
-    identity_note = (
-        "- **Identity**: the roster fixes cohort (assignment batch) and family (goal) for matched authors; "
-        "unmatched authors fall back to parsed signatures.\n" if run.has("roster") else
-        "- **Identity**: names are parsed from signatures; the merged mapping assumes one agent per (cohort date, task family). "
-        "Both mappings are reported.\n")
+    if run.has("roster"):
+        identity_note = ("- **Identity**: the roster fixes cohort (assignment batch) and family (goal) for matched authors; "
+                         f"unmatched authors fall back to {'their author field' if explicit else 'parsed signatures'}.\n")
+    elif explicit:
+        identity_note = ("- **Identity**: authors come from the source's author field; the merged mapping also joins handles that "
+                         "share a cohort date token and a task family (see Identity merges). "
+                         "Both mappings are reported.\n")
+    else:
+        identity_note = ("- **Identity**: names are parsed from signatures; the merged mapping assumes one agent per "
+                         "(cohort date, task family). Both mappings are reported.\n")
+    coverage = cfg.coverage_note or ("Only the posts in this transcript are searched for earlier copies of an answer, so a "
+                                     "copy made anywhere else is invisible: the exposed share is a floor and the "
+                                     "independent count a ceiling.")
     L.append("- **Exposure is inferred, not observed**: no page-view logs, so D means \"was public\", not \"was read\". "
              "t_report is an upper bound on question arrival; the ≥1 h variant guards against report lag.\n"
-             "- **Exposure is a lower bound.** Only the captured surfaces are searched for earlier copies of an answer; "
-             "the collectors' coverage tables list 143 surfaces the swarm touched, most of them (Discord, 12 uncrawled wikis, "
-             "relays) not captured. An \"independent\" answer may have been relayed through one of them, so the exposed "
-             "share is a floor and the independent count a ceiling.\n"
+             f"- **Exposure is a lower bound.** {coverage}\n"
              + identity_note +
              "- **Extraction**: rule-based on templated posts; unrestated answers (\"answered same second\") inherit the consensus value.\n"
              "- **Inferred relay edges** link each carrier to the latest earlier carrier; they are plausible paths, not proven ones."
@@ -423,6 +435,22 @@ def _clock_note(notes: dict, ex: pd.DataFrame, events: pd.DataFrame) -> str:
                      f"{r:g} s summed uncertainty, {int(((gs - 600).abs() <= r).sum())} within {r:g} s of the 10 min threshold, "
                      f"{int(((gs - 3600).abs() <= r).sum())} within {r:g} s of the 1 h threshold.")
     return "".join(parts)
+
+
+def _identity_merges(agents: pd.DataFrame, explicit: bool) -> str:
+    """How many merged ids join more than one author string, the largest five, and a warning on explicit-author sources."""
+    k = agents.groupby("agent_merged")["author_raw"].nunique()
+    multi = k[k > 1].reset_index(name="n").sort_values(["n", "agent_merged"], ascending=[False, True])
+    if not len(multi):
+        return (f"Identity merges: none; each of the {len(k):,} merged ids is a single author string "
+                "(`agent_aliases.csv` lists both mappings).")
+    top = ", ".join(f"`{m}` ({n})" for m, n in zip(multi["agent_merged"].head(5), multi["n"].head(5)))
+    return (f"Identity merges: {len(multi):,} of {len(k):,} merged ids join more than one author string "
+            f"({int(multi['n'].sum()):,} strings in all); largest: {top}. `agent_aliases.csv` lists every author string "
+            "with its strict and merged id."
+            + (" **Warning:** this source names its authors explicitly, so these merges join authors it keeps apart "
+               "(by case, a shared cohort date token, or a roster); compare the strict-mapping sensitivity lines."
+               if explicit else ""))
 
 
 def _visibility_counts(ex: pd.DataFrame) -> dict:

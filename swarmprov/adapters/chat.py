@@ -159,7 +159,7 @@ class ChatAdapter(Adapter):
             raise ValueError(f"{path}: no messages with text found (pass mapping={{'text': <field>}} ?)")
         ev = pd.DataFrame(rows)
         has_ts = ev["ts"].notna().mean() > 0.9
-        caps = Capabilities(has_wall_clock=has_ts, has_explicit_author=True, has_reads=False,
+        caps = Capabilities(has_wall_clock=bool(has_ts), has_explicit_author=True, has_reads=False,
                             has_lifecycle=False, has_threading=bool(ev["parent_id"].notna().any()))
         notes = {"n_messages": len(ev), "n_channels": int(ev["channel"].nunique()),
                  "n_authors": int(ev["author_raw"].nunique())}

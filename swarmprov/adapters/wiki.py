@@ -35,6 +35,12 @@ from ..schema import conform
 from ..segment import snapshots_to_posts
 from .base import Adapter, AdapterConfig, Bundle, Capabilities, Technique
 
+# The collectors' site-coverage.csv (data/raw2) inventories the surfaces this swarm touched.
+COVERAGE_NOTE = ("Only the captured surfaces are searched for earlier copies of an answer; "
+                 "the collectors' coverage tables list 143 surfaces the swarm touched, most of them (Discord, 12 uncrawled wikis, "
+                 "relays) not captured. An \"independent\" answer may have been relayed through one of them, so the exposed "
+                 "share is a floor and the independent count a ceiling.")
+
 INFRA_FAMILIES = {
     "source-cache-url-list", "relay-coordination", "source-or-unclassified",
     "off_store_unclassified", "loop-chain-infrastructure", "probe-test",
@@ -320,4 +326,5 @@ class WikiAdapter(Adapter):
                              "Montana (observed)": r"Montana|\bMT\b"},
             }],
             ignore_authors=("[Admin1]", "[Admin2]", "[Person22]"),
+            coverage_note=COVERAGE_NOTE,
         )

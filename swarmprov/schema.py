@@ -64,9 +64,10 @@ TABLES: dict[str, list[str]] = {
     # Timestamped event lines parsed from the latest daily digests: a *derived* timeline (an LLM's account
     # of what agents did, not the agents' words).  ``actor`` is the directory name the line opens with.
     "digest": ["event_id", "ts", "kind", "actor", "actor_id", "text", "summary_id", "day", "generated_by"],
-    # Identity resolution result: one row per author_raw.
-    # ``roster_agent`` is the roster id when a roster identified the author, else None.
-    "agents": ["author_raw", "agent_strict", "agent_merged", "cohort", "n_events", "roster_agent"],
+    # Identity resolution result: one row per author_raw.  ``family`` is the majority post family of the
+    # strict handle; ``roster_agent`` is the roster id when a roster identified the author, else None.
+    # ``agent_aliases.csv`` repeats it as an audit, with the size of each strict and merged group.
+    "agents": ["author_raw", "agent_strict", "agent_merged", "cohort", "family", "n_events", "roster_agent"],
     # Structured facts extracted from posts.
     "claims": [
         "claim_id", "event_id", "ts", "agent_strict", "agent_merged", "family",
@@ -136,6 +137,12 @@ class RunDir:
     def read(self, name: str) -> pd.DataFrame:
         return pd.read_parquet(self.table_path(name))
 
+    def write_csv(self, name: str, df: pd.DataFrame) -> Path:
+        """A table meant for a human to read (an audit), beside the Parquet stage outputs."""
+        p = self.path / f"{name}.csv"
+        df.to_csv(p, index=False)
+        return p
+
     def figure(self, name: str) -> Path:
         return self.path / "figures" / name
 
@@ -147,5 +154,5 @@ class RunDir:
         """Remove every table a previous run left behind, so a re-ingest cannot mix runs."""
         for name in self.STAGE_OUTPUTS:
             self.table_path(name).unlink(missing_ok=True)
-        for f in ("items.json", "report.md", "summary.json", "provenance_merged.graphml"):
+        for f in ("items.json", "agent_aliases.csv", "report.md", "summary.json", "provenance_merged.graphml"):
             (self.path / f).unlink(missing_ok=True)

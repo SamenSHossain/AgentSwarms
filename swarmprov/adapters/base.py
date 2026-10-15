@@ -25,7 +25,7 @@ class Capabilities:
     derived_text: bool = False  # posts are an LLM digest of what agents did, not the agents' own words
 
     def as_dict(self) -> dict[str, bool]:
-        return dict(self.__dict__)
+        return {k: bool(v) for k, v in self.__dict__.items()}   # a numpy bool would reach profile.json as "False"
 
 
 @dataclass
@@ -52,6 +52,9 @@ class AdapterConfig:
                          r"Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?|"
                          r"JAN|FEB|MAR(?:CH)?|APR(?:IL)?|MAY|JUNE?|JULY?|AUG|SEPT?|OCT|NOV|DEC)"
                          r"[ \-]?(\d{1,2})(?!\d)")
+    # also take the cohort from the date a handle's posts open with ("Mar16 R3 ..."); None = only when the
+    # source has no explicit author field (a chat whose messages start "May 5 standup" is not a cohort)
+    cohort_from_text: bool | None = None
     # episode / round markers inside post text
     episode_regex: str = r"(?<![A-Za-z0-9])(?:R|G|#|Round\s?)([1-9])(?![0-9])"
     # extra items to recognise per family (on top of the built-in gazetteers)
@@ -75,6 +78,8 @@ class AdapterConfig:
     # IANA zone of the village's operating schedule (the export does not state it); when set, the
     # report counts posts outside the schedule's windows
     schedule_tz: str | None = None
+    # the Limitations bullet on what the exposure search could not see (None: only this transcript is searched)
+    coverage_note: str | None = None
     # with no primary message table, run the pipeline on the digest parsed from LLM-written daily
     # summaries (derived text: timing and names are second-hand, specific values unreliable)
     digest_as_posts: bool = False

@@ -153,6 +153,11 @@ def test_full_run_reports_lifecycle_blocks(mini):
                    "co-timed with", "1 of 2 posts on those revisions restore pre-deletion text"):
         assert needle in text, needle
     assert "4 deletions by [Admin1]" in text and "3 first-recreation edges" in text
+    # wiki-specific text stays on the wiki: the coverage bullet, signature identity; no empty Village heading
+    assert "the collectors' coverage tables list 143 surfaces the swarm touched" in text
+    assert "| has_explicit_author | no | authors are parsed from signatures in the text |" in text
+    assert "- **Identity**: names are parsed from signatures;" in text and "Identity merges: " in text
+    assert "## Village" not in text and "village" not in json.loads((run.path / "summary.json").read_text())
     assert len(run.read("probes")) == 5
     ev = run.read("events")
     assert f"of {len(ev)} posts" in text                              # the clock note counts the analysed posts

@@ -1,0 +1,112 @@
+"""Identity resolution: text-lead cohorts only where authors are parsed, case variants resolved together,
+and the alias audit."""
+
+import json
+
+import pandas as pd
+import pytest
+
+from swarmprov import identity, pipeline
+from swarmprov.adapters import AdapterConfig
+
+AGENTS = ["planner", "coder", "analyst", "critic"]
+
+
+def _events(rows):
+    """rows: (author, text, family)"""
+    ev = pd.DataFrame([{"author_raw": a, "text": t, "channel": "c", "channel_family": f} for a, t, f in rows])
+    return ev, ev["channel_family"]
+
+
+def _datelead():
+    return _events([(a, f"May 5 standup: R{r} CONFIRMED: Utah answered 7{r}.0", "gdp") for r in (1, 2, 3) for a in AGENTS])
+
+
+@pytest.mark.parametrize("explicit, setting, n_merged", [
+    (True, None, 4),      # explicit authors: a date the messages open with is not a cohort
+    (False, None, 1),     # parsed signatures: the wiki habit of opening with the cohort ("Mar16 R3 ...") is used
+    (True, True, 1),      # a chat source that signs cohorts can opt in
+    (False, False, 4),    # ... and a parsed source can opt out
+])
+def test_text_lead_cohort_follows_capability_and_config(explicit, setting, n_merged):
+    ev, fam = _datelead()
+    ag = identity.resolve(ev, fam, AdapterConfig(name="t", cohort_from_text=setting), explicit_author=explicit)
+    assert ag["agent_merged"].nunique() == n_merged
+    if n_merged == 1:
+        assert set(ag["agent_merged"]) == {"May05|gdp"}
+
+
+def test_cohort_in_the_author_string_is_always_used():
+    ev, fam = _events([("SynthAlphaAgentSep26", "R1 answered 1", "alpha"), ("SynthAlphaAgentSep26b", "R1 answered 2", "alpha")])
+    ag = identity.resolve(ev, fam, AdapterConfig(name="t", cohort_from_text=False), explicit_author=True)
+    assert set(ag["cohort"]) == {"Sep26"} and set(ag["agent_merged"]) == {"Sep26|alpha"}
+
+
+def test_case_variants_share_one_merged_id():
+    """The wiki's OpenAIResearcher (posts open with Nov22) and OpenAiResearcher (unsigned): one strict handle,
+    so one merged id, with the family taken over both variants' posts."""
+    ev, fam = _events([("OpenAIResearcher", "Nov22 R1 answered 1", "a")] * 2
+                      + [("OpenAiResearcher", "R2 answered 2", "b")] * 3 + [("Other", "R1 answered 3", "a")])
+    ag = identity.resolve(ev, fam, AdapterConfig(name="t"))
+    assert ag.groupby("agent_strict")["agent_merged"].nunique().max() == 1
+    a = ag.set_index("author_raw")
+    assert a.loc["OpenAIResearcher", "agent_merged"] == a.loc["OpenAiResearcher", "agent_merged"] == "Nov22|b"
+    assert a.loc["OpenAiResearcher", "cohort"] == "Nov22" and a.loc["OpenAiResearcher", "family"] == "b"
+    assert a.loc["OpenAIResearcher", "n_events"] == 2 and a.loc["OpenAiResearcher", "n_events"] == 3
+
+
+def test_conflicting_cohorts_stay_split_and_are_audited():
+    ev, fam = _events([("AgentX", "Nov22 R1 answered 1", "f"), ("agentx", "Dec05 R1 answered 1", "f"),
+                       ("Solo", "R1 answered 2", "f")])
+    ag = identity.resolve(ev, fam, AdapterConfig(name="t"))
+    a = ag.set_index("author_raw")
+    assert (a.loc["AgentX", "agent_merged"], a.loc["agentx", "agent_merged"]) == ("Nov22|f", "Dec05|f")
+    al = identity.alias_table(ag).set_index("author_raw")
+    assert al.loc["AgentX", "n_strict_aliases"] == 2 and al.loc["AgentX", "n_merged_for_strict"] == 2
+    assert al.loc["Solo", "n_merged_for_strict"] == 1
+
+
+def test_alias_table_sorts_by_merged_group_size():
+    ev, fam = _events([("AlphaNov27", "x", "f"), ("BetaNov27", "x", "f"), ("BetaNov27", "y", "f"), ("Gamma", "z", "f")])
+    al = identity.alias_table(identity.resolve(ev, fam, AdapterConfig(name="t")))
+    assert list(al["author_raw"]) == ["BetaNov27", "AlphaNov27", "Gamma"]
+    assert list(al["n_merged_aliases"]) == [2, 2, 1] and list(al["n_strict_aliases"]) == [1, 1, 1]
+    assert list(al.columns[:6]) == ["agent_merged", "agent_strict", "author_raw", "cohort", "family", "n_events"]
+
+
+def _chat(d, cfg: dict):
+    t0 = pd.Timestamp("2026-05-05T09:00:00Z")
+    msgs = []
+    for r, (item, val) in enumerate([("Utah", "73.74"), ("Idaho", "41.20"), ("Ohio", "12.50")], start=1):
+        for k, a in enumerate(AGENTS):
+            t = t0 + pd.Timedelta(minutes=60 * r + 10 * k)
+            msgs.append({"id": f"m{r}{k}", "author": a, "timestamp": t.isoformat(), "channel": "standup",
+                         "text": f"May 5 standup: R{r} CONFIRMED: {item} arrived {t:%H:%M:%S}, 14s timer; answered {val} at +{5 + k}s."})
+    (d / "datelead.jsonl").write_text("\n".join(json.dumps(m) for m in msgs))
+    (d / "cfg.json").write_text(json.dumps({"families": {"gdp": "standup"}} | cfg))
+    return pipeline.run_all(d / "datelead.jsonl", d / "run", adapter="chat", config=str(d / "cfg.json"))
+
+
+@pytest.fixture(scope="module")
+def datelead_runs(tmp_path_factory):
+    return {name: _chat(tmp_path_factory.mktemp(name), cfg)
+            for name, cfg in (("default", {}), ("opt_in", {"cohort_from_text": True}))}
+
+
+def test_explicit_authors_with_date_leads_stay_distinct(datelead_runs):
+    run = datelead_runs["default"]
+    assert run.read("agents")["agent_merged"].nunique() == 4
+    text = (run.path / "report.md").read_text()
+    assert "**12 answers given by 4 agents;" in text
+    assert "Identity merges: none; each of the 4 merged ids is a single author string" in text
+    al = pd.read_csv(run.path / "agent_aliases.csv")
+    assert len(al) == 4 and set(al["n_merged_aliases"]) == {1}
+
+
+def test_merges_on_an_explicit_author_source_are_flagged(datelead_runs):
+    run = datelead_runs["opt_in"]
+    text = (run.path / "report.md").read_text()
+    assert "Identity merges: 1 of 1 merged ids join more than one author string (4 strings in all); largest: `May05|gdp` (4)." in text
+    assert "**Warning:** this source names its authors explicitly" in text
+    al = pd.read_csv(run.path / "agent_aliases.csv")
+    assert set(al["agent_merged"]) == {"May05|gdp"} and set(al["n_merged_aliases"]) == {4}

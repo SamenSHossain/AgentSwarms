@@ -114,6 +114,7 @@ def test_report_has_village_block(village_run):
     assert "## Village" in text and "## Roster" in text
     assert "2 transcript posts are in restricted rooms" in text
     assert "only Kimi K2.6, GPT-5.5" in text
+    assert json.loads((village_run.path / "summary.json").read_text())["village"]["n_rooms"] > 0   # real tables keep their summary
 
 
 def test_audience_unit():

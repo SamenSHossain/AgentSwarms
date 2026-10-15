@@ -483,7 +483,7 @@ def _schedule_text(sch: dict) -> str:
 
 
 def section(s: dict, md_table) -> list[str]:
-    if not s:
+    if not s.keys() - {"family_from_roster"}:   # the setting alone is no Village data
         return []
     L = ["## Village\n"]
     if "meta" in s:

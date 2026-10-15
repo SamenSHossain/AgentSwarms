@@ -34,6 +34,7 @@ import pandas as pd
 
 from ..textutil import SIGNATURE_RE, norm_key, stable_id
 from .base import Adapter, AdapterConfig, Bundle, Capabilities, Technique
+from .wiki import COVERAGE_NOTE as WIKI_COVERAGE_NOTE
 from .wiki import FAMILIES as WIKI_FAMILIES
 from .wiki import TECHNIQUES as WIKI_TECHNIQUES
 
@@ -365,4 +366,5 @@ class CorpusAdapter(Adapter):
             families=dict(FAMILIES),
             techniques=list(TECHNIQUES),
             family_from_channel=False,
+            coverage_note=WIKI_COVERAGE_NOTE,   # the same collection: its own site-coverage.csv is the inventory
         )
