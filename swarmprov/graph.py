@@ -21,7 +21,7 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 
-from .claims import value_key
+from .exposure import match_key
 from .identity import cohort_token
 
 # two 1 s clocks: a hop shorter than this cannot be ordered reliably
@@ -80,7 +80,7 @@ def exposure_edges(exp: pd.DataFrame) -> pd.DataFrame:
     e = exp[exp["D"] == 1]
     return pd.DataFrame({
         "src": e["src_agent"], "dst": e["agent"], "family": e["family"], "item": e["item"],
-        "value_norm": [value_key(v) or c for v, c in zip(e["value_norm"], e["consensus_value"])], "kind": "exposure",
+        "value_norm": [match_key(v, c) for v, c in zip(e["value_norm"], e["consensus_value"])], "kind": "exposure",
         "dt_s": e["gap_s"], "event_id": e["report_event_id"], "claim_id": e["claim_id"],
         "src_event_id": e["src_event_id"],
     })

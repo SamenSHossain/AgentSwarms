@@ -4,11 +4,9 @@ import hashlib
 import json
 
 import pandas as pd
-import pytest
 
-from swarmprov import cli, exposure, graph, pipeline, query, synth
+from swarmprov import cli, exposure, graph, query, synth
 from swarmprov.claims import value_key
-from swarmprov.schema import RunDir
 
 T0 = pd.Timestamp("2026-06-17T09:46:10Z")
 
@@ -16,19 +14,6 @@ T0 = pd.Timestamp("2026-06-17T09:46:10Z")
 def _mention(event_id, agent, s, channel="p", value="9.9"):
     return {"event_id": event_id, "ts": T0 + pd.Timedelta(seconds=s), "agent_merged": agent, "channel": channel,
             "family": "f", "item": "Hungary", "value_norm": value, "value_key": value_key(value)}
-
-
-@pytest.fixture(scope="module")
-def first_run(tmp_path_factory):
-    """The seed-2 swarm again, but copying agents take the *first* post on the board (no report stage)."""
-    d = tmp_path_factory.mktemp("synth_first")
-    path = synth.write(d / "transcript.jsonl", n_agents=60, copy_rate=0.7, seed=2, copy_from="first")
-    run = RunDir(d / "run")
-    pipeline.ingest(path, run, "chat", str(d / "config.json"))
-    pipeline.extract(run)
-    pipeline.expose(run)
-    pipeline.build_graph(run)
-    return run, pd.read_csv(d / "truth.csv")
 
 
 def _agreement(run, truth):
@@ -110,9 +95,9 @@ def test_relay_parent_finds_the_copied_post(synth_run):
     assert parent >= 0.95 and first < 0.5 and exposed == 1
 
 
-def test_first_public_copy_finds_the_copied_post(first_run):
+def test_first_public_copy_finds_the_copied_post(synth_first):
     """Copying agents take the first post: now the first public copy names it (100% on seeds 0-7)."""
-    parent, first, exposed = _agreement(*first_run)
+    parent, first, exposed = _agreement(*synth_first)
     assert first >= 0.97 and parent < 0.5 and exposed == 1
 
 

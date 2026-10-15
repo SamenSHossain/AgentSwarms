@@ -92,6 +92,8 @@ TABLES: dict[str, list[str]] = {
         # the posts behind the times: the report, the first public copy (and its channel), the first copy
         # still visible at t_report, the agent's own earlier post; same-second copies go in event_id order
         "report_event_id", "src_event_id", "src_channel", "src_visible_event_id", "self_event_id",
+        # a second attribution rule: the latest other carrier before t_report, and its post
+        "src_latest", "t_latest", "latest_event_id",
     ],
     # Provenance graph edges.  ``value_norm`` holds the fact's value_key (the first component of a
     # multi-number value) for every kind, so it joins chains.value_key.  ``event_id`` is always a post in

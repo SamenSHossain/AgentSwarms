@@ -24,11 +24,14 @@ with a wiki timestamp.
   agent already took, so D_visible under-counts exposure and D stays the headline;
   ``src_deleted_before_report`` marks the D=1 rows whose first source was gone.
 
+* ``src_latest`` / ``t_latest``  the *latest* other carrier before the report, a
+  second attribution rule beside the first public copy (A5 reports both).
+
 Each time is kept with the post behind it: ``report_event_id`` (the report),
-``src_event_id`` / ``src_channel`` (the first public copy), ``src_visible_event_id``
-(the first copy still visible) and ``self_event_id`` (the agent's own earlier post).
-Copies posted in the same second are taken in event_id order, so the chosen post
-does not depend on row order.
+``src_event_id`` / ``src_channel`` (the first public copy), ``latest_event_id`` (the
+latest), ``src_visible_event_id`` (the first copy still visible) and ``self_event_id``
+(the agent's own earlier post).  Copies posted in the same second are taken in
+event_id order, so the chosen post does not depend on row order.
 """
 
 from __future__ import annotations
@@ -37,6 +40,12 @@ import numpy as np
 import pandas as pd
 
 from .claims import value_key
+
+
+def match_key(value_norm, consensus) -> str | None:
+    """The value an agent-round is matched on: its own value's ``value_key``, or the consensus
+    value when the agent did not restate one.  Exposure, edges, trace and A5 all join on it."""
+    return value_key(value_norm) or (consensus if isinstance(consensus, str) else None)
 
 
 def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: str,
@@ -57,8 +66,8 @@ def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: s
     rounds = rounds.astype(object).where(rounds.notna(), None)
     for r in rounds.itertuples(index=False):
         cv = cons.get((r.family, r.item))
-        target = value_key(r.value_norm) or cv
-        t_pub = src = t_self = src_ev = src_ch = vis_ev = self_ev = None
+        target = match_key(r.value_norm, cv)
+        t_pub = src = t_self = src_ev = src_ch = vis_ev = self_ev = t_last = src_last = last_ev = None
         g = groups.get((r.family, r.item, target)) if target else None
         t_vis = t_src_del = None
         src_gone = False
@@ -66,8 +75,9 @@ def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: s
             before = readable(g[g["ts"] < r.t_report], r.agent)
             others = before[before[agent_col] != r.agent]
             if len(others):
-                first = others.iloc[0]
+                first, last = others.iloc[0], others.iloc[-1]
                 t_pub, src, src_ev = first["ts"], first[agent_col], first["event_id"]
+                t_last, src_last, last_ev = last["ts"], last[agent_col], last["event_id"]
                 src_ch = first["channel"] if "channel" in others else None
                 if "visible_until" in others:
                     vu = pd.to_datetime(others["visible_until"], utc=True, errors="coerce")
@@ -117,6 +127,7 @@ def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: s
             "t_public_visible": t_vis, "D_visible": int(t_vis is not None),
             "src_deleted_before_report": int(src_gone), "t_src_deleted": t_src_del,
             "src_event_id": src_ev, "src_channel": src_ch, "src_visible_event_id": vis_ev, "self_event_id": self_ev,
+            "src_latest": src_last, "t_latest": t_last, "latest_event_id": last_ev,
         })
     out = pd.DataFrame(rows)
     if len(out):

@@ -11,7 +11,7 @@ import pandas as pd
 
 from . import lifecycle as lifecycle_mod, roster as roster_mod, village as village_mod
 from .adapters.base import read_capabilities
-from .analysis import causal, diffusion, errors, provenance, structure
+from .analysis import causal, diffusion, errors, origins, provenance, structure
 from .schema import RunDir
 
 
@@ -70,8 +70,8 @@ def _roster_block(run: RunDir, prof: dict, summary: dict) -> list[str]:
     return roster_mod.section(s, md_table, prof.get("roster_notes", {}).get("timestamp_issues"))
 
 
-def _a4_value(v):
-    """A4 cell for summary.json: missing values as null, timestamps as text."""
+def _cell(v):
+    """A summary.json cell: missing values as null, timestamps as text."""
     if v is None or v is pd.NaT or (isinstance(v, float) and math.isnan(v)):
         return None
     return v if isinstance(v, (int, float, str, bool)) else str(v)
@@ -211,7 +211,8 @@ def build(run: RunDir, mapping: str = "merged") -> str:
         return _write(run, L, summary)
     agent_col = "agent_merged" if mapping == "merged" else "agent_strict"
     ex = run.read(f"exposures_{mapping}")
-    ex_alt = run.read(f"exposures_{'strict' if mapping == 'merged' else 'merged'}")
+    alt = "strict" if mapping == "merged" else "merged"
+    ex_alt = run.read(f"exposures_{alt}")
     claims, tags, mentions = run.read("claims"), run.read("tags"), run.read("mentions")
     edges, chains = run.read(f"edges_{mapping}"), run.read(f"chains_{mapping}")
     figs, summary = {}, {"mapping": mapping, "profile": {k: prof[k] for k in ("adapter", "n_events", "n_authors", "first_ts", "last_ts")}}
@@ -343,7 +344,7 @@ def build(run: RunDir, mapping: str = "merged") -> str:
         summary["A4"] = {"n_value_slots_disputed": len(vs), "n_sequence_slots_disputed": len(ss),
                          "rule": {"bin_hours": errors.BIN_H, "tail_share": errors.TAIL_SHARE,
                                   "min_tail": errors.MIN_TAIL},
-                         "featured": [{k: _a4_value(v) for k, v in r.items()}
+                         "featured": [{k: _cell(v) for k, v in r.items()}
                                       | {"tail counts": s["tail_counts"], "tie": s["tie"], "first seen tie": s["first_tie"],
                                          "corrected": s["status"] == "overturned"}   # deprecated alias of status
                                       for r, s in zip(rows, feat)]}
@@ -385,7 +386,7 @@ def build(run: RunDir, mapping: str = "merged") -> str:
 
     # A5 / A6
     if len(edges):
-        r5 = structure.analyze(edges, chains)
+        r5 = structure.analyze(edges, chains, ex=ex if len(ex) else None)
         figs["structure"] = structure.figure(r5, chains, run.figure("a5_structure.png"))
         summary["A5"] = {k: v for k, v in r5.items() if not isinstance(v, (pd.Series, pd.DataFrame))}
         L.append("## A5. Structure\n")
@@ -393,16 +394,22 @@ def build(run: RunDir, mapping: str = "merged") -> str:
                  f"({r5['n_relay_edges']:,} same-page relay hops, {r5['n_xchannel_edges']:,} cross-page hops attributed to the originator, "
                  f"{r5['n_exposure_edges']:,} first-source exposures, "
                  f"{r5['n_citation_edges']:,} explicit citations). "
-                 + (f"{r5['exposure_sources']} agents were the first public source for someone's answer; "
-                    f"the top 10 supplied **{_pct(r5['top10_share_exposure'])}** of all exposed answers "
-                    f"(out-degree Gini {r5['gini_exposure_outdegree']:.2f}). " if r5.get("n_exposure_edges") else
+                 + (_hub_headline(r5) if r5.get("n_exposure_edges") else
                     "No answer had a first public source here, so there is no exposure concentration to report. ")
                  + (f"Facts carried by ≥2 agents travelled {r5['mean_chain_depth']:.1f} hops on average.\n"
                     if r5.get("mean_chain_depth") == r5.get("mean_chain_depth") else "No fact was carried by two or more agents.\n"))
         if figs["structure"]:
             L.append(f"![structure](figures/{run.figure('a5_structure.png').name})\n")
-        L.append("Top first-sources (answers they were first public source for):\n")
-        L.append(md_table(r5["top_sources"].rename("answers").to_frame()))
+        top = r5["top_sources"].rename("answers").to_frame()
+        if r5.get("n_exposure_edges"):
+            L += _attribution_block(r5, summary)
+            lines, first = _origins_block({m: e for m, e in ((mapping, ex), (alt, ex_alt)) if len(e) and e["D"].any()},
+                                         mapping, summary)
+            L += lines
+            top = top.join(origins.by_source(first, ex)[["items", "origin"]])
+        L.append("Top first-sources (answers they were first public source for"
+                 + (", on how many items, and the origin of those answers" if "origin" in top else "") + "):\n")
+        L.append(md_table(top))
         L.append("\nTop brokers (betweenness on relay + citation graph"
                  + (f", estimated from {r5['betweenness_sampled_sources']} sampled sources" if r5["betweenness_sampled_sources"] else "")
                  + "):\n")
@@ -468,6 +475,89 @@ def build(run: RunDir, mapping: str = "merged") -> str:
                 "not the agents' own messages: who-did-what-when and technique mentions are plausible, the provenance of specific "
                 "values is not, and anything the digest's author chose to omit is invisible.\n" if caps.get("derived_text") else ""))
     return _write(run, L, summary)
+
+
+def _hub_headline(r5: dict) -> str:
+    """First-source concentration beside the per-item null, and its range across the attribution rules."""
+    a = r5["attribution"]
+    share = {sub: a.loc[(a["answers"] == sub) & (a["n"] > 0), "top10_share"] for sub in ("all exposed", "instant only")}
+    inst = share["instant only"]
+    return (f"{r5['exposure_sources']} agents were the first public source for someone's answer; "
+            f"the top 10 supplied **{_pct(r5['top10_share_exposure'])}** of all exposed answers "
+            f"(out-degree Gini {r5['gini_exposure_outdegree']:.2f}; the exposure counts of the {r5['items_exposed']} items "
+            f"alone have a Gini of {r5['gini_item_exposures']:.2f}, which is what first-source credit gives if each item "
+            "has one source of its own). **That share depends on who is credited**: across the three attribution rules "
+            f"below it runs from {_pct(share['all exposed'].min())} to {_pct(share['all exposed'].max())}"
+            + (f" ({_pct(inst.min())} to {_pct(inst.max())} on instant answers)" if len(inst) else "")
+            + ". First-source credit measures who answered first on an item: on "
+            + (f"all {r5['items_exposed']}" if r5["items_one_source"] == r5["items_exposed"] else
+               f"{r5['items_one_source']} of the {r5['items_exposed']}")
+            + " items with exposed answers, one agent was the first source of every one. ")
+
+
+def _attribution_block(r5: dict, summary: dict) -> list[str]:
+    a = r5["attribution"]
+    summary["A5"]["attribution"] = [{k: _cell(v) for k, v in r.items()} for r in a.to_dict("records")]
+    no_instant = not a.loc[a["answers"] == "instant only", "n"].any()
+    L = ["**Hub concentration by attribution rule.** Each rule credits an exposed answer to one agent. None is observed "
+         "(nothing records what an agent read), so the rows are a sensitivity range, not competing estimates. "
+         "*First source* = the first other agent to post the item and value before the report (the exposure edges); "
+         "*latest source* = the last one before the report; *same-page relay parent* = the graph's parent of the agent's "
+         "first post of the value, matched on the value key exposure used, and *unmatched* when that post arrived by a "
+         "cross-page hop or the agent has no relay edge for the value. *Instant only* keeps answers reported as instant, "
+         "the copy signature. On synthetic swarms the rule that copies the way the simulated agents do finds the true "
+         "source (latest when they copy the latest post, first when they copy the first), so a rule's success there "
+         "describes how the simulated agents copy, not how a real swarm does.\n"]
+    if no_instant:
+        L.append("No exposed answer was reported as instant, so the copy-signature subset is empty and has no concentration.\n")
+    L.append(md_table((a[a["answers"] == "all exposed"] if no_instant else a)
+                      .rename(columns={"top10_share": "top-10 share", "gini": "Gini"}), index=False, pct=("top-10 share",)))
+    return L
+
+
+def _origins_block(exs: dict[str, pd.DataFrame], mapping: str, summary: dict) -> tuple[list[str], pd.DataFrame]:
+    """Origin of each exposed answer's source under the first- and latest-source rules and both mappings, the
+    roots relayed sources lead to, and the sources with no answer round observed (for audit).  Also returns the
+    first-source origins under ``mapping`` for the top-sources table."""
+    tr = {(rule, m): origins.trace_root(e, col) for rule, col in (("first source", "src_agent"), ("latest source", "src_latest"))
+          for m, e in exs.items()}
+    tbl = pd.DataFrame({f"{rule}, {m} ({len(t):,})": [f"{n:,} ({_pct(n / len(t))})" for n in
+                                                      t["origin"].value_counts().reindex(origins.LABELS, fill_value=0)]
+                        for (rule, m), t in tr.items()}, index=pd.Index(origins.LABELS, name="credited source"))
+    rules = ("first source", "latest source")
+    root_labels = [k for k in origins.LABELS if k != "relayed"] + [origins.POSTED_FIRST]
+    roots = pd.DataFrame({r: tr[(r, mapping)]["root_origin"].value_counts().reindex(root_labels, fill_value=0) for r in rules})
+    roots.index.name = "root"
+    relayed = {r: tr[(r, mapping)].loc[tr[(r, mapping)]["origin"] == "relayed", "depth"] for r in rules}
+    first = tr[("first source", mapping)]
+    audit = origins.by_source(first[first["origin"] == "no answer round observed"], exs[mapping])
+    audit = audit[["answers", "items", "answer rounds (any item)"]].head(10)
+    summary["A5"]["origins"] = {
+        m: {r: tr[(r, m)]["origin"].value_counts().reindex(origins.LABELS, fill_value=0).to_dict() for r in rules} for m in exs} | {
+        "roots": roots.to_dict(), "max depth": {r: int(tr[(r, mapping)]["depth"].max()) for r in rules},
+        "no answer round observed, top sources": audit.reset_index().to_dict("records")}
+    L = ["**Where did copied answers come from?** Each exposed answer's credited source (under the two rules that credit "
+         "every answer, and both identity mappings; answers in brackets), judged by the source's own answer round on the "
+         "same item: **computed** = it answered the same value with nothing matching public before its report (D = 0); "
+         "**no answer round observed** = no answer round of its own on the item was extracted, which fits an agent that "
+         "only published values (an answer list, a sequence scout) but also a missed answer or an identity split, so audit "
+         "the sources below before calling them compilers; **dissent** = it answered a different value; **relayed** = it "
+         "answered the same value but was itself exposed. Being the first public source is not proof of being read.\n",
+         md_table(tbl),
+         f"Roots ({mapping} mapping): a relayed source is followed through its own source under the same rule until one "
+         "is not relayed" + (" (hops from a relayed answer to its root, median / max: " + ", ".join(
+             f"{r} {d.median():g} / {d.max()}" for r, d in relayed.items() if len(d)) + ")" if any(map(len, relayed.values())) else "")
+         + (f". *{origins.POSTED_FIRST.capitalize()}* = the agent had posted the value no later than the post it is "
+            "credited to (or the chain leads back to the answering agent), so it counts as exposed only because another "
+            "agent posted the value between its own post and its report" if roots.loc[origins.POSTED_FIRST].any() else "")
+         + ". Relayed means exposed, not copied: a chain can run past an agent that computed the value while a copy was "
+         "already public, so a root can sit earlier than the true one.\n", md_table(roots)]
+    if len(audit):
+        L.append("Sources of answers with no answer round observed (first source, top 10, for audit; *answer rounds "
+                 "(any item)* = 0 fits an agent that only publishes, more suggests a missed answer or an identity split on "
+                 "these items):\n")
+        L.append(md_table(audit))
+    return L, first
 
 
 def _clock_note(notes: dict, ex: pd.DataFrame, events: pd.DataFrame) -> str:

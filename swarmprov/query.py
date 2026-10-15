@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 
 from .claims import value_key
+from .exposure import match_key
 from .graph import CLOCK_RES_S
 from .rules import norm_value
 from .schema import RunDir
@@ -154,7 +155,7 @@ def answer_lineage(run: RunDir, claim_id: str | None = None, agent: str | None =
     variants: dict[tuple, list[dict]] = {}
     out = []
     for r in sel.sort_values("t_report").itertuples(index=False):
-        target = value_key(r.value_norm) or r.consensus_value
+        target = match_key(r.value_norm, r.consensus_value)
         parent_of = {e.dst: e for e in hops_of.get((r.family, r.item, target), rel.iloc[:0]).itertuples(index=False)}
         parent = parent_of.get(r.agent)
         ch = chains_of.get((r.family, r.item), chains.iloc[:0])

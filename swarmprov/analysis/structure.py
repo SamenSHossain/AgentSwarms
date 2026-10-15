@@ -1,4 +1,10 @@
-"""A5 - structure: hub concentration, brokers, relay chain lengths.  A6 - reach."""
+"""A5 - structure: hub concentration, brokers, relay chain lengths.  A6 - reach.
+
+Concentration depends on who is credited with an exposed answer, so it is given under
+three attribution rules (and on instant answers only, the copy signature), none of them
+privileged: the *first* other carrier before the report (``src_agent``), the *latest*
+(``src_latest``) and the same-page relay parent from the graph.
+"""
 
 from __future__ import annotations
 
@@ -7,6 +13,7 @@ import numpy as np
 import pandas as pd
 
 from .. import plotting
+from ..exposure import match_key
 from ..graph import gini, to_networkx
 from ..plotting import plt
 
@@ -15,7 +22,41 @@ from ..plotting import plt
 EXACT_BETWEENNESS_NODES = 5000
 
 
-def analyze(edges: pd.DataFrame, chains: pd.DataFrame, top_k: int = 10) -> dict:
+def relay_parents(ex: pd.DataFrame, edges: pd.DataFrame) -> pd.Series:
+    """Each round's same-page relay parent: the ``relay`` edge into the agent for the value the
+    round was matched on (``exposure.match_key``); None for a cross-page hop or no edge at all."""
+    rel = edges[edges["kind"] == "relay"]
+    parent = dict(zip(zip(rel["dst"], rel["family"], rel["item"], rel["value_norm"]), rel["src"]))
+    return pd.Series([parent.get((a, f, i, match_key(v, c))) for a, f, i, v, c in
+                      zip(ex["agent"], ex["family"], ex["item"], ex["value_norm"], ex["consensus_value"])],
+                     index=ex.index, dtype=object)
+
+
+def concentration(sources: pd.Series, top_k: int = 10) -> dict:
+    """Answers credited, distinct sources, the top-k sources' share and the Gini of their counts."""
+    deg = sources.dropna().value_counts()
+    tot = deg.sum()
+    return {"n": int(tot), "sources": int(len(deg)),
+            f"top{top_k}_share": float(deg.head(top_k).sum() / tot) if tot else float("nan"),
+            "gini": gini(deg.values) if tot else float("nan")}
+
+
+def attribution(ex: pd.DataFrame, edges: pd.DataFrame, top_k: int = 10) -> pd.DataFrame:
+    """Concentration of exposed answers (D == 1) under each attribution rule, on every exposed
+    answer and on instant ones only.  ``unmatched`` counts the answers a rule credits to nobody."""
+    x = ex[ex["D"] == 1]
+    rules = {"first source": x["src_agent"], "latest source": x["src_latest"],
+             "same-page relay parent": relay_parents(x, edges)}
+    rows = []
+    for subset, idx in (("all exposed", x.index), ("instant only", x.index[x["y_instant"] == 1])):
+        for rule, src in rules.items():
+            s = src.loc[idx]
+            rows.append({"rule": rule, "answers": subset, **concentration(s, top_k), "unmatched": int(s.isna().sum())})
+    return pd.DataFrame(rows)
+
+
+def analyze(edges: pd.DataFrame, chains: pd.DataFrame, top_k: int = 10, ex: pd.DataFrame | None = None) -> dict:
+    """``ex`` (the exposure table) adds the attribution-rule table and the per-item null."""
     outdeg = edges[edges["kind"] == "exposure"].groupby("src").size().sort_values(ascending=False)
     relay_out = edges[edges["kind"] == "relay"].groupby("src").size().sort_values(ascending=False)
     G = to_networkx(edges, kinds=("relay", "citation"))
@@ -41,6 +82,15 @@ def analyze(edges: pd.DataFrame, chains: pd.DataFrame, top_k: int = 10) -> dict:
         "mean_agents_per_fact": float(multi["n_agents"].mean()) if len(multi) else float("nan"),
         "outdeg": outdeg,
     }
+    if ex is not None and len(ex):
+        x = ex[ex["D"] == 1]
+        per_item = x.groupby(["family", "item"])
+        # the Gini a first-to-post rule gives if every item's answers went to its own single source
+        res |= {"item_exposures": per_item.size(),
+                "gini_item_exposures": gini(per_item.size().values) if len(x) else float("nan"),
+                "items_exposed": int(per_item.ngroups),
+                "items_one_source": int((per_item["src_agent"].nunique() == 1).sum()),
+                "attribution": attribution(ex, edges, top_k)}
     return res
 
 
@@ -64,13 +114,19 @@ def reach(chains: pd.DataFrame) -> dict:
 def figure(res: dict, chains: pd.DataFrame, path) -> str | None:
     plotting.setup()
     fig, (ax, ax2) = plt.subplots(1, 2, figsize=(10, 3.8))
-    od = np.sort(res["outdeg"].values) if len(res["outdeg"]) else np.array([])
-    if len(od):
-        cum = np.concatenate([[0], np.cumsum(od) / od.sum()])
-        x = np.linspace(0, 1, len(cum))
-        ax.plot(x, cum, color=plotting.SERIES[0], label=f"exposure sources (Gini {res['gini_exposure_outdegree']:.2f})")
+
+    def lorenz(counts, **kw):
+        c = np.sort(np.asarray(counts, dtype=float))
+        cum = np.concatenate([[0], np.cumsum(c) / c.sum()])
+        ax.plot(np.linspace(0, 1, len(cum)), cum, **kw)
+    if len(res["outdeg"]):
+        lorenz(res["outdeg"].values, color=plotting.SERIES[0],
+               label=f"first sources (Gini {res['gini_exposure_outdegree']:.2f})")
+        if "item_exposures" in res:
+            lorenz(res["item_exposures"].values, color=plotting.SERIES[1], lw=1.5, ls=":",
+                   label=f"items (Gini {res['gini_item_exposures']:.2f}): one source each")
         ax.plot([0, 1], [0, 1], color=plotting.NEUTRAL, lw=1, ls="--", label="perfect equality")
-        ax.set_xlabel("Share of source agents (ascending)")
+        ax.set_xlabel("Share of source agents (or items), ascending")
         ax.set_ylabel("Share of answers they supplied")
         ax.legend(loc="upper left")
         ax.set_title("Hub concentration (Lorenz curve)")
