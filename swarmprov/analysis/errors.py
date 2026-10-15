@@ -9,7 +9,8 @@ and report: first appearance of every variant, the eventual winner (the most
 common variant among the last third of carriers; none on a tie), when the
 winner first held >= 50% of new carriers in a 3-hour bin and kept it, and a
 status: *held* (the first variant still wins), *overturned* (a later variant
-won and kept that majority on enough late carriers) or *contested*.
+won and kept that majority on enough late carriers) or *contested*.  Two
+variants first seen at the same moment leave no first variant: contested.
 
 Analyst reference values never change the status; they only label the outcome.
 """
@@ -33,8 +34,8 @@ BIN_H, TAIL_SHARE, MIN_TAIL = 3.0, 1 / 3, 5
 
 
 def _status(first, winner, t50, n_tail: int, min_tail: int) -> str:
-    if winner is None:
-        return "contested"            # the late carriers tie
+    if winner is None or first is None:
+        return "contested"            # the late carriers tie, or no variant came first
     if winner == first:
         return "held"
     if t50 is None:
@@ -53,6 +54,8 @@ def _slot_stats(carriers: pd.DataFrame, slot: str, bin_h: float = BIN_H, tail_sh
     tie = len(tail) > 1 and tail.iloc[0] == tail.iloc[1]
     winner = None if tie else tail.index[0]
     firsts = c.groupby("variant")["ts"].min().sort_values()
+    first_tie = len(firsts) > 1 and firsts.iloc[0] == firsts.iloc[1]
+    first = None if first_tie else firsts.index[0]
     t0 = c["ts"].min()
     c = c.assign(h=(c["ts"] - t0).dt.total_seconds() / 3600)
     bins = np.arange(0, c["h"].max() + bin_h, bin_h)
@@ -68,24 +71,49 @@ def _slot_stats(carriers: pd.DataFrame, slot: str, bin_h: float = BIN_H, tail_sh
                 t50 = max(t0 + pd.Timedelta(hours=float(frac.index[i])), firsts[winner])
                 break
     t_first = firsts[winner] if winner is not None else None
+    later = t50 is not None and first is not None and winner != first
     return {
         "slot": slot, "n_carriers": len(c), "variants": firsts.index.tolist(), "overlap_agents": overlap,
-        "first_seen": {k: v for k, v in firsts.items()}, "winner": winner, "first_variant": firsts.index[0],
+        "first_seen": {k: v for k, v in firsts.items()}, "winner": winner, "first_variant": first,
+        "first_tie": bool(first_tie),
         "tail_counts": {k: int(v) for k, v in tail.items()}, "n_tail": n_tail, "tie": bool(tie),
-        "status": _status(firsts.index[0], winner, t50, n_tail, min_tail),
+        "status": _status(first, winner, t50, n_tail, min_tail),
         "t_winner_first": t_first, "t_winner_majority": t50,
-        "hours_to_overtake": ((t50 - t_first).total_seconds() / 3600) if t50 is not None else np.nan,
+        "hours_to_overtake": (t50 - t_first).total_seconds() / 3600 if later else np.nan,
         "share_by_bin": frac, "t0": t0, "carriers": c[["ts", "variant"]],
     }
 
 
 def reference_keys(values: dict) -> dict[tuple[str, str], str]:
-    """Config ``reference_values`` {"family|item": value} -> {(family, item): variant key}."""
+    """Config ``reference_values`` {"family|item": value} -> {(family, item): value as text}."""
     out = {}
     for k, v in values.items():
         fam, _, item = str(k).partition("|")
-        out[(fam.strip(), item.strip())] = value_key(norm_value(str(v))) or str(v).strip()
+        out[(fam.strip(), item.strip())] = str(v).strip()
     return out
+
+
+def unused_references(refs: dict, items: set, disputed: set, tabled: set) -> tuple[list[str], list[str]]:
+    """Reference keys naming no item or disputed slot (a mistyped key surfaces here), and those for
+    disputed slots left out of the table."""
+    def keys(pairs):
+        return sorted(f"{f}|{i}" for f, i in pairs)
+    return keys(set(refs) - disputed - items), keys(set(refs) & (disputed - tabled))
+
+
+def _key(v) -> str:
+    s = str(v).strip()
+    return value_key(norm_value(s.lstrip("$€£"))) or s.casefold()
+
+
+def match_reference(variants: list[str], ref) -> str | None:
+    """The variant a reference value names: the same text, else the only variant with the same
+    comparison key ('1,481' and '$1,481', '16.40%' and '16.4'); None if it names none."""
+    ref = str(ref).strip()
+    if ref in variants:
+        return ref
+    hits = [v for v in variants if _key(v) == _key(ref)]
+    return hits[0] if len(hits) == 1 else None
 
 
 def _rounds_to(a: str, b: str) -> bool:
@@ -102,10 +130,18 @@ def _rounds_to(a: str, b: str) -> bool:
     return ex > y.as_tuple().exponent and y.quantize(Decimal(1).scaleb(ex), ROUND_HALF_UP) == x
 
 
-def outcome(s: dict, ref: str) -> str:
-    """The slot against an analyst reference value.  The standing variant is the winner when the
-    status is overturned and the first variant otherwise; the status itself is never changed."""
+def outcome(s: dict, ref) -> str:
+    """The slot against an analyst reference value; the status itself is never changed.  A held or
+    overturned slot is judged on the variant left standing (the winner if overturned, else the first);
+    a contested one is unresolved, noting whether the reference came first."""
+    ref = match_reference(s["variants"], ref)
+    if ref is None:
+        return "reference not among variants"
     first = s["first_variant"]
+    if s["status"] not in ("held", "overturned"):
+        if all(_rounds_to(v, ref) for v in s["variants"] if v != ref):
+            return "precision variant: unresolved"
+        return "unresolved" if first is None else f"unresolved ({'truth' if first == ref else 'error'} first)"
     final = s["winner"] if s["status"] == "overturned" else first
     others = [final] if final != ref else [v for v in s["variants"] if v != ref]
     if all(_rounds_to(v, ref) for v in others):

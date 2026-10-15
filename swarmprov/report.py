@@ -335,15 +335,20 @@ def build(run: RunDir, mapping: str = "merged") -> str:
                  "hours to overtake": s["hours_to_overtake"]}
             if refs:
                 ref = refs.get((s["family"], s["item"]))
-                r |= {"reference (analyst input)": ref, "outcome": errors.outcome(s, ref) if ref is not None else None}
+                named = None if ref is None else errors.match_reference(s["variants"], ref) or ref
+                r |= {"reference (analyst input)": named, "outcome": errors.outcome(s, ref) if ref is not None else None}
             rows.append(r)
+        unknown, outside = errors.unused_references(refs, set(zip(mentions["family"], mentions["item"])),
+                                                    *({(s["family"], s["item"]) for s in g} for g in (vs + ss + ds, slots)))
         summary["A4"] = {"n_value_slots_disputed": len(vs), "n_sequence_slots_disputed": len(ss),
                          "rule": {"bin_hours": errors.BIN_H, "tail_share": errors.TAIL_SHARE,
                                   "min_tail": errors.MIN_TAIL},
                          "featured": [{k: _a4_value(v) for k, v in r.items()}
-                                      | {"tail counts": s["tail_counts"], "tie": s["tie"],
+                                      | {"tail counts": s["tail_counts"], "tie": s["tie"], "first seen tie": s["first_tie"],
                                          "corrected": s["status"] == "overturned"}   # deprecated alias of status
                                       for r, s in zip(rows, feat)]}
+        if refs:
+            summary["A4"] |= {"references_unknown": unknown, "references_outside_table": outside}
         tail = f"{Fraction(errors.TAIL_SHARE).limit_denominator(10)}"
         L.append("## A4. Error propagation\n")
         L.append(f"{len(vs)} (family, item) slots carried two or more values, each repeated by ≥3 agents; "
@@ -351,22 +356,32 @@ def build(run: RunDir, mapping: str = "merged") -> str:
                  "slots whose variants have disjoint carriers are different task versions and are excluded). "
                  f"Winner = the most common variant among the last {tail} of carriers, none if the top two tie; "
                  "\"late carriers\" = the winner's count among them. "
-                 f"\"Majority from\" = start of the first {errors.BIN_H:g}-hour bin after which the winner never lost the majority of new carriers. "
+                 f"\"Majority from\" = start of the first {errors.BIN_H:g}-hour bin after which the winner never lost the majority of new carriers; "
+                 "\"hours to overtake\" runs from a later winner's first appearance to that point. "
                  "Status: **held** = the first variant is still the winner; "
-                 f"**overturned** = a later variant won and kept that majority, on at least {errors.MIN_TAIL} late carriers; "
-                 "**contested** = the late carriers tie, or the winner never kept the majority; "
-                 f"**contested (small n)** = it did, on fewer than {errors.MIN_TAIL} late carriers. "
+                 f"**overturned** = a later variant won and kept that majority, with at least {errors.MIN_TAIL} late carriers in all; "
+                 "**contested** = the late carriers tie, a later winner never kept the majority, or two variants were first seen "
+                 "at the same moment (first variant blank); "
+                 f"**contested (small n)** = a later winner kept the majority, with fewer than {errors.MIN_TAIL} late carriers in all. "
                  f"The {errors.BIN_H:g}-hour bin and the last-{tail} rule are conventions, not measurements.\n")
         if refs:
             L.append("Reference values are **analyst input** (config `reference_values`), not measured. They never change the "
-                     "status; they only fill the outcome column, judged on the variant left standing (the winner if the slot was "
-                     "overturned, else the first variant): truth held, error corrected, error persisted or truth displaced by error. "
-                     "Where one value is the other rounded (9.9 and 9.91), the outcome reads *precision variant* instead.\n")
+                     "status; they only fill the outcome column. A held or overturned slot is judged on the variant left standing "
+                     "(the winner if overturned, else the first variant): truth held, error corrected, error persisted or truth "
+                     "displaced by error. A contested slot reads *unresolved*, with whether the first variant was the reference. "
+                     "Where one value is the other rounded (9.9 and 9.91), the outcome reads *precision variant* instead, and a "
+                     "reference that matches no variant says so.\n")
         if ds:
             L.append("Analyst-declared disputes (config `disputes`: a context pattern plus one pattern per variant) are listed first.\n")
         if figs["errors"]:
             L.append(f"![errors](figures/{run.figure('a4_errors.png').name})\n")
         L.append(md_table(pd.DataFrame(rows), index=False, floatfmt="{:.1f}"))
+        if unknown:
+            L.append("Reference values that name no item or disputed slot in this run (a mistyped `family|item` key, or an item "
+                     "nobody posted): " + ", ".join(f"`{k}`" for k in unknown) + ".\n")
+        if outside:
+            L.append("Reference values for disputed slots outside this table (no outcome shown): "
+                     + ", ".join(f"`{k}`" for k in outside) + ".\n")
 
     # A5 / A6
     if len(edges):

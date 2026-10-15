@@ -326,8 +326,10 @@ class WikiAdapter(Adapter):
             disputes=[{
                 "family": "datausa-grocery-workforce", "slot": "G5 (cracked-seed forecast vs observed)",
                 "context": r"\bG5\b",
-                "variants": {"Maryland (RNG forecast)": r"Maryland|\bMD\b",
-                             "Montana (observed)": r"Montana|\bMT\b"},
+                # the state in any case ('MONTANA = 8,553'); a bare 'MT' also hits the forecast's
+                # runner-up list ('predicts G5 Maryland (52,395), then HI, MT, IA, WV')
+                "variants": {"Maryland (RNG forecast)": r"(?i:maryland)|\bMD\b",
+                             "Montana (observed)": r"(?i:montana)"},
             }],
             ignore_authors=("[Admin1]", "[Admin2]", "[Person22]"),
             coverage_note=COVERAGE_NOTE,
