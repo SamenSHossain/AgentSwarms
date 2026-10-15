@@ -24,6 +24,12 @@ from . import pipeline
 from .schema import RunDir
 
 
+def _positive(v: str) -> int:
+    if not v.isdigit() or int(v) < 1:
+        raise argparse.ArgumentTypeError(f"expected a whole number of at least 1, got {v!r}")
+    return int(v)
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="swarmprov", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -86,7 +92,8 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--mapping", choices=["merged", "strict"], default="merged")
     s.add_argument("--json", metavar="FILE", help="also write the result as JSON")
     s.add_argument("--png", metavar="FILE", help="timeline of one fact (--fact with a value, or a single answer)")
-    s.add_argument("--limit", type=int, default=None, help="at most N answers or listed facts (default 25), N hops printed per fact (JSON keeps all)")
+    s.add_argument("--limit", type=_positive, default=None,
+                   help="at most N answers or listed facts (default 25), N hops printed per fact (JSON keeps all)")
 
     s = sub.add_parser("synth", help="generate a synthetic swarm transcript with known provenance")
     s.add_argument("-o", "--out", default="data/synth/transcript.jsonl")
@@ -97,6 +104,9 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--seed", type=int, default=0)
 
     a = p.parse_args(argv)
+    if a.cmd == "trace" and ((a.item is not None and a.agent is None)
+                             or (a.family is not None and a.agent is None and not a.list)):
+        p.error("trace: --item goes with --agent, --family with --agent or --list")
     if a.cmd == "run":
         pipeline.run_all(a.input, a.out, a.adapter, a.llm, a.config, a.roster)
     elif a.cmd == "ingest":

@@ -180,7 +180,7 @@ def expose(run: RunDir) -> None:
         if aud:
             _log(f"  [{name}] {len(aud)} restricted channels limit who could read a mention")
         ex = exposure.build(rounds, mn, cons, col, audience=aud) if len(rounds) else pd.DataFrame()
-        run.write(f"exposures_{name}", ex)
+        run.write(f"exposures_{name}", ex if len(ex) else empty("exposures"))
         if len(ex):
             _log(f"  [{name}] {len(ex)} agent-rounds, exposed {ex['D'].mean():.1%}")
 
@@ -198,7 +198,7 @@ def build_graph(run: RunDir) -> None:
         edges = conform(pd.concat([p for p in parts if len(p)], ignore_index=True), "edges") \
             if any(len(p) for p in parts) else empty("edges")
         run.write(f"edges_{name}", edges)
-        run.write(f"chains_{name}", chains)
+        run.write(f"chains_{name}", chains if len(chains) else empty("chains"))
         if name == "merged" and len(edges):
             import networkx as nx
             G = graph.to_networkx(edges, kinds=("relay", "exposure", "citation"))

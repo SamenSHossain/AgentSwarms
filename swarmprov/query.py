@@ -20,7 +20,7 @@ from .claims import value_key
 from .exposure import match_key
 from .graph import CLOCK_RES_S
 from .rules import norm_value
-from .schema import RunDir
+from .schema import RunDir, empty
 
 AGENT_COLS = {"merged": "agent_merged", "strict": "agent_strict"}
 MAPPING_NOTE = {"merged": "one agent per cohort date and task family; --mapping strict for one per author string",
@@ -52,6 +52,19 @@ def match_agents(run: RunDir, name: str, mapping: str = "merged") -> list[str]:
 
 def _is(s: pd.Series, v: str) -> pd.Series:
     return s.astype(str).str.casefold() == str(v).casefold()
+
+
+def _table(run: RunDir, name: str) -> pd.DataFrame:
+    """A stage table; one a run wrote without rows or columns (no task families) gets its schema columns."""
+    df = run.read(name)
+    return df if len(df.columns) else empty(name.rsplit("_", 1)[0])
+
+
+def _answers(ex: pd.DataFrame, agents=None, item=None, family=None) -> pd.DataFrame:
+    sel = ex[ex["agent"].isin(agents)] if agents is not None else ex
+    if item is not None:
+        sel = sel[_is(sel["item"], item)]
+    return sel[_is(sel["family"], family)] if family is not None else sel
 
 
 def _events(run: RunDir) -> pd.DataFrame:
@@ -98,7 +111,7 @@ def _tree(edges: pd.DataFrame, ev: pd.DataFrame, origin: str, around: str) -> li
 def fact_lineage(run: RunDir, family: str, item: str, value: str | None = None, mapping: str = "merged") -> list[dict]:
     """Origin and relay hops of a fact (family, item, value), or of every value of the item.
     Values match on value_key, so '9.90', '9.9' and '9.9%' are one fact."""
-    chains = run.read(f"chains_{mapping}")
+    chains = _table(run, f"chains_{mapping}")
     c = chains[_is(chains["family"], family) & _is(chains["item"], item)]
     if value is not None:
         keys = {str(value).strip(), value_key(norm_value(str(value))), value_key(str(value).strip())}
@@ -130,24 +143,20 @@ def answer_lineage(run: RunDir, claim_id: str | None = None, agent: str | None =
     report post, the exposure flags, the first public copy, the agent's own earlier post, the
     inferred relay parent and path from the originator, and the competing values."""
     col = AGENT_COLS[mapping]
-    ex = run.read(f"exposures_{mapping}")
+    ex = _table(run, f"exposures_{mapping}")
     if claim_id is not None:
         sel = ex[ex["claim_id"] == claim_id]
         if not len(sel):   # a later report of the same agent-round
             cl = run.read("claims")
-            c = cl[cl["claim_id"] == claim_id]
+            c = cl[(cl["claim_id"] == claim_id) & (cl["event_type"] == "answer")]
             if len(c):
                 sel = ex[(ex["agent"] == c[col].iloc[0]) & (ex["family"] == c["family"].iloc[0])
                          & (ex["item"] == c["item"].iloc[0])]
     else:
-        sel = ex[ex["agent"] == agent] if agent is not None else ex
-        if item is not None:
-            sel = sel[_is(sel["item"], item)]
-        if family is not None:
-            sel = sel[_is(sel["family"], family)]
+        sel = _answers(ex, None if agent is None else [agent], item, family)
     if not len(sel):
         return []
-    ev, edges, chains = _events(run), run.read(f"edges_{mapping}"), run.read(f"chains_{mapping}")
+    ev, edges, chains = _events(run), run.read(f"edges_{mapping}"), _table(run, f"chains_{mapping}")
     fams = set(sel["family"])
     rel = edges[edges["kind"].isin(RELAY_KINDS) & edges["family"].isin(fams)]
     hops_of = dict(list(rel.groupby(["family", "item", "value_norm"])))
@@ -155,17 +164,14 @@ def answer_lineage(run: RunDir, claim_id: str | None = None, agent: str | None =
     variants: dict[tuple, list[dict]] = {}
     out = []
     for r in sel.sort_values("t_report").itertuples(index=False):
-        target = match_key(r.value_norm, r.consensus_value)
+        value = None if pd.isna(r.value_norm) else r.value_norm
+        target = match_key(value, r.consensus_value)
         parent_of = {e.dst: e for e in hops_of.get((r.family, r.item, target), rel.iloc[:0]).itertuples(index=False)}
         parent = parent_of.get(r.agent)
         ch = chains_of.get((r.family, r.item), chains.iloc[:0])
         if (r.family, r.item) not in variants:
             variants[(r.family, r.item)] = _variants(ch)
         origin = ch.loc[ch["value_key"] == target, "originator"]
-        path, a = ([r.agent] if parent is not None or (len(origin) and origin.iloc[0] == r.agent) else []), r.agent
-        while path and a in parent_of:
-            a = parent_of[a].src
-            path.insert(0, a)
         src = _post(ev, r.src_event_id, r.item)
         if src is not None:
             src.update(agent=r.src_agent, head_start_s=float(r.gap_s),
@@ -173,14 +179,22 @@ def answer_lineage(run: RunDir, claim_id: str | None = None, agent: str | None =
                        deleted_before_report=bool(r.src_deleted_before_report))
         rp = None
         if parent is not None:
-            carrier = ev.loc[parent.event_id] if parent.event_id in ev.index else None
+            carrier, src_post = (ev.loc[i] if i in ev.index else None for i in (parent.event_id, parent.src_event_id))
+            parent_ts = src_post["ts"] if src_post is not None else None
             rp = {"agent": parent.src, "kind": parent.kind, "dt_s": float(parent.dt_s),
                   "within_clock_res": bool(parent.within_clock_res), "parent_event_id": parent.src_event_id,
-                  "carrier_event_id": parent.event_id,
-                  "carrier_ts": carrier["ts"] if carrier is not None else None}
+                  "parent_ts": parent_ts, "carrier_event_id": parent.event_id,
+                  "carrier_ts": carrier["ts"] if carrier is not None else None,
+                  # the parent posted the value only after this answer was reported: not its source
+                  "after_report": bool(parent_ts is not None and parent_ts > r.t_report)}
+        path, a = ([r.agent] if (rp is not None and not rp["after_report"])
+                   or (len(origin) and origin.iloc[0] == r.agent) else []), r.agent
+        while path and a in parent_of:
+            a = parent_of[a].src
+            path.insert(0, a)
         out.append({
             "claim_id": r.claim_id, "agent": r.agent, "family": r.family, "item": r.item, "episode": r.episode,
-            "value": r.value_norm, "matched_value": target, "consensus_value": r.consensus_value,
+            "value": value, "matched_value": target, "consensus_value": r.consensus_value,
             "report": _post(ev, r.report_event_id, r.item) or {"ts": r.t_report},
             "D": int(r.D), "D_w60m": int(r.D_w60m), "D_visible": int(r.D_visible),
             "first_public_copy": src,
@@ -191,6 +205,25 @@ def answer_lineage(run: RunDir, claim_id: str | None = None, agent: str | None =
             "variants": variants[(r.family, r.item)],
         })
     return out
+
+
+def claim_note(run: RunDir, claim_id: str, shown: list[dict], mapping: str = "merged") -> str | None:
+    """What ``--answer CLAIM_ID`` showed instead, when the claim is not itself an answer row."""
+    cl = run.read("claims")
+    c = cl[cl["claim_id"] == claim_id]
+    if not len(c) or (shown and shown[0]["claim_id"] == claim_id):
+        return None
+    c = c.iloc[0]
+    if shown:
+        return f"claim {claim_id} is a later report of this agent-round; shown from its first report {shown[0]['claim_id']}"
+    if c["event_type"] == "answer":
+        return f"claim {claim_id} is an answer report with no task family or item, so exposure has no row for it"
+    ex = _table(run, f"exposures_{mapping}")
+    own = ex.loc[(ex["agent"] == c[AGENT_COLS[mapping]]) & (ex["family"] == c["family"]) & (ex["item"] == c["item"]),
+                 "claim_id"]
+    return (f"claim {claim_id} is a {c['event_type']} (post {c['event_id']}); " +
+            (f"the agent's answer for this item is {own.iloc[0]} (trace --answer {own.iloc[0]})" if len(own)
+             else "the agent has no answer for this item"))
 
 
 def event_view(run: RunDir, event_id: str, mapping: str = "merged") -> dict | None:
@@ -209,10 +242,11 @@ def event_view(run: RunDir, event_id: str, mapping: str = "merged") -> dict | No
     cl = run.read("claims")
     cl = cl[cl["event_id"] == event_id]
     mn = run.read("mentions")
-    mn = mn[(mn["event_id"] == event_id) & (mn["family"] != "url")]
+    mn = mn[mn["event_id"] == event_id]
+    urls, mn = mn.loc[mn["family"] == "url", "value_norm"], mn[mn["family"] != "url"]
     edges = run.read(f"edges_{mapping}")
     ed = edges[(edges["event_id"] == event_id) | (edges["src_event_id"] == event_id)]
-    ex = run.read(f"exposures_{mapping}")
+    ex = _table(run, f"exposures_{mapping}")
     fam = e["family"] if isinstance(e.get("family"), str) else ""
     note = None
     if not len(cl):
@@ -227,7 +261,7 @@ def event_view(run: RunDir, event_id: str, mapping: str = "merged") -> dict | No
         "tags": flags, "techniques": t["techniques"].iloc[0] if len(t) else "", "cites": t["cites"].iloc[0] if len(t) else "",
         "claims": cl[["claim_id", "event_type", "item", "episode", "value_norm", "latency_class", "wrong_flag"]]
         .to_dict("records"),
-        "mentions": mn[["family", "item", "value_norm", "value_key"]].to_dict("records"),
+        "mentions": mn[["family", "item", "value_norm", "value_key"]].to_dict("records"), "urls": list(urls),
         "edges": ed[["kind", "src", "dst", "family", "item", "value_norm", "event_id", "src_event_id"]].to_dict("records"),
         "reported_answers": ex.loc[ex["report_event_id"] == event_id, ["claim_id", "agent", "item"]].to_dict("records"),
         "first_copy_for": ex.loc[ex["src_event_id"] == event_id, ["claim_id", "agent", "item"]].to_dict("records"),
@@ -237,7 +271,7 @@ def event_view(run: RunDir, event_id: str, mapping: str = "merged") -> dict | No
 
 def list_facts(run: RunDir, mapping: str = "merged", family: str | None = None, top: int = 25) -> dict:
     """Facts ranked by carriers.  URL facts only when ``family`` is 'url'."""
-    ch = run.read(f"chains_{mapping}")
+    ch = _table(run, f"chains_{mapping}")
     c = ch[_is(ch["family"], family)] if family else ch[ch["family"] != "url"]
     c = c.sort_values(["n_agents", "max_depth", "t0"], ascending=[False, False, True])
     return {"n_facts": int(len(c)), "n_repeated": int((c["n_agents"] > 1).sum()),
@@ -263,9 +297,9 @@ def _n(k: int, word: str) -> str:
     return f"{k} {word}" + ("" if k == 1 else "s")
 
 
-def _flags(kind: str, within: bool) -> str:
+def _flags(kind: str, within: bool, more=()) -> str:
     f = (["cross-page hop: source unknown, attributed to originator"] if kind == "relay_xchannel" else []) + \
-        ([f"direction unreliable: within the {CLOCK_RES_S:.0f} s clock resolution"] if within else [])
+        ([f"direction unreliable: within the {CLOCK_RES_S:.0f} s clock resolution"] if within else []) + list(more)
     return f"  ({'; '.join(f)})" if f else ""
 
 
@@ -276,7 +310,9 @@ def _post_line(p: dict) -> str:
 def text_answers(answers: list[dict]) -> list[str]:
     L = []
     for a in answers:
-        val = a["value"] if a["value"] is not None else f"(no value; matched on the consensus {a['matched_value']})"
+        own = a["value"] is not None
+        val = a["value"] if own else (f"(no value; matched on the consensus {a['matched_value']})" if a["matched_value"]
+                                      else "(no value, and no consensus value to match)")
         L.append(f"answer {a['claim_id']}: {a['agent']}, {a['family']} | {a['item']} = {val}")
         rep = a["report"]
         L.append("  report post: " + (_post_line(rep) if "event_id" in rep else _ts(rep["ts"])))
@@ -296,21 +332,29 @@ def text_answers(answers: list[dict]) -> list[str]:
                 L.append(f"  first copy still visible at the report: {_post_line(v)}")
         else:
             L.append("  first public copy: none before the report")
-        own = a["own_earlier_post"]
-        L.append(f"  own earlier post: {_post_line(own)}" if own else "  own earlier post: none")
+        p = a["own_earlier_post"]
+        L.append(f"  own earlier post: {_post_line(p)}" if p else "  own earlier post: none")
         rp = a["relay_parent"]
         if rp:
-            L.append(f"  inferred relay parent: {rp['agent']} ({rp['kind']}), parent post {rp['parent_event_id']}, "
-                     f"{_dur(rp['dt_s'])} before this agent's first post of the value ({rp['carrier_event_id']}, "
-                     f"{_ts(rp['carrier_ts'])}){_flags(rp['kind'], rp['within_clock_res'])}")
+            late = ["parent post after the report: not this answer's source"] if rp["after_report"] else []
+            L.append(f"  inferred relay parent: {rp['agent']} ({rp['kind']}), parent post {rp['parent_event_id']} "
+                     f"({_ts(rp['parent_ts'])}), {_dur(rp['dt_s'])} before this agent's first post of the value "
+                     f"({rp['carrier_event_id']}, {_ts(rp['carrier_ts'])}){_flags(rp['kind'], rp['within_clock_res'], late)}")
+        elif a["path"]:
+            L.append("  inferred relay parent: none (this agent originated the value)")
+        elif not own:
+            L.append("  inferred relay parent: none (" + ("no value to match" if not a["matched_value"] else
+                                                         "matched on the consensus; no value of its own, and no post "
+                                                         "of the consensus value") + ")")
         else:
-            L.append("  inferred relay parent: none" + (" (this agent originated the value)" if a["path"] else
-                                                        " (the agent never posted the matched value)"))
+            L.append("  inferred relay parent: none (no item-value mention of this value by the agent, "
+                     "so the relay graph has no hop for it)")
         if len(a["path"]) > 1:
             L.append(f"  inferred path from the originator ({_n(len(a['path']) - 1, 'hop')}): " + " -> ".join(a["path"]))
         if len(a["variants"]) > 1:
             L.append("  competing values: " + ", ".join(
-                f"{v['value']} ({_n(v['carriers'], 'carrier')})" + (" <- this answer" if v["value"] == a["matched_value"] else "")
+                f"{v['value']} ({_n(v['carriers'], 'carrier')})"
+                + ((" <- this answer" if own else " <- matched (consensus)") if v["value"] == a["matched_value"] else "")
                 for v in a["variants"]))
     return L
 
@@ -351,13 +395,17 @@ def text_event(v: dict) -> list[str]:
         L.append(f"    {v['no_claim_reason']}")
     L.append(f"  item-value mentions ({len(v['mentions'])}): " + (", ".join(
         f"{m['item']} {m['value_norm']}" for m in v["mentions"]) or "(none)"))
+    if v["urls"]:
+        L.append(f"  URLs ({len(v['urls'])}): " + ", ".join(excerpt(u, width=100) for u in v["urls"][:10])
+                 + (" ..." if len(v["urls"]) > 10 else ""))
     if v["reported_answers"]:
         L.append("  report post of: " + ", ".join(f"{r['agent']} {r['item']} ({r['claim_id']})" for r in v["reported_answers"]))
     if v["first_copy_for"]:
         L.append(f"  first public copy for {len(v['first_copy_for'])} answers: " + ", ".join(
             f"{r['agent']} {r['item']}" for r in v["first_copy_for"][:10]) + (" ..." if len(v["first_copy_for"]) > 10 else ""))
     L.append(f"  edges at this post ({len(v['edges'])}): " + (", ".join(
-        f"{e['kind']} {e['src']} -> {e['dst']}" + (f" ({e['item']} {e['value_norm']})" if isinstance(e["item"], str) else "")
+        f"{e['kind']} {e['src']} -> {e['dst']}"
+        + (f" ({e['item']} {excerpt(e['value_norm'], width=100)})" if isinstance(e["item"], str) else "")
         for e in v["edges"][:10]) or "(none)") + (" ..." if len(v["edges"]) > 10 else ""))
     L.append(f"  text: \"{v['excerpt']}\"")
     return L
@@ -372,7 +420,8 @@ def text_list(res: dict, family: str | None) -> list[str]:
 
 
 def timeline(fact: dict, path, highlight: str | None = None) -> str:
-    """x = time, y = carriers in order of their first post; relay hops solid blue, cross-page hops grey."""
+    """x = time, y = carriers in order of their first post; relay hops solid blue from the parent's post (small
+    dot), cross-page hops grey."""
     from matplotlib.lines import Line2D
 
     from . import plotting
@@ -386,6 +435,8 @@ def timeline(fact: dict, path, highlight: str | None = None) -> str:
         relay = h["kind"] == "relay"
         ax.plot([h["src_ts"], h["ts"]], [y[h["src"]], y[h["dst"]]], lw=2 if relay else 0.8,
                 color=plotting.SERIES[0] if relay else plotting.NEUTRAL, zorder=2 if relay else 1)
+    rh = [h for h in fact["hops"] if h["kind"] == "relay"]
+    ax.scatter([h["src_ts"] for h in rh], [y[h["src"]] for h in rh], s=5, color=plotting.SERIES[0], zorder=2)
     ax.scatter([t_first[a] for a in order], range(len(order)), s=14, color=plotting.INK, zorder=3)
     ax.scatter([t_first[order[0]]], [0], s=40, color=plotting.SERIES[1], zorder=4)
     if highlight in y:
@@ -399,7 +450,8 @@ def timeline(fact: dict, path, highlight: str | None = None) -> str:
     ax.set_ylabel("carriers, in order of first post")
     ax.set_title(f"{fact['family']} | {fact['item']} | {fact['value']}".replace("$", r"\$")
                  + f": {fact['carriers']} carriers, max depth {fact['max_depth']}")
-    handles = [Line2D([], [], color=plotting.SERIES[0], lw=2, label="same-page relay (inferred parent)"),
+    handles = [Line2D([], [], color=plotting.SERIES[0], lw=2,
+                      label="same-page relay, from the parent's latest earlier post (dot)"),
                Line2D([], [], color=plotting.NEUTRAL, lw=0.8, label="cross-page hop: source unknown, from originator"),
                Line2D([], [], ls="", marker="o", color=plotting.SERIES[1], label="originator")]
     if highlight in y:
@@ -428,21 +480,31 @@ def trace(run_path: str, agent=None, item=None, family=None, answer=None, fact=N
           mapping: str = "merged", json_path=None, png_path=None, limit: int | None = None) -> int:
     """The ``trace`` command: an answer (agent or claim id), a fact, a post, or else the fact list."""
     run = RunDir(run_path) if Path(run_path).is_dir() else None
-    if run is None or not run.has("events") or not run.has(f"exposures_{mapping}"):
-        print(f"{run_path}: not a finished run (run `swarmprov run` first)")
+    need = ("events", "agents", "claims", "tags", "mentions", f"exposures_{mapping}", f"edges_{mapping}", f"chains_{mapping}")
+    missing = [n for n in need if run is None or not run.has(n)]
+    if missing:
+        print(f"{run_path}: not a finished run, it has no {', '.join(missing)} (run `swarmprov run`, or every stage "
+              "up to `swarmprov graph`)")
         return 1
     print(f"mapping: {mapping} ({MAPPING_NOTE[mapping]})")
     if agent is not None or answer is not None:
+        ex = _table(run, f"exposures_{mapping}")
         if agent is not None:
             cands = match_agents(run, agent, mapping)
+            if len(cands) > 1 and (item is not None or family is not None):   # the ones with a matching answer
+                cands = sorted(set(_answers(ex, cands, item, family)["agent"])) or cands
             if len(cands) != 1:
                 print(f"no agent matches {agent!r}" if not cands else
                       f"{len(cands)} agents match {agent!r}; pass one of:\n  " + "\n  ".join(cands[:50]))
                 return 1
             agent = cands[0]
         res = answer_lineage(run, claim_id=answer, agent=agent, item=item, family=family, mapping=mapping)[:limit]
+        note = claim_note(run, answer, res, mapping) if answer is not None else None
+        if note:
+            print(note)
+            if not res:
+                return 1
         if not res and agent is not None:
-            ex = run.read(f"exposures_{mapping}")
             print(f"no answer by {agent} matches; its answers: {', '.join(sorted(ex.loc[ex['agent'] == agent, 'item'])) or 'none'}")
             return 1
         mode, lines = "answer", text_answers(res)
@@ -459,7 +521,7 @@ def trace(run_path: str, agent=None, item=None, family=None, answer=None, fact=N
     else:
         res = list_facts(run, mapping, family, limit or 25)
         mode, lines = "list", text_list(res, family)
-    if not res:
+    if not res or (mode == "list" and not res["facts"]):
         print("nothing matches")
         return 1
     print("\n".join(lines))

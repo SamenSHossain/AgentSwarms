@@ -80,11 +80,11 @@ Stages can be rerun on their own; each one reads and writes Parquet tables in th
 | `swarmprov report RUN [--mapping strict]` | → `report.md`, `summary.json`, `figures/` |
 | `swarmprov sample-gold RUN -n 100` / `swarmprov validate RUN labels.jsonl` | hand-label sample / precision–recall |
 | `swarmprov crosssite WIKI_RUN CORPUS_DIR -o RUN` | combined events → `technique_spread`, `technique_site_summary`, timeline, coverage bounds |
-| `swarmprov trace RUN (--agent A [--item I] \| --answer ID \| --fact 'F\|I[\|V]' \| --event ID \| --list)` | stage tables → one answer's sources, one fact's relay tree or one post's extraction (`--json`, `--png`); see below |
+| `swarmprov trace RUN (--agent A [--item I] [--family F] \| --answer ID \| --fact 'F\|I[\|V]' \| --event ID \| --list)` | stage tables → one answer's sources, one fact's relay tree or one post's extraction (`--json`, `--png`); see below |
 
 ## Asking questions of a run
 
-`swarmprov trace` reads a finished run directory and answers one question at a time. It always prints the identity mapping it uses (`--mapping merged`, the default, or `strict`).
+`swarmprov trace` reads a finished run directory (every stage up to `graph`; it names the tables a partial run lacks) and answers one question at a time. It always prints the identity mapping it uses (`--mapping merged`, the default, or `strict`).
 
 ```bash
 swarmprov trace runs/wiki --agent "Mar16|oecd-equity" --item "Czech Republic"  # where did this answer come from?
@@ -95,7 +95,7 @@ swarmprov trace runs/wiki --event b847fc1cbc646343                              
 swarmprov trace runs/wiki --list --limit 50                                      # facts ranked by carriers (--family url for URLs)
 ```
 
-`--agent` matches agent ids and author strings, ignoring case (`march16oecdscout` finds `Mar16|oecd-equity`). When several agents match, it lists them. `--json FILE` also writes the result as JSON. `--png FILE` draws one fact as a timeline: x is time, each row is a carrier in order of first post, same-page relay hops are blue and cross-page hops grey. `--limit N` caps the answers or listed facts and the hops printed per fact.
+`--agent` matches agent ids and author strings, ignoring case (`march16oecdscout` finds `Mar16|oecd-equity`). When several agents match, `--item` and `--family` keep the ones with a matching answer; if more than one is left, it lists them. `--item` works only with `--agent`, `--family` with `--agent` or `--list`. `--answer` takes an answer's claim id; a later report of the same agent-round shows the round and says so, and a claim that is not an answer (a prediction, a round sequence) names the agent's answer for the item instead. `--json FILE` also writes the result as JSON. `--png FILE` draws one fact as a timeline: x is time, each row is a carrier in order of first post, same-page relay hops are blue and start at a small dot on the parent's row (its latest earlier post on the page), and cross-page hops are grey. `--limit N` (at least 1) caps the answers or listed facts and the hops printed per fact.
 
 An answer on the wiki run, abridged:
 
@@ -106,23 +106,23 @@ answer d50220c9ec0f653b: Mar16|oecd-equity, oecd-equity | Czech Republic = 9.7
   public before the report: yes (D); at least 60 min before: yes (D_w60m); a copy still visible at the report: yes (D_visible)
   first public copy: Oct04|oecd-equity, post 2a057dd82c900e32, 2026-06-17 09:46:10, dse/OECDEducationEquitySequence, by OECDEquityOct04Agent; head start 61.7 h; page deleted 2026-06-19 23:40:50 (after the report)
   own earlier post: none
-  inferred relay parent: Oct04|oecd-equity (relay), parent post c86deee978462c75, 61.7 h before this agent's first post of the value (b847fc1cbc646343, 2026-06-19 23:26:04)
+  inferred relay parent: Oct04|oecd-equity (relay), parent post c86deee978462c75 (2026-06-17 09:46:10), 61.7 h before this agent's first post of the value (b847fc1cbc646343, 2026-06-19 23:26:04)
   inferred path from the originator (1 hop): Oct04|oecd-equity -> Mar16|oecd-equity
   competing values: 9.7 (27 carriers) <- this answer, 9.69 (17 carriers), ...
 ```
 
 | field | meaning |
 |---|---|
-| report post | the post carrying the agent's first answer report for the item. Its time is `t_report`, an upper bound on when the question arrived. |
+| report post | the post carrying the agent's first answer report for the item. Its time is `t_report`, an upper bound on when the question arrived. An answer that stated no value of its own reads `(no value; matched on the consensus V)`: exposure matched it on the item's consensus value. |
 | `D`, `D_w60m`, `D_visible` | the A1 exposure flags: the value was public before the report, at least 60 min before it, and in a copy still visible (not deleted) at the report. |
 | first public copy | the earliest post by another agent with the same item and value before the report, and the head start `t_report − t_public`. Copies posted in the same second are taken in event-id order. Public is not read: this is what was available, not what the agent saw. |
 | first copy still visible | printed only when the first copy's page had been deleted by the report. |
 | own earlier post | the agent posted the value itself before reporting it (`self_prepared`). |
-| inferred relay parent | the graph's guess at the source: the latest earlier carrier of the value on the same page (`relay`). With no earlier carrier on that page the hop goes to the originator and reads *cross-page hop: source unknown, attributed to originator* (`relay_xchannel`). A hop inside the 2 s clock resolution reads *direction unreliable*. The parent post is the parent's latest post of the value on that page; the delay runs from it to this agent's first post of the value. |
+| inferred relay parent | the graph's guess at the source: the latest earlier carrier of the value on the same page (`relay`). With no earlier carrier on that page the hop goes to the originator and reads *cross-page hop: source unknown, attributed to originator* (`relay_xchannel`). A hop inside the 2 s clock resolution reads *direction unreliable*. The parent post is the parent's latest post of the value on that page; the delay runs from it to this agent's first post of the value. When the parent posted only after the report it reads *parent post after the report: not this answer's source*, and no path is printed. *None* says why: the agent originated the value, or it has no item–value mention of the matched value (the extractor read its answer report but found no mention, so the relay graph has no hop for it), or it stated no value and never posted the consensus one. |
 | inferred path | relay parents back to the value's originator. Its length is the hop depth A5 and A6 count. |
-| competing values | the other values posted for the item, each with its number of carrying agents. |
+| competing values | the other values posted for the item, each with its number of carrying agents. The matched value is marked `<- this answer`, or `<- matched (consensus)` for an answer without a value. |
 
-A fact (`--fact`) prints its origin post, then every relay hop as an indented tree (depth, kind, time, delay, page, post, excerpt). The counts match `chains_*`: `oecd-equity|Hungary|9.9` has 69 carriers, 68 hops (42 of them cross-page) and depth 10. Values match on the comparison key, so `9.90`, `9.9` and `9.9%` are one fact, and a multi-number value matches on its first number. A post (`--event`) shows its author under both mappings, its family and tags, the claims and item–value mentions extracted from it, and the edges and exposures that point at it. When no claim was extracted, it says why. Excerpts are one line of at most 160 characters. Agent text is untrusted (the wiki holds a script payload), so escape it before putting it into a web page.
+A fact (`--fact`) prints its origin post, then every relay hop as an indented tree (depth, kind, time, delay, page, post, excerpt). The counts match `chains_*`: `oecd-equity|Hungary|9.9` has 69 carriers, 68 hops (42 of them cross-page) and depth 10. Values match on the comparison key, so `9.90`, `9.9` and `9.9%` are one fact, and a multi-number value matches on its first number. A post (`--event`) shows its author under both mappings, its family and tags, the claims and item–value mentions extracted from it, the URLs it carries, and the edges and exposures that point at it. When no claim was extracted, it says why. Excerpts are one line of 160 characters around the item, with an ellipsis at a cut end; `--event` prints the post's text the same way, cut to 600. Agent text is untrusted (the wiki holds a script payload), so escape it before putting it into a web page.
 
 The posts behind these answers are stored at expose time: `exposures_*` carries `report_event_id`, `src_event_id` and `src_channel` (the first public copy), `src_latest`, `t_latest` and `latest_event_id` (the latest copy before the report, A5's second attribution rule), `src_visible_event_id` and `self_event_id`.
 
@@ -231,7 +231,7 @@ All source-specific knowledge lives in one adapter plus an `AdapterConfig`, whic
 | `swarmprov/adapters/` | Adapter interface + implementations (wiki, chat, corpus, swarmtraces, roster, village) |
 | `swarmprov/` | Core modules: segment, identity, roster, village, lifecycle, rules, claims, exposure, graph, query, extract_llm, validate, synth, report, pipeline, cli, plotting, remote |
 | `swarmprov/analysis/` | A1–A6 analyses: provenance, causal, diffusion, errors, structure, origins, crosssite |
-| `tests/` | 236 tests (≈100 s): rules, segmentation, adapters, identity, roster, village, wiki events, LLM merge, synthetic recovery, A4 status and outcomes, A5 brokers, A5 attribution rules and origins against synthetic truth, trace against synthetic truth, report integrity |
+| `tests/` | 242 tests (≈100 s): rules, segmentation, adapters, identity, roster, village, wiki events, LLM merge, synthetic recovery, A4 status and outcomes, A5 brokers, A5 attribution rules and origins against synthetic truth, trace against synthetic truth, report integrity |
 | `validation/` | Labels (event ids) for dev, held-out, and test splits |
 | `results/` | Committed reports: openai-wiki, crosssite, corpus, synthetic, village-goals, village-context |
 | `data/village/` | AI Village roster (33 goal assignments) |

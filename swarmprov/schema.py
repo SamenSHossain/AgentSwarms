@@ -104,6 +104,9 @@ TABLES: dict[str, list[str]] = {
     # 1 s + 1 s clock uncertainty, so its direction is not reliable.
     "edges": ["src", "dst", "family", "item", "value_norm", "kind", "dt_s", "event_id", "within_clock_res",
               "claim_id", "src_event_id"],
+    # One row per fact (family, item, value_key): its first carrier and time, how many agents carried it,
+    # the deepest relay hop and the time from first to last mention.
+    "chains": ["family", "item", "value_key", "originator", "t0", "n_agents", "max_depth", "span_s"],
 }
 
 

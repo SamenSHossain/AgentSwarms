@@ -2,11 +2,14 @@
 
 import hashlib
 import json
+import shutil
 
 import pandas as pd
+import pytest
 
-from swarmprov import cli, exposure, graph, query, synth
+from swarmprov import cli, exposure, graph, pipeline, query, synth
 from swarmprov.claims import value_key
+from swarmprov.schema import TABLES, RunDir
 
 T0 = pd.Timestamp("2026-06-17T09:46:10Z")
 
@@ -134,21 +137,126 @@ def test_agent_names_match_case_insensitively(synth_run):
     assert len(query.match_agents(run, "alpha")) > 10
 
 
-def test_trace_cli_modes(synth_run, tmp_path, capsys):
+@pytest.mark.parametrize("mapping", ["merged", "strict"])
+def test_trace_cli_modes(synth_run, tmp_path, capsys, mapping):
     run, truth = synth_run
-    ex = run.read("exposures_merged")
+    ex = run.read(f"exposures_{mapping}")
     a = ex[ex["D"] == 1].iloc[0]
     fact = f"{a['family']}|{a['item']}|{a['value_norm']}"
     modes = {"answer": ["--agent", a["agent"], "--item", a["item"]], "list": ["--list"], "fact": ["--fact", fact],
              "event": ["--event", a["report_event_id"]]}
     for mode, args in {**modes, "claim": ["--answer", a["claim_id"]]}.items():
         out = tmp_path / f"{mode}.json"
-        assert cli.main(["trace", str(run.path), *args, "--json", str(out)]) == 0, mode
+        assert cli.main(["trace", str(run.path), *args, "--mapping", mapping, "--json", str(out)]) == 0, mode
         res = json.loads(out.read_text())
-        assert res["mapping"] == "merged" and res["mode"] == {"claim": "answer"}.get(mode, mode)
+        assert res["mapping"] == mapping and res["mode"] == {"claim": "answer"}.get(mode, mode)
     printed = capsys.readouterr().out
-    assert "mapping: merged" in printed and "first public copy:" in printed and "inferred relay parent:" in printed
-    assert json.loads((tmp_path / "answer.json").read_text())["result"][0]["first_public_copy"]["event_id"] == a["src_event_id"]
-    assert cli.main(["trace", str(run.path), "--fact", fact, "--png", str(tmp_path / "t.png")]) == 0
+    assert f"mapping: {mapping}" in printed and "first public copy:" in printed and "inferred relay parent:" in printed
+    got = json.loads((tmp_path / "answer.json").read_text())["result"][0]
+    assert got["agent"] == a["agent"] and got["first_public_copy"]["event_id"] == a["src_event_id"]
+    assert cli.main(["trace", str(run.path), "--fact", fact, "--mapping", mapping, "--png", str(tmp_path / "t.png")]) == 0
     assert (tmp_path / "t.png").stat().st_size > 0
-    assert cli.main(["trace", str(run.path), "--agent", "alpha"]) == 1 and "agents match 'alpha'" in capsys.readouterr().out
+    assert cli.main(["trace", str(run.path), "--agent", "alpha", "--mapping", mapping]) == 1
+    assert "agents match 'alpha'" in capsys.readouterr().out
+
+
+def test_trace_rejects_flags_that_do_nothing(synth_run):
+    run, _ = synth_run
+    for args in (["--fact", "a|b", "--item", "x"], ["--event", "e", "--family", "f"], ["--list", "--limit", "0"]):
+        with pytest.raises(SystemExit):
+            cli.main(["trace", str(run.path), *args])
+
+
+def test_family_narrows_an_ambiguous_agent(synth_run, tmp_path):
+    run, _ = synth_run
+    ag = run.read("agents")
+    ag = ag.assign(prefix=ag["cohort"].str[:4].str.lower())
+    pre = next(p for p, g in ag.groupby("prefix") if g["family"].nunique() == 2)   # e.g. 'apr1': an alpha and a beta agent
+    fam = ag.loc[ag["prefix"] == pre, "family"].iloc[0]
+    assert len(query.match_agents(run, pre)) >= 2 and cli.main(["trace", str(run.path), "--agent", pre]) == 1
+    out = tmp_path / "a.json"
+    assert cli.main(["trace", str(run.path), "--agent", pre, "--family", fam, "--json", str(out)]) == 0
+    res = json.loads(out.read_text())["result"]
+    assert len({a["agent"] for a in res}) == 1 and {a["family"] for a in res} == {fam}
+
+
+@pytest.fixture(scope="module")
+def edited(synth_run, tmp_path_factory):
+    """A copy of the synthetic run with answers edited into the cases the wiki has: no value of its own
+    (matched on the consensus, posted or not), a value the agent never posted, a report made before its
+    relay parent posted, and claims that are not the agent-round's answer row."""
+    run, _ = synth_run
+    d = tmp_path_factory.mktemp("edited") / "run"
+    shutil.copytree(run.path, d)
+    run = RunDir(d)
+    found = sorted((a for a in query.answer_lineage(run) if a["relay_parent"] and a["value"] == a["consensus_value"]),
+                   key=lambda a: -len(a["variants"]))   # competing values first, so the matched one is marked
+    ids = dict(zip(("no_value", "no_value_no_post", "unposted", "late_parent"), [a["claim_id"] for a in found[:4]]))
+    ex = run.read("exposures_merged").set_index("claim_id")
+    ex.loc[ids["no_value"], "value_norm"] = None
+    ex.loc[ids["no_value_no_post"], ["value_norm", "consensus_value"]] = [None, "424242"]
+    ex.loc[ids["unposted"], "value_norm"] = "424242"
+    late = found[3]["relay_parent"]["parent_ts"]
+    ex.loc[ids["late_parent"], "t_report"] = late - pd.Timedelta(seconds=1)
+    run.write("exposures_merged", ex.reset_index())
+    cl = run.read("claims")
+    first = cl[cl["claim_id"] == ids["unposted"]].assign(claim_id="later-report", ts=lambda c: c["ts"] + pd.Timedelta(hours=1))
+    run.write("claims", pd.concat([cl, first], ignore_index=True))
+    seq = cl[(cl["event_type"] != "answer") & (cl["agent_merged"] == found[0]["agent"]) & (cl["item"] == found[0]["item"])]
+    ids["sequence"] = seq["claim_id"].iloc[0]
+    return run, ids
+
+
+def test_answers_without_a_value_or_a_post(edited):
+    run, ids = edited
+    by = {a["claim_id"]: a for a in query.answer_lineage(run)}
+    text = {k: "\n".join(query.text_answers([by[c]])) for k, c in ids.items() if c in by}
+    a = by[ids["no_value"]]
+    assert a["value"] is None and a["matched_value"] == a["consensus_value"] and a["relay_parent"]
+    assert "= nan" not in text["no_value"] and f"(no value; matched on the consensus {a['matched_value']})" in text["no_value"]
+    assert "<- matched (consensus)" in text["no_value"] and "<- this answer" not in text["no_value"]
+    assert "no value of its own, and no post of the consensus value" in text["no_value_no_post"]
+    assert by[ids["unposted"]]["relay_parent"] is None and by[ids["unposted"]]["path"] == []
+    assert "no item-value mention of this value by the agent" in text["unposted"] and "never posted" not in text["unposted"]
+    rp = by[ids["late_parent"]]["relay_parent"]
+    assert rp["after_report"] and by[ids["late_parent"]]["path"] == []
+    assert "parent post after the report: not this answer's source" in text["late_parent"]
+    assert "inferred path" not in text["late_parent"]
+    assert not any(b["relay_parent"]["after_report"] for c, b in by.items() if b["relay_parent"] and c != ids["late_parent"])
+
+
+def test_answer_by_claim_id_says_what_it_shows(edited, capsys):
+    run, ids = edited
+    assert cli.main(["trace", str(run.path), "--answer", "later-report"]) == 0
+    assert f"later report of this agent-round; shown from its first report {ids['unposted']}" in capsys.readouterr().out
+    assert query.answer_lineage(run, claim_id=ids["sequence"]) == []
+    assert cli.main(["trace", str(run.path), "--answer", ids["sequence"]]) == 1
+    out = capsys.readouterr().out
+    assert f"claim {ids['sequence']} is a sequence" in out and f"the agent's answer for this item is {ids['no_value']}" in out
+
+
+def test_trace_on_runs_without_task_values(tmp_path_factory, capsys):
+    """A plain chat run (no families: empty exposure and fact tables) and a run stopped before the graph."""
+    d = tmp_path_factory.mktemp("plain")
+    msgs = [("alice", "hello, the doc is at https://example.com/a"), ("bob", "hi alice"), ("carol", "good morning")]
+    (d / "chat.jsonl").write_text("\n".join(json.dumps({"ts": f"2026-01-01T00:0{i}:00Z", "author": a, "channel": "general",
+                                                          "text": t}) for i, (a, t) in enumerate(msgs)))
+    run = pipeline.run_all(d / "chat.jsonl", d / "run", adapter="chat")
+    assert list(run.read("exposures_merged").columns) == TABLES["exposures"]
+    url_post = run.read("events")["event_id"].iloc[0]
+    expect = {("--list",): 1, ("--list", "--family", "url"): 0, ("--fact", "x|y"): 1, ("--agent", "alice"): 1,
+              ("--answer", "abc"): 1, ("--event", url_post): 0}
+    for old in (False, True):
+        if old:   # a run written before empty stage tables kept their columns
+            for t in ("exposures_merged", "chains_merged"):
+                run.write(t, pd.DataFrame())
+            expect[("--list", "--family", "url")] = 1   # the URL fact went with the chains table
+        for args, code in expect.items():
+            assert cli.main(["trace", str(run.path), *args]) == code, (old, args)
+    out = capsys.readouterr().out
+    assert "nothing matches" in out and "no answer by alice" in out and "URLs (1): https://example.com/a" in out
+    part = RunDir(d / "partial")
+    for t in ("events", "agents", "claims", "tags", "mentions", "exposures_merged"):
+        shutil.copy(run.table_path(t), part.table_path(t))
+    assert cli.main(["trace", str(part.path), "--list"]) == 1
+    assert "not a finished run, it has no edges_merged, chains_merged" in capsys.readouterr().out
