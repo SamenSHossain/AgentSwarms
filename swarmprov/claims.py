@@ -49,7 +49,8 @@ def fill_episodes(claims: pd.DataFrame, min_share: float = 0.6, min_support: int
 
 
 def agent_rounds(claims: pd.DataFrame, agent_col: str) -> pd.DataFrame:
-    """One row per (agent, family, item): the agent's earliest answer report."""
+    """One row per (agent, family, item): the agent's earliest answer report
+    (``report_event_id`` is the post that carried it)."""
     a = claims[(claims["event_type"] == "answer") & claims["item"].notna() & (claims["family"] != "")]
     a = a.sort_values("ts")
     rows = []
@@ -58,7 +59,7 @@ def agent_rounds(claims: pd.DataFrame, agent_col: str) -> pd.DataFrame:
         vals = g["value_norm"].dropna()
         lat = g["latency_class"].dropna()
         rows.append({
-            "claim_id": first["claim_id"], "agent": agent, "family": fam, "item": item,
+            "claim_id": first["claim_id"], "report_event_id": first["event_id"], "agent": agent, "family": fam, "item": item,
             "episode": g["episode"].dropna().iloc[0] if g["episode"].notna().any() else None,
             "value_norm": vals.iloc[0] if len(vals) else None,
             "t_report": first["ts"],

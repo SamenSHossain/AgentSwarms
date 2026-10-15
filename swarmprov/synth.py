@@ -4,8 +4,8 @@ Agents (one per cohort date) work timed question sequences.  When a question
 arrives and its answer is already on the shared board, the agent copies it
 with probability ``copy_rate`` (answering in 1 s); otherwise it computes the
 answer itself (5-40 s, 10% wrong).  Every agent reports each round on the
-board in the templated style real swarms use.  Ground truth (who copied,
-whether the answer was public at arrival) is written next to the transcript.
+board in the templated style real swarms use.  Ground truth (who copied, from
+whom, whether the answer was public at arrival) is written next to the transcript.
 """
 
 from __future__ import annotations
@@ -33,14 +33,23 @@ def _truth_values(rng: random.Random) -> dict[tuple[str, str], float]:
     return {(f, it): round(rng.uniform(5, 95), 2) for f, items in FAMILIES.items() for it in items}
 
 
+COPY_FROM = ("latest", "first", "random")
+
+
 def simulate(n_agents: int = 60, copy_rate: float = 0.7, seed: int = 0, span_h: float = 24.0,
-             tiers_min: tuple[float, ...] = (8, 20, 45, 90), wrong_rate: float = 0.1):
+             tiers_min: tuple[float, ...] = (8, 20, 45, 90), wrong_rate: float = 0.1, copy_from: str = "latest"):
     """Each agent draws ``ROUNDS`` questions from its family's pool and works them
     ``cooldown`` minutes apart (a per-agent tier).  Because sequences differ, the same
     agent meets some questions nobody has posted yet and others already on the board -
     the within-agent variation the fixed-effects design needs.  (A swarm where every
-    agent gets the same sequence, like the OpenAI wiki, has almost none.)"""
+    agent gets the same sequence, like the OpenAI wiki, has almost none.)
+
+    A copying agent takes the value of the ``latest``, the ``first`` or a ``random`` post
+    on the board for its question; truth records that post's author as ``src_agent``."""
+    if copy_from not in COPY_FROM:
+        raise ValueError(f"copy_from must be one of {COPY_FROM}")
     rng = random.Random(seed)
+    pick_rng = random.Random(seed + 1000)   # own stream, so 'latest' keeps the transcript of earlier versions
     t_base = datetime(2026, 6, 16, 8, 0, tzinfo=timezone.utc)
     truth_vals = _truth_values(rng)
     cohorts = rng.sample([f"{m}{d:02d}" for m in MONTHS for d in range(1, 29)], n_agents)
@@ -67,8 +76,11 @@ def simulate(n_agents: int = 60, copy_rate: float = 0.7, seed: int = 0, span_h: 
         pending = [p for p in pending if p[0] > t_arr]
         public = [p for p in board if p["_family"] == a["family"] and p["_item"] == item and p["author"] != a["name"]]
         copied = bool(public) and rng.random() < copy_rate
+        src = None
         if copied:
-            value, latency = public[-1]["_value"], 1
+            k = pick_rng.randrange(len(public)) if copy_from == "random" else (0 if copy_from == "first" else -1)
+            src = public[k]
+            value, latency = src["_value"], 1
         else:
             latency = rng.randint(5, 40)
             value = truth_vals[(a["family"], item)]
@@ -84,7 +96,8 @@ def simulate(n_agents: int = 60, copy_rate: float = 0.7, seed: int = 0, span_h: 
         truth.append({"agent": a["name"], "cohort": a["cohort"], "family": a["family"], "round": r,
                       "item": item, "t_arrival": t_arr, "t_report": t_post, "public_at_arrival": bool(public),
                       "copied": copied, "latency_s": latency, "value": value,
-                      "correct": value == truth_vals[(a["family"], item)]})
+                      "correct": value == truth_vals[(a["family"], item)],
+                      "src_agent": src["author"] if src else None})
     board += [p[1] for p in sorted(pending, key=lambda x: x[0])]
     posts = [{k: v for k, v in p.items() if not k.startswith("_")} for p in board]
     posts.sort(key=lambda p: p["ts"])
@@ -98,10 +111,10 @@ CONFIG = {
 }
 
 
-def write(out: str | Path, n_agents: int = 60, copy_rate: float = 0.7, seed: int = 0) -> Path:
+def write(out: str | Path, n_agents: int = 60, copy_rate: float = 0.7, seed: int = 0, copy_from: str = "latest") -> Path:
     out = Path(out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    posts, truth = simulate(n_agents=n_agents, copy_rate=copy_rate, seed=seed)
+    posts, truth = simulate(n_agents=n_agents, copy_rate=copy_rate, seed=seed, copy_from=copy_from)
     with open(out, "w") as fh:
         for p in posts:
             fh.write(json.dumps(p) + "\n")

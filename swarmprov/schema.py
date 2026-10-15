@@ -89,10 +89,19 @@ TABLES: dict[str, list[str]] = {
         "y_instant", "y_consensus", "consensus_value", "latency_class", "wrong_flag",
         # visibility-aware variant: the earliest copy still visible at t_report (deleted copies skipped)
         "t_public_visible", "D_visible", "src_deleted_before_report", "t_src_deleted",
+        # the posts behind the times: the report, the first public copy (and its channel), the first copy
+        # still visible at t_report, the agent's own earlier post; same-second copies go in event_id order
+        "report_event_id", "src_event_id", "src_channel", "src_visible_event_id", "self_event_id",
     ],
-    # Provenance graph edges.  ``within_clock_res``: the hop is inside the summed 1 s + 1 s
-    # clock uncertainty, so its direction is not reliable.
-    "edges": ["src", "dst", "family", "item", "value_norm", "kind", "dt_s", "event_id", "within_clock_res"],
+    # Provenance graph edges.  ``value_norm`` holds the fact's value_key (the first component of a
+    # multi-number value) for every kind, so it joins chains.value_key.  ``event_id`` is always a post in
+    # ``events``: the carrier's first post of the fact (relay), the answer's report post (exposure) or the
+    # citing post (citation).  ``src_event_id`` is the source's post: the inferred parent's latest post on the
+    # page (relay), the originator's first post (relay_xchannel) or the first public copy (exposure).
+    # ``claim_id`` is set on exposure edges only.  ``within_clock_res``: the hop is inside the summed
+    # 1 s + 1 s clock uncertainty, so its direction is not reliable.
+    "edges": ["src", "dst", "family", "item", "value_norm", "kind", "dt_s", "event_id", "within_clock_res",
+              "claim_id", "src_event_id"],
 }
 
 

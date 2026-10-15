@@ -8,6 +8,9 @@ Edge kinds
                 is attributed to the originator (source unknown).
 * ``exposure``  the agent-round's first public source -> the answering agent.
 * ``citation``  explicit references: @Name, "Name's report", "per Mar16".
+
+``event_id`` is the destination's post and ``src_event_id`` the source's (see
+schema.TABLES['edges']); ``value_norm`` is the fact's value_key for every kind.
 """
 
 from __future__ import annotations
@@ -18,6 +21,7 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 
+from .claims import value_key
 from .identity import cohort_token
 
 # two 1 s clocks: a hop shorter than this cannot be ordered reliably
@@ -46,22 +50,22 @@ def relay_edges(mentions: pd.DataFrame, agent_col: str) -> tuple[pd.DataFrame, p
     for (fam, item, vk), g in mentions[n_ag > 1].groupby(keys, sort=False):
         origin = getattr(g.iloc[0], agent_col)
         depth = {origin: 0}
-        latest_on: dict[str, tuple[str, pd.Timestamp]] = {}
-        t_origin = g["ts"].iloc[0]
+        latest_on: dict[str, tuple[str, pd.Timestamp, str]] = {}
+        t_origin, origin_ev = g["ts"].iloc[0], g["event_id"].iloc[0]
         for r in g.itertuples(index=False):
             a, ch = getattr(r, agent_col), (r.channel if has_channel else "")
             if a not in depth:
                 prev = latest_on.get(ch)
                 if prev and prev[0] != a:
-                    src, src_ts, kind = prev[0], prev[1], "relay"
+                    (src, src_ts, src_ev), kind = prev, "relay"
                 else:
-                    src, src_ts, kind = origin, t_origin, "relay_xchannel"
+                    src, src_ts, src_ev, kind = origin, t_origin, origin_ev, "relay_xchannel"
                 depth[a] = depth[src] + 1
                 dt = (r.ts - src_ts).total_seconds()
                 edges.append({"src": src, "dst": a, "family": fam, "item": item, "value_norm": vk,
-                              "kind": kind, "dt_s": dt, "event_id": r.event_id,
+                              "kind": kind, "dt_s": dt, "event_id": r.event_id, "src_event_id": src_ev,
                               "within_clock_res": dt <= CLOCK_RES_S})  # direction not reliable inside the clock resolution
-            latest_on[ch] = (a, r.ts)
+            latest_on[ch] = (a, r.ts, r.event_id)
         multi_rows.append({"family": fam, "item": item, "value_key": vk, "originator": origin,
                            "t0": t_origin, "n_agents": len(depth), "max_depth": max(depth.values()),
                            "span_s": (g["ts"].iloc[-1] - t_origin).total_seconds()})
@@ -71,11 +75,14 @@ def relay_edges(mentions: pd.DataFrame, agent_col: str) -> tuple[pd.DataFrame, p
 
 
 def exposure_edges(exp: pd.DataFrame) -> pd.DataFrame:
+    """First public copy -> answering agent.  ``event_id`` is the report post (the claim
+    is ``claim_id``), and the value is the key exposure matched on."""
     e = exp[exp["D"] == 1]
     return pd.DataFrame({
         "src": e["src_agent"], "dst": e["agent"], "family": e["family"], "item": e["item"],
-        "value_norm": e["value_norm"].fillna(e["consensus_value"]), "kind": "exposure",
-        "dt_s": e["gap_s"], "event_id": e["claim_id"],
+        "value_norm": [value_key(v) or c for v, c in zip(e["value_norm"], e["consensus_value"])], "kind": "exposure",
+        "dt_s": e["gap_s"], "event_id": e["report_event_id"], "claim_id": e["claim_id"],
+        "src_event_id": e["src_event_id"],
     })
 
 

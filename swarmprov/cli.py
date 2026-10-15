@@ -10,6 +10,8 @@
     swarmprov sample-gold runs/wiki [-n 120]
     swarmprov validate runs/wiki gold.jsonl
     swarmprov crosssite runs/wiki data/raw2 -o runs/crosssite
+    swarmprov trace    runs/wiki --agent "Mar16|oecd-equity" --item "Czech Republic"   # one answer's sources
+    swarmprov trace    runs/wiki --fact "oecd-equity|Hungary|9.9" --png hungary.png     # one fact's relay tree
     swarmprov synth    -o data/synth.jsonl            # synthetic swarm with known provenance
 """
 
@@ -71,10 +73,27 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("corpus", help="directory with records.jsonl, shortener-logs.json, other-wikis.json, site-coverage.csv")
     s.add_argument("-o", "--out", default="runs/crosssite")
 
+    s = sub.add_parser("trace", help="one answer's sources, one fact's relay tree, one post's extraction")
+    s.add_argument("run")
+    q = s.add_mutually_exclusive_group(required=True)
+    q.add_argument("--agent", help="agent label or author string (case-insensitive; lists candidates when ambiguous)")
+    q.add_argument("--answer", metavar="CLAIM_ID", help="an answer claim id")
+    q.add_argument("--fact", metavar="FAMILY|ITEM[|VALUE]", help="a fact; without a value, every value of the item")
+    q.add_argument("--event", metavar="EVENT_ID", help="a post: author, family, tags, claims, mentions, edges")
+    q.add_argument("--list", action="store_true", help="facts ranked by carriers (--family url for URLs)")
+    s.add_argument("--item", help="with --agent: one item")
+    s.add_argument("--family", help="with --agent or --list: one task family")
+    s.add_argument("--mapping", choices=["merged", "strict"], default="merged")
+    s.add_argument("--json", metavar="FILE", help="also write the result as JSON")
+    s.add_argument("--png", metavar="FILE", help="timeline of one fact (--fact with a value, or a single answer)")
+    s.add_argument("--limit", type=int, default=None, help="at most N answers or listed facts (default 25), N hops printed per fact (JSON keeps all)")
+
     s = sub.add_parser("synth", help="generate a synthetic swarm transcript with known provenance")
     s.add_argument("-o", "--out", default="data/synth/transcript.jsonl")
     s.add_argument("--agents", type=int, default=60)
     s.add_argument("--copy-rate", type=float, default=0.7)
+    s.add_argument("--copy-from", choices=["latest", "first", "random"], default="latest",
+                   help="which earlier post a copying agent takes its value from")
     s.add_argument("--seed", type=int, default=0)
 
     a = p.parse_args(argv)
@@ -100,9 +119,13 @@ def main(argv: list[str] | None = None) -> int:
     elif a.cmd == "crosssite":
         from .crosssite_pipeline import run_crosssite
         run_crosssite(a.wiki_run, a.corpus, a.out)
+    elif a.cmd == "trace":
+        from . import query
+        return query.trace(a.run, agent=a.agent, item=a.item, family=a.family, answer=a.answer, fact=a.fact,
+                           event=a.event, mapping=a.mapping, json_path=a.json, png_path=a.png, limit=a.limit)
     elif a.cmd == "synth":
         from . import synth
-        synth.write(a.out, n_agents=a.agents, copy_rate=a.copy_rate, seed=a.seed)
+        synth.write(a.out, n_agents=a.agents, copy_rate=a.copy_rate, seed=a.seed, copy_from=a.copy_from)
     return 0
 
 

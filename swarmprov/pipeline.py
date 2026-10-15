@@ -12,7 +12,7 @@ import pandas as pd
 
 from . import adapters, claims as claims_mod, exposure, graph, identity, remote, roster as roster_mod, rules, village
 from .adapters.base import read_capabilities
-from .schema import RunDir, conform
+from .schema import RunDir, conform, empty
 
 AGENT_COLS = {"merged": "agent_merged", "strict": "agent_strict"}
 
@@ -195,8 +195,8 @@ def build_graph(run: RunDir) -> None:
         rel, chains = graph.relay_edges(mn, col) if len(mn) else (pd.DataFrame(), pd.DataFrame())
         parts = [rel, graph.exposure_edges(ex) if len(ex) else pd.DataFrame(),
                  graph.citation_edges(tags, agents, col, cfg.cohort_regex)]
-        edges = pd.concat([p for p in parts if len(p)], ignore_index=True) if any(len(p) for p in parts) \
-            else pd.DataFrame(columns=["src", "dst", "family", "item", "value_norm", "kind", "dt_s", "event_id"])
+        edges = conform(pd.concat([p for p in parts if len(p)], ignore_index=True), "edges") \
+            if any(len(p) for p in parts) else empty("edges")
         run.write(f"edges_{name}", edges)
         run.write(f"chains_{name}", chains)
         if name == "merged" and len(edges):

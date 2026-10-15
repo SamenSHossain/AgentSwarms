@@ -23,6 +23,12 @@ with a wiki timestamp.
   readable* at report time.  Deletion ends public visibility, not knowledge an
   agent already took, so D_visible under-counts exposure and D stays the headline;
   ``src_deleted_before_report`` marks the D=1 rows whose first source was gone.
+
+Each time is kept with the post behind it: ``report_event_id`` (the report),
+``src_event_id`` / ``src_channel`` (the first public copy), ``src_visible_event_id``
+(the first copy still visible) and ``self_event_id`` (the agent's own earlier post).
+Copies posted in the same second are taken in event_id order, so the chosen post
+does not depend on row order.
 """
 
 from __future__ import annotations
@@ -39,7 +45,7 @@ def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: s
     a mention there counts as public only for those agents (channels absent from
     the map are public to all)."""
     m = mentions[mentions["family"] != "url"]
-    groups = {k: g.sort_values("ts") for k, g in m.groupby(["family", "item", "value_key"])}
+    groups = {k: g.sort_values(["ts", "event_id"], kind="stable") for k, g in m.groupby(["family", "item", "value_key"])}
     audience = audience or {}
 
     def readable(g: pd.DataFrame, agent) -> pd.DataFrame:
@@ -52,7 +58,7 @@ def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: s
     for r in rounds.itertuples(index=False):
         cv = cons.get((r.family, r.item))
         target = value_key(r.value_norm) or cv
-        t_pub = src = t_self = None
+        t_pub = src = t_self = src_ev = src_ch = vis_ev = self_ev = None
         g = groups.get((r.family, r.item, target)) if target else None
         t_vis = t_src_del = None
         src_gone = False
@@ -60,19 +66,21 @@ def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: s
             before = readable(g[g["ts"] < r.t_report], r.agent)
             others = before[before[agent_col] != r.agent]
             if len(others):
-                t_pub, src = others["ts"].iloc[0], others[agent_col].iloc[0]
+                first = others.iloc[0]
+                t_pub, src, src_ev = first["ts"], first[agent_col], first["event_id"]
+                src_ch = first["channel"] if "channel" in others else None
                 if "visible_until" in others:
                     vu = pd.to_datetime(others["visible_until"], utc=True, errors="coerce")
                     still = others[vu.isna() | (vu > r.t_report)]
                     if len(still):
-                        t_vis = still["ts"].iloc[0]
+                        t_vis, vis_ev = still["ts"].iloc[0], still["event_id"].iloc[0]
                     src_gone = bool(pd.notna(vu.iloc[0]) and vu.iloc[0] <= r.t_report)
                     t_src_del = vu.iloc[0] if pd.notna(vu.iloc[0]) else None
                 else:
-                    t_vis = t_pub
+                    t_vis, vis_ev = t_pub, src_ev
             own = before[before[agent_col] == r.agent]
             if len(own):
-                t_self = own["ts"].iloc[0]
+                t_self, self_ev = own["ts"].iloc[0], own["event_id"].iloc[0]
         gap = (r.t_report - t_pub).total_seconds() if t_pub is not None else np.nan
         # Treatment for the causal model: was the *consensus* value public?  Independent
         # of what this agent answered, so a wrong answer cannot mechanically force D=0.
@@ -92,7 +100,8 @@ def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: s
         else:
             y_cons = np.nan
         rows.append({
-            "claim_id": r.claim_id, "agent": r.agent, "family": r.family, "episode": r.episode,
+            "claim_id": r.claim_id, "report_event_id": getattr(r, "report_event_id", None),
+            "agent": r.agent, "family": r.family, "episode": r.episode,
             "item": r.item, "value_norm": r.value_norm, "t_report": r.t_report,
             "t_public": t_pub, "src_agent": src, "t_self_prepared": t_self, "gap_s": gap,
             "D": int(t_pub is not None),
@@ -107,6 +116,7 @@ def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: s
             "latency_class": r.latency_class, "wrong_flag": r.wrong_flag,
             "t_public_visible": t_vis, "D_visible": int(t_vis is not None),
             "src_deleted_before_report": int(src_gone), "t_src_deleted": t_src_del,
+            "src_event_id": src_ev, "src_channel": src_ch, "src_visible_event_id": vis_ev, "self_event_id": self_ev,
         })
     out = pd.DataFrame(rows)
     if len(out):
