@@ -65,6 +65,9 @@ class AdapterConfig:
     # analyst-declared disputes the parser cannot attribute:
     # {"family", "slot", "context": regex, "variants": {label: regex}}
     disputes: list[dict] = field(default_factory=list)
+    # analyst-supplied correct values {"family|item": value}: A4 labels each disputed slot's outcome
+    # against them (reported as analyst input; they never change the slot's status)
+    reference_values: dict[str, float | str] = field(default_factory=dict)
     # claimed latency at or under this many seconds counts as "instant"
     instant_threshold_s: float = 2.0
     # authors to drop (admins, maintenance bots)

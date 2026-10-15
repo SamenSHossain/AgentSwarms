@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+from fractions import Fraction
 
 import numpy as np
 import pandas as pd
@@ -65,6 +66,13 @@ def _roster_block(run: RunDir, prof: dict, summary: dict) -> list[str]:
     s = roster_mod.summary(ros, ev, ann)
     summary["roster"] = _jsonable(s)
     return roster_mod.section(s, md_table, prof.get("roster_notes", {}).get("timestamp_issues"))
+
+
+def _a4_value(v):
+    """A4 cell for summary.json: missing values as null, timestamps as text."""
+    if v is None or v is pd.NaT or (isinstance(v, float) and math.isnan(v)):
+        return None
+    return v if isinstance(v, (int, float, str, bool)) else str(v)
 
 
 def _jsonable(obj):
@@ -311,19 +319,47 @@ def build(run: RunDir, mapping: str = "merged") -> str:
         ds = errors.regex_slots(run.read("events"), run.read("agents"), cfg.disputes, agent_col) if cfg.disputes else []
         feat = errors.pick_featured(vs, ss, cfg.featured_disputes, declared=ds)
         figs["errors"] = errors.figure(feat, run.figure("a4_errors.png"))
-        rows = [{"slot": s["slot"], "kind": s["kind"], "variants (agents)": ", ".join(f"{k} ({v})" for k, v in s["agents_per_variant"].items()),
-                 "agents carrying both": s["overlap_agents"],
-                 "first variant": s["first_variant"], "winner": s["winner"], "corrected": s["corrected"],
+        refs = errors.reference_keys(cfg.reference_values)
+        slots = feat + [s for s in vs[:12] + ss[:6] if s not in feat]
+        rows = []
+        for s in slots:
+            r = {"slot": s["slot"], "kind": s["kind"],
+                 "variants (agents)": ", ".join(f"{k} ({v})" for k, v in s["agents_per_variant"].items()),
+                 "agents carrying both": s["overlap_agents"], "first variant": s["first_variant"],
+                 "winner": s["winner"], "status": s["status"],
+                 "late carriers (winner/total)": f"{max(s['tail_counts'].values())}/{s['n_tail']}"
+                                                 + (" tie" if s["tie"] else ""),
                  "winner first seen": s["t_winner_first"], "winner majority from": s["t_winner_majority"],
-                 "hours to overtake": s["hours_to_overtake"]} for s in (feat + [s for s in vs[:12] + ss[:6] if s not in feat])]
+                 "hours to overtake": s["hours_to_overtake"]}
+            if refs:
+                ref = refs.get((s["family"], s["item"]))
+                r |= {"reference (analyst input)": ref, "outcome": errors.outcome(s, ref) if ref is not None else None}
+            rows.append(r)
         summary["A4"] = {"n_value_slots_disputed": len(vs), "n_sequence_slots_disputed": len(ss),
-                         "featured": [{k: (str(v) if not isinstance(v, (int, float, str, bool)) else v)
-                                       for k, v in r.items()} for r in rows[:len(feat)]]}
+                         "rule": {"bin_hours": errors.BIN_H, "tail_share": errors.TAIL_SHARE,
+                                  "min_tail": errors.MIN_TAIL},
+                         "featured": [{k: _a4_value(v) for k, v in r.items()}
+                                      | {"tail counts": s["tail_counts"], "tie": s["tie"],
+                                         "corrected": s["status"] == "overturned"}   # deprecated alias of status
+                                      for r, s in zip(rows, feat)]}
+        tail = f"{Fraction(errors.TAIL_SHARE).limit_denominator(10)}"
         L.append("## A4. Error propagation\n")
         L.append(f"{len(vs)} (family, item) slots carried two or more values, each repeated by ≥3 agents; "
                  f"{len(ss)} round slots had competing *items* discussed by ≥2 agents who carried both (e.g. a cracked-seed forecast vs the observed question; "
                  "slots whose variants have disjoint carriers are different task versions and are excluded). "
-                 "Winner = majority among the last third of carriers; \"majority from\" = start of the first 3-hour bin after which the winner never lost the majority of new carriers.\n")
+                 f"Winner = the most common variant among the last {tail} of carriers, none if the top two tie; "
+                 "\"late carriers\" = the winner's count among them. "
+                 f"\"Majority from\" = start of the first {errors.BIN_H:g}-hour bin after which the winner never lost the majority of new carriers. "
+                 "Status: **held** = the first variant is still the winner; "
+                 f"**overturned** = a later variant won and kept that majority, on at least {errors.MIN_TAIL} late carriers; "
+                 "**contested** = the late carriers tie, or the winner never kept the majority; "
+                 f"**contested (small n)** = it did, on fewer than {errors.MIN_TAIL} late carriers. "
+                 f"The {errors.BIN_H:g}-hour bin and the last-{tail} rule are conventions, not measurements.\n")
+        if refs:
+            L.append("Reference values are **analyst input** (config `reference_values`), not measured. They never change the "
+                     "status; they only fill the outcome column, judged on the variant left standing (the winner if the slot was "
+                     "overturned, else the first variant): truth held, error corrected, error persisted or truth displaced by error. "
+                     "Where one value is the other rounded (9.9 and 9.91), the outcome reads *precision variant* instead.\n")
         if ds:
             L.append("Analyst-declared disputes (config `disputes`: a context pattern plus one pattern per variant) are listed first.\n")
         if figs["errors"]:

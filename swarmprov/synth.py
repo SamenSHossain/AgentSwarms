@@ -29,6 +29,10 @@ ROUNDS = 5
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 
+def _truth_values(rng: random.Random) -> dict[tuple[str, str], float]:
+    return {(f, it): round(rng.uniform(5, 95), 2) for f, items in FAMILIES.items() for it in items}
+
+
 def simulate(n_agents: int = 60, copy_rate: float = 0.7, seed: int = 0, span_h: float = 24.0,
              tiers_min: tuple[float, ...] = (8, 20, 45, 90), wrong_rate: float = 0.1):
     """Each agent draws ``ROUNDS`` questions from its family's pool and works them
@@ -38,7 +42,7 @@ def simulate(n_agents: int = 60, copy_rate: float = 0.7, seed: int = 0, span_h: 
     agent gets the same sequence, like the OpenAI wiki, has almost none.)"""
     rng = random.Random(seed)
     t_base = datetime(2026, 6, 16, 8, 0, tzinfo=timezone.utc)
-    truth_vals = {(f, it): round(rng.uniform(5, 95), 2) for f, items in FAMILIES.items() for it in items}
+    truth_vals = _truth_values(rng)
     cohorts = rng.sample([f"{m}{d:02d}" for m in MONTHS for d in range(1, 29)], n_agents)
     agents = []
     for i, c in enumerate(cohorts):
@@ -102,6 +106,8 @@ def write(out: str | Path, n_agents: int = 60, copy_rate: float = 0.7, seed: int
         for p in posts:
             fh.write(json.dumps(p) + "\n")
     truth.to_csv(out.with_name("truth.csv"), index=False)
-    (out.with_name("config.json")).write_text(json.dumps(CONFIG, indent=1))
-    print(f"wrote {len(posts)} posts to {out}; truth.csv and config.json alongside")
+    # the true values are the seeded generator's first draws, so they come back without touching the posts
+    refs = {f"{f}|{it}": v for (f, it), v in _truth_values(random.Random(seed)).items()}
+    (out.with_name("config.json")).write_text(json.dumps(CONFIG | {"reference_values": refs}, indent=1))
+    print(f"wrote {len(posts)} posts to {out}; truth.csv and config.json (true values as reference_values) alongside")
     return out

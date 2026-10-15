@@ -15,7 +15,7 @@ The demo dataset is the OpenAI wiki swarm (the German message board): 14,591 wik
 | How much was copied? | **93% of 1,108 answers were already public before the agent reported them**; at most 83 were independent lookups. Median head start 11.6 h; in 19% of rounds the agent had posted the answer itself before the question arrived. |
 | Who supplied it? | **The top 10 agents were first public source for 73% of exposed answers** (out-degree Gini 0.69). Facts repeated by two or more agents travelled 2.0 hops on average, up to 10. |
 | How fast did tricks spread? | The blob-hostname sandbox bypass reached **23% of at-risk OECD agents, a median 0.8 h after first exposure**; the `markdown.new` fetch proxy reached 6 other sites within a day (median 5.8 h to adoption), while every task-level trick stayed on one wiki. |
-| Did errors win? | The cracked-seed forecast **"Maryland" was carried by 30 agents before the observed "Montana" (9) appeared**; the padded `16.40` lost to the live `16.38` within the first 3 h bin, but `9.90` beat the correct `9.91` 69 agents to 17 and never lost. |
+| Did errors win? | The cracked-seed forecast **"Maryland" was carried by 30 agents before the observed "Montana" (9) appeared**; Montana overturned it 12 h later. The live `16.38` overturned the rounded `16.40` within the first 3 h bin, but Hungary stays **contested**: `9.90` kept 69 agents to 17 for the live `9.91`, which led the late carriers only 16 to 13 and never held a lasting majority. |
 | Does availability *cause* copying? | **Not identified in this swarm**: the answer was public before almost every report, so only 3–37 agents ever switch exposure status. On a synthetic swarm with known copying the same estimator recovers the true effect (0.70 vs 0.70), so the null is the data, not the method. |
 
 ```
@@ -91,7 +91,7 @@ The raw inputs are git-ignored (they are large and carry their publishers' terms
 | Cross-site batch (`records`, `links`, `shortener-logs`, `other-wikis`, coverage CSVs) | same download page | `data/raw2/` | `swarmprov run data/raw2 -o runs/corpus`; `swarmprov crosssite runs/wiki data/raw2 -o runs/crosssite` |
 | AI Village transcript database (`chat_messages`, `agents`, `chat_rooms`, `agent_goals`, `village_goals`, `villages`, `claude_code_sessions`, `summaries`) | [huggingface.co/datasets/aidigestorg/ai-village](https://huggingface.co/datasets/aidigestorg/ai-village) (gated: request access, approved by hand) | `data/raw_village/` or read directly with `hf://datasets/aidigestorg/ai-village/<file>` | Research terms: no training, no re-identification, attribute AI Village. The side tables here are committed; the message table is not, so the committed Village reports are context reports. |
 | Swarm traces redacted payload release (`redacted.jsonl.gz`, 189,579 records) | [swarmtraces.org/viewer](https://swarmtraces.org/viewer/) → "Download dataset" (`/data/final/redacted.jsonl.gz`) | anywhere | A reconstruction corpus with no clock and no agent identity; `swarmprov run redacted.jsonl.gz -o runs/swarmtraces` writes a reconstruction report, not a provenance report. Check the viewer page for terms before redistributing. |
-| Synthetic swarm with known provenance | generated: `swarmprov synth -o data/synth/transcript.jsonl --agents 60 --seed 2` | `data/synth/` | writes `transcript.jsonl`, `truth.csv` and `config.json`; the tests build their own copy |
+| Synthetic swarm with known provenance | generated: `swarmprov synth -o data/synth/transcript.jsonl --agents 60 --seed 2` | `data/synth/` | writes `transcript.jsonl`, `truth.csv` and `config.json` (which carries the true values as `reference_values`); the tests build their own copy |
 
 ## Results on the OpenAI wiki swarm
 
@@ -102,7 +102,7 @@ The full report, with all tables and figures, is in [`results/openai-wiki/report
 | **A1 Provenance** | **1,108 answers by 617 agents; at most 83 were independent lookups** (104 under `D_visible`, which drops the 21 exposed answers whose only public copies had been deleted before the report; 171 were preceded by a deleted copy, but for 150 of them another copy was still visible). For 93% of answers, the same item and value were already on the wiki before the agent reported answering; for 83%, at least an hour before. The median head start was 11.6 h. In 19% of rounds the agent had posted the answer itself before the question arrived. These are floors: only captured surfaces are searched (see coverage bounds below). |
 | **A2 Does availability cause copying?** | **Not identified in this swarm.** The consensus value was public before almost every report, so only 3–37 agents ever switch between exposed and unexposed rounds. The fixed-effects estimates are about zero with wide intervals, and the tool reports *"not identified"* when fewer than 10 agents switch. On a synthetic swarm with known copying the same estimator recovers the true effect (0.70 vs 0.70 true), so the null result comes from the data, not the method. |
 | **A3 Diffusion** | The **blob-hostname bypass** was first posted 2026-06-20 05:10 UTC by the Mar30 OECD agent. 17 of 73 at-risk OECD agents (23%) adopted it, a median of 0.8 h after first exposure. The *live-tooltip value* it enabled reached 35 of 74 (47%); Kaplan–Meier median 5.7 h. Heartbeat beacons spread slowly across the whole swarm (96 of 1,114 agents, median 81 h among adopters). |
-| **A4 Errors** | **Cracked-seed G5 forecast**: "Maryland" (RNG prediction) was carried by 30 agents before the observed **Montana** (9 agents) appeared. Montana took the majority of *new* carriers 12 h later. **OECD precision fight**: 16.40→**16.38** (Poland) and 14.60→**14.59** (Slovak Republic) overtook within the first 3-hour bin after the tooltip evidence. **9.90→9.91 (Hungary) never won**: 69 agents kept 9.90, against 17. |
+| **A4 Errors** | Each disputed slot is **held**, **overturned** (a later value won the last third of carriers, with ≥5 of them, and kept the majority of new carriers) or **contested**. **Cracked-seed G5 forecast**: "Maryland" (RNG prediction) was carried by 30 agents before the observed **Montana** (9 agents) appeared. Montana took the majority of *new* carriers 12 h later and 8 of the last 13: overturned. **OECD precision fight**: 16.40→**16.38** (Poland, 21 of 28 late carriers) and 14.60→**14.59** (Slovak Republic, 31 of 35) were overturned within the first 3-hour bin after the tooltip evidence. **Hungary is contested**: 69 agents kept 9.90 against 17 for 9.91, which led the late carriers only 16 to 13 and never held a lasting majority, so against the live-tooltip values (analyst input) the reference value did not prevail. Of the 15 slots in the table, 9 were overturned, 3 held and 3 contested (one a 2–2 tie, one on 4 late carriers). |
 | **A5 Structure** | 49 agents were the first public source for someone else's answer. **The top 10 supplied 73%** of all exposed answers (out-degree Gini 0.69). Facts repeated by ≥2 agents travelled 2.0 hops on average, with a maximum of 10. |
 | **A6 Reach** | Of 365 task values, 159 were repeated by other agents (mean 3.6 repeaters, p90 10). Of 23,560 URLs, 5,373 were repeated. |
 
@@ -143,7 +143,8 @@ All source-specific knowledge lives in one adapter plus an `AdapterConfig`, whic
   "family_from_roster": true,
   "roster_aliases": {"Claude Opus 4.5": "169ea37e-c664-4012-acba-cb583aaab1f3"},
   "techniques": [{"name": "shared-doc", "pattern": "docs\\.google\\.com"}],
-  "disputes": [{"family": "fundraiser", "slot": "total raised", "variants": {"$1,481": "1,?481"}}]
+  "disputes": [{"family": "fundraiser", "slot": "total raised", "variants": {"$1,481": "1,?481"}}],
+  "reference_values": {"fundraiser|total raised": "$1,481"}
 }
 ```
 
@@ -152,6 +153,8 @@ All source-specific knowledge lives in one adapter plus an `AdapterConfig`, whic
 **Identity** — An explicit author field is used as given; otherwise authors are parsed from signatures. Case variants of one handle (`OpenAIResearcher`, `OpenAiResearcher`) are resolved together, so each strict id has one merged id (variants naming different cohorts stay split and are flagged in the audit). The cohort date comes from the handle (`OpenAIOECDNov27`), and from the date a handle's posts open with (`Mar16 R3 …`) only when the source has no explicit author field; set `cohort_from_text` to override. `extract` writes `agent_aliases.csv` (every author string with its strict and merged id and the size of both groups). The report counts the merges, lists the largest, and warns when they join authors that an explicit-author source keeps apart.
 
 **Coverage** — `coverage_note` is the Limitations bullet on what the exposure search could not see. The wiki and corpus configs cite the collectors' inventory of 143 surfaces; without a note, the report says that only the transcript's own posts were searched, so the exposed share is a floor.
+
+**Disputes** — A4 finds (family, item) slots with competing values, plus any declared in `disputes`, and gives each a status: *held*, *overturned* or *contested*, with the late-carrier counts behind it. `reference_values` (`{"family|item": value}`) is analyst input: it fills a separate outcome column (truth held, error corrected, error persisted, truth displaced by error, or *precision variant* when one value is the other rounded) and never changes the status. The wiki config sets the live-tooltip values for the three OECD disputes; the synthetic config carries the true values.
 
 **Lifecycle** — Not just recorded, but used. From wiki events: deletions (with cycle tracking), recreations, and probes. The report adds clock-quality notes, deletion/recreation blocks, probing blocks, and exposure gains `D_visible` (ignoring deleted copies).
 
@@ -171,6 +174,7 @@ All source-specific knowledge lives in one adapter plus an `AdapterConfig`, whic
 - **Exposure is inferred.** The dump contains saves, deletions and probes but **no page views**, so "public" does not mean "read". `t_report` is an upper bound on arrival; the ≥1 h variant is robust to report lag. Only wiki timestamps are used as a clock, because the agents' task clocks are dilated.
 - **The causal treatment `D_cons`** asks whether the *consensus* value was public, regardless of what this agent answered. A first version used the agent's own value, which mechanically ties wrong answers to "unexposed" and produced a spurious +0.43 effect.
 - **Identity.** `merged` = (cohort date, task family), where the cohort date comes from names like `OpenAIOECDNov27` or, for signature-parsed sources, the post's opening token. `strict` = the signature itself, case-folded; case variants share one merged id. Every headline number is reported under both, and `agent_aliases.csv` lists every merge for audit.
+- **A4 status is a convention.** The winner is the most common value among the last third of a slot's carriers (none on a tie). If it is the first value, the slot is *held*. A later winner counts as *overturned* only if it also held the majority of new carriers in every 3-hour bin from some point on, with at least 5 late carriers; otherwise the slot is *contested*. The report prints the bin width and the tail share.
 - **Relay edges are plausible paths, not proven ones.** Each carrier is linked to the latest earlier carrier on the same page, and to the originator if there was none.
 
 ## Repository layout
@@ -180,7 +184,7 @@ All source-specific knowledge lives in one adapter plus an `AdapterConfig`, whic
 | `swarmprov/adapters/` | Adapter interface + implementations (wiki, chat, corpus, swarmtraces, roster, village) |
 | `swarmprov/` | Core modules: segment, identity, roster, village, lifecycle, rules, claims, exposure, graph, extract_llm, validate, synth, report, pipeline, cli, plotting, remote |
 | `swarmprov/analysis/` | A1–A6 analyses: provenance, causal, diffusion, errors, structure, crosssite |
-| `tests/` | 152 tests (≈80 s): rules, segmentation, adapters, identity, roster, village, wiki events, LLM merge, synthetic recovery, report integrity |
+| `tests/` | 189 tests (≈85 s): rules, segmentation, adapters, identity, roster, village, wiki events, LLM merge, synthetic recovery, A4 status and outcomes, report integrity |
 | `validation/` | Labels (event ids) for dev, held-out, and test splits |
 | `results/` | Committed reports: openai-wiki, crosssite, corpus, synthetic, village-goals, village-context |
 | `data/village/` | AI Village roster (33 goal assignments) |

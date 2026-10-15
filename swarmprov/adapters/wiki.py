@@ -319,6 +319,9 @@ class WikiAdapter(Adapter):
             techniques=TECHNIQUES,
             featured_disputes=[("oecd-equity", "Poland"), ("oecd-equity", "Hungary"),
                                ("oecd-equity", "Slovak Republic")],
+            # the live Power BI tooltip values behind the rounded table (docs/DATA.md)
+            reference_values={"oecd-equity|Poland": 16.38, "oecd-equity|Hungary": 9.91,
+                              "oecd-equity|Slovak Republic": 14.59},
             disputes=[{
                 "family": "datausa-grocery-workforce", "slot": "G5 (cracked-seed forecast vs observed)",
                 "context": r"\bG5\b",
