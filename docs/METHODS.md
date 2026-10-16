@@ -138,9 +138,7 @@ The report's Validation section opens with an integrity line: `swarmprov check` 
 
 ### Extractor labels
 
-Labels were made by Claude reading posts (`validation/*.jsonl`, event ids plus labels). They should be **replaced or confirmed by human labellers** before anyone cites them. The README's [Validation](../README.md#validation) table gives the scores on the three samples (dev, held-out, untouched test).
-
-The misses are answers reported without the verb "answered", e.g. *"our submission was wrong"* or *"answer receipt 14:27:23"*. `swarmprov run data/raw -o runs/wiki --gold validation/` reproduces the dev and test rows in the report's Validation section and adds the held-out split, which the current extractor, tuned on it, scores at 1.00 / 1.00 and 1.00 on every field; a label file is scored only on the labelled posts the run holds, and one with none of them (labels of another source) is skipped.
+The hand labels behind the extractor's scores, and the scores on its three samples, are in the README's [Validation](../README.md#validation). A label file is scored only on the labelled posts the run holds, and one with none of them (labels of another source) is skipped.
 
 ## How the report is written
 
