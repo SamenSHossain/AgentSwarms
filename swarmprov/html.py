@@ -499,7 +499,7 @@ overflow-wrap:anywhere}
 text-decoration:underline}
 .tv summary{cursor:pointer;font-size:13px;color:var(--ink-2)}
 .ag{max-width:760px}
-.card{margin-top:12px}
+.card{margin-top:12px;overflow-wrap:anywhere}
 .card .cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .card ul{margin:4px 0;padding-left:18px;font-size:13px}
 .card .stats{font-size:13px;color:var(--ink-2)}
@@ -507,6 +507,8 @@ text-decoration:underline}
 .toc{position:static;max-height:none;padding-top:8px}.toc details:not([open]) ol{display:none}
 .fx{grid-template-columns:minmax(0,1fr)}.pick{max-height:220px}.card .cols{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:520px){.hero h1{font-size:22px}.tile .v{font-size:22px}.tiles{grid-template-columns:1fr 1fr}}
+@media (max-width:520px),(max-height:700px){.detail{font-size:12px;line-height:1.4;padding:6px 10px;max-height:18vh;
+overflow:auto}}
 """
 
 JS = r"""(() => {

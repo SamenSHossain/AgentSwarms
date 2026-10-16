@@ -387,10 +387,11 @@ LONG_URL = "https://allorigins.hexlet.app/raw?url=" + "https%3A%2F%2Fapi.example
 @pytest.fixture(scope="module")
 def long_chain(tmp_path_factory):
     """One value relayed down a board by 90 agents, a minute apart (a 90-row timeline, taller than a screen), three
-    of whose posts also cite one long URL with no break in it."""
+    of whose posts also cite one long URL with no break in it; the last agent's label is 150 characters, unbroken."""
     from swarmprov import pipeline
     d = tmp_path_factory.mktemp("long")
-    posts = [{"ts": f"2026-06-16T{8 + i // 60:02d}:{i % 60:02d}:00Z", "author": f"Scout{i:02d}", "channel": "alpha-board",
+    posts = [{"ts": f"2026-06-16T{8 + i // 60:02d}:{i % 60:02d}:00Z", "channel": "alpha-board",
+              "author": f"Scout{i:02d}" if i < 89 else "LongHandle" * 15,
               "text": f"R1 CONFIRMED: Ohio arrived {8 + i // 60:02d}:{i % 60:02d}:00, 14s timer; answered 91.04 at +9s."
                       + (f" Source: {LONG_URL}" if i % 30 == 0 else "")} for i in range(90)]
     (d / "t.jsonl").write_text("".join(json.dumps(p) + "\n" for p in posts))
@@ -402,8 +403,9 @@ def long_chain(tmp_path_factory):
 @browser
 def test_the_detail_stays_in_view_beside_the_active_row(long_chain, tmp_path):
     """Hovering (desktop) or tapping (phone) the rows at 50% and 95% of a timeline taller than the screen, scrolled to
-    the middle of the viewport: the detail box is inside the viewport and names the carrier under the pointer, whose
-    band holds the pointer; at phone width, where rows have no labels, the band names the carrier too."""
+    the middle of the viewport, and the row at 75% scrolled to 80% of it: the pointer is on the chart, not under the
+    detail box, which is inside the viewport and names the carrier under the pointer, whose band holds the pointer; at
+    phone width, where rows have no labels, the band names the carrier too."""
     r = _browse(tmp_path, """
 (async () => {
   const b = await chromium.launch(), out = {};
@@ -412,16 +414,17 @@ def test_the_detail_stays_in_view_beside_the_active_row(long_chain, tmp_path):
     const p = await (await b.newContext({offline: true, ...opt})).newPage(), errs = [], rows = [];
     p.on('pageerror', e => errs.push(e.message));
     await p.goto('file://' + process.argv[2]);
-    for (const f of [0.5, 0.95]) {
-      const [x, y, top] = await p.evaluate(f => { const svg = () => document.querySelector('#fx-chart svg').getBoundingClientRect();
-        window.scrollTo(0, scrollY + svg().top + f * svg().height - innerHeight / 2);
-        const r = svg(); return [r.left + r.width / 2, r.top + f * r.height, r.top]; }, f);
+    for (const [f, at] of [[0.5, 0.5], [0.75, 0.8], [0.95, 0.5]]) {
+      const [x, y, top, onChart] = await p.evaluate(([f, at]) => { const svg = () => document.querySelector('#fx-chart svg').getBoundingClientRect();
+        window.scrollTo(0, scrollY + svg().top + f * svg().height - innerHeight * at);
+        const r = svg(), x = r.left + r.width / 2, y = r.top + f * r.height;
+        return [x, y, r.top, !!document.elementFromPoint(x, y).closest('#fx-chart svg')]; }, [f, at]);
       if (opt.hasTouch) await p.touchscreen.tap(x, y); else await p.mouse.move(x, y);
-      rows.push(await p.evaluate(([y, top]) => { const box = e => { const r = e.getBoundingClientRect(); return [r.top, r.bottom]; };
+      rows.push(await p.evaluate(([y, top, onChart]) => { const box = e => { const r = e.getBoundingClientRect(); return [r.top, r.bottom]; };
         const d = document.getElementById('fx-detail'), tag = document.querySelector('#fx-chart svg > text[visibility]');
-        return {y, top, vh: innerHeight, detail: box(d), band: box(document.querySelector('#fx-chart svg > rect[visibility]')),
+        return {y, top, onChart, vh: innerHeight, detail: box(d), band: box(document.querySelector('#fx-chart svg > rect[visibility]')),
                 who: d.querySelector('button') && d.querySelector('button').textContent,
-                tag: tag && tag.getAttribute('visibility') === 'visible' ? tag.textContent : null}; }, [y, top]));
+                tag: tag && tag.getAttribute('visibility') === 'visible' ? tag.textContent : null}; }, [y, top, onChart]));
     }
     out[name] = {errs, rows};
   }
@@ -430,11 +433,12 @@ def test_the_detail_stays_in_view_beside_the_active_row(long_chain, tmp_path):
     for name, v in r.items():
         assert v["errs"] == []
         for row in v["rows"]:
-            assert row["top"] < 0   # the chart starts above the screen
-            assert 0 <= row["detail"][0] and row["detail"][1] <= row["vh"], (name, row)
+            assert row["top"] < 0 and row["onChart"]   # the chart starts above the screen
+            assert row["y"] < row["detail"][0] and row["detail"][1] <= row["vh"], (name, row)
             assert row["band"][0] - 1 <= row["y"] <= row["band"][1] + 1 and re.fullmatch(r"scout\d\d", row["who"])
             assert row["tag"] == (row["who"] if name == "phone" else None)
-        assert v["rows"][0]["who"] < v["rows"][1]["who"]   # rows in order of first post: scout00, scout01, ...
+        whos = [row["who"] for row in v["rows"]]
+        assert whos == sorted(set(whos))   # each a new row, in order of first post: scout00, scout01, ...
 
 
 @pytest.fixture(scope="module")
@@ -449,8 +453,8 @@ def corpus_run(tmp_path_factory):
 @browser
 @pytest.mark.parametrize("which", ["long_chain", "corpus_run"])
 def test_no_sideways_scroll_at_phone_width(which, request, tmp_path):
-    """At 390 px the page is as wide as the screen on load and after picking each URL fact, whose heading is one long
-    unbroken string."""
+    """At 390 px the page is as wide as the screen on load, after picking each URL fact, whose heading is one long
+    unbroken string, and with the card of the agent with the longest label open."""
     run = request.getfixturevalue(which)
     r = _browse(tmp_path, """
 (async () => {
@@ -459,9 +463,14 @@ def test_no_sideways_scroll_at_phone_width(which, request, tmp_path):
   const width = () => p.evaluate(() => document.documentElement.scrollWidth), widths = [await width()];
   const urls = () => p.$$('xpath=//ul[@id="fx-list"]//button[small[starts-with(., "URL")]]');
   for (let i = 0; i < (await urls()).length; i++) { await (await urls())[i].click(); widths.push(await width()); }
-  console.log(JSON.stringify({vw: await p.evaluate(() => innerWidth), widths})); await b.close();
+  const agent = await p.evaluate(() => { const D = JSON.parse(document.getElementById('fx-data').textContent);
+    return D.people.rows.map(r => D.agents[r[0]]).reduce((a, b) => b.length > a.length ? b : a, ""); });
+  await p.fill('#ag-q', agent); widths.push(await width());
+  console.log(JSON.stringify({vw: await p.evaluate(() => innerWidth), widths, agent, card: await p.textContent('#ag-card h4')}));
+  await b.close();
 })();""", run.path / "report.html")
-    assert len(r["widths"]) >= 2 and set(r["widths"]) == {r["vw"]} == {390}
+    assert len(r["widths"]) >= 3 and set(r["widths"]) == {r["vw"]} == {390} and r["card"] == r["agent"]
+    assert which != "long_chain" or r["agent"] == "longhandle" * 15
 
 
 @pytest.fixture(scope="module")
