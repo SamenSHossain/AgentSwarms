@@ -297,7 +297,7 @@ class _Ctx:
 def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
     """``boot``: bootstrap resamples behind the intervals (default: the config's ``bootstrap_reps``; 0 = none).  A
     strict report writes its files with a ``_strict`` suffix (``schema.suffix``), beside the merged one."""
-    prof = json.loads((run.path / "profile.json").read_text())
+    prof = run.profile()
     from .pipeline import load_config
     cfg = load_config(run, stage="report")
     boot = cfg.bootstrap_reps if boot is None else boot

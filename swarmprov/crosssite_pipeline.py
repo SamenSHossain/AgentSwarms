@@ -42,8 +42,8 @@ def _wiki_events(run: RunDir) -> pd.DataFrame:
 
 def run_crosssite(wiki_run: str | Path, corpus_path: str | Path, out: str | Path,
                   markers=DEFAULT_MARKERS) -> RunDir:
+    wiki = RunDir.open(wiki_run)
     run = RunDir(out)
-    wiki = RunDir(wiki_run)
     ev_w = _wiki_events(wiki)
     corpus_path = remote.resolve(corpus_path)
     a = adapters.get("corpus")

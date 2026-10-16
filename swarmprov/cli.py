@@ -36,11 +36,11 @@ import re
 import sys
 from pathlib import Path
 
-from . import pipeline
+from . import pipeline, remote
 from .adapters import ADAPTERS
 from .adapters.base import FIELD_NAMES, check_fields
 from .fmt import dumps
-from .schema import RunDir
+from .schema import NotARun, RunDir
 
 
 def _positive(v: str) -> int:
@@ -268,7 +268,36 @@ def _field_map(a) -> dict[str, str]:
     return {k: v for d in a.field for k, v in d.items()}
 
 
+def _fail(e: Exception) -> int:
+    print(f"swarmprov: error: {e}", file=sys.stderr)
+    return 2
+
+
+def _stage(handler):
+    """A command whose user errors (a missing file, a malformed config, an input its adapter cannot read) end in one
+    ``swarmprov: error:`` line and exit status 2, not a traceback."""
+    def run(a, p):
+        try:
+            return handler(a, p)
+        except (ValueError, FileNotFoundError) as e:   # json.JSONDecodeError is a ValueError
+            return _fail(e)
+    return run
+
+
+def _need_inputs(a) -> None:
+    """Stop before any stage when the input, ``--config`` or ``--roster`` names nothing (an hf:// URI is fetched
+    later)."""
+    for flag, path in (("", a.input), ("--config", a.config), ("--roster", getattr(a, "roster", None))):
+        if path is None or remote.is_remote(path) or Path(path).exists():
+            continue
+        where = (" (the datasets under data/ are not in git: README's 'Where the data comes from' says where to get "
+                 "them)" if Path(path).parts[:1] == ("data",) else "")
+        raise FileNotFoundError(f"{flag + ': ' if flag else ''}{path}: no such file or directory{where}")
+
+
+@_stage
 def _run(a, p) -> None:
+    _need_inputs(a)
     if a.gold:   # before the stages, not after them
         from . import validate
         for g in map(Path, a.gold):
@@ -280,30 +309,38 @@ def _run(a, p) -> None:
     pipeline.run_all(a.input, a.out, a.adapter, a.llm, a.config, a.roster, _field_map(a), gold=a.gold)
 
 
+@_stage
 def _ingest(a, p) -> None:
+    _need_inputs(a)
     pipeline.ingest(a.input, RunDir(a.out), a.adapter, a.config, a.roster, _field_map(a))
 
 
+@_stage
 def _inspect(a, p) -> int:
     from . import inspect
+    _need_inputs(a)
     return inspect.inspect(a.input, a.config, _field_map(a))
 
 
+@_stage
 def _extract(a, p) -> None:
-    pipeline.extract(RunDir(a.run), llm=a.llm)
+    pipeline.extract(RunDir.open(a.run), llm=a.llm)
 
 
+@_stage
 def _expose(a, p) -> None:
-    pipeline.expose(RunDir(a.run))
+    pipeline.expose(RunDir.open(a.run))
 
 
+@_stage
 def _graph(a, p) -> None:
-    pipeline.build_graph(RunDir(a.run))
+    pipeline.build_graph(RunDir.open(a.run))
 
 
+@_stage
 def _report(a, p) -> None:
     from . import report
-    report.build(RunDir(a.run), mapping=a.mapping, boot=a.boot)
+    report.build(RunDir.open(a.run), mapping=a.mapping, boot=a.boot)
 
 
 def _html(a, p) -> int:
@@ -313,13 +350,13 @@ def _html(a, p) -> int:
 
 def _sample_gold(a, p) -> None:
     from . import validate
-    validate.sample(RunDir(a.run), a.n, a.seed, a.exclude, a.name)
+    validate.sample(RunDir.open(a.run), a.n, a.seed, a.exclude, a.name)
 
 
 def _validate(a, p) -> int:
     from . import validate
     try:
-        res = validate.score(RunDir(a.run), a.gold, a.out_name)
+        res = validate.score(RunDir.open(a.run), a.gold, a.out_name)
     except (OSError, ValueError) as e:
         print(e, file=sys.stderr)
         return 1
@@ -332,14 +369,15 @@ def _validate(a, p) -> int:
 
 def _check(a, p) -> int:
     from . import checks
-    return checks.main(RunDir(a.run), a.mapping)
+    return checks.main(RunDir.open(a.run), a.mapping)
 
 
 def _truth_score(a, p) -> int:
     from . import truthscore
-    return truthscore.main(RunDir(a.run), a.truth, a.mapping)
+    return truthscore.main(RunDir.open(a.run), a.truth, a.mapping)
 
 
+@_stage
 def _crosssite(a, p) -> None:
     from .crosssite_pipeline import run_crosssite
     run_crosssite(a.wiki_run, a.corpus, a.out)
@@ -393,7 +431,10 @@ COMMANDS = {"run": _run, "ingest": _ingest, "inspect": _inspect, "extract": _ext
 def main(argv: list[str] | None = None) -> int:
     p = _parser()
     a = p.parse_args(argv)
-    return COMMANDS[a.cmd](a, p) or 0
+    try:
+        return COMMANDS[a.cmd](a, p) or 0
+    except NotARun as e:   # every command that reads a run: one message, one exit status
+        return _fail(e)
 
 
 if __name__ == "__main__":

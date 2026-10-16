@@ -197,7 +197,7 @@ def suggest(run: RunDir) -> tuple[dict, dict]:
     (``config_settings``) carry over where they differ from the adapter's built-in config, so the file replaces the
     run's config; the items are proposed under the families the file defines."""
     from .pipeline import load_config
-    prof = json.loads((run.path / "profile.json").read_text())
+    prof = run.profile()
     used = prof.get("config_settings") or load_config(run, with_mined=False).settings()
     default = adapters.get(prof["adapter"]).config().settings()
     # techniques auto_techniques mined are not recorded as settings: they are mined again here, as mined
@@ -255,10 +255,7 @@ def _table(st: pd.DataFrame, note, seq: bool = False) -> list[str]:
 
 def main(run_path: str, out: str = "suggested_config.json") -> int:
     """``swarmprov suggest``: print the evidence and write the suggested config."""
-    if not (Path(run_path) / "profile.json").exists():
-        print(f"{run_path}: not a run directory (no profile.json); `swarmprov run` makes one")
-        return 2
-    run = RunDir(run_path)
+    run = RunDir.open(run_path)
     if not run.has("agents"):
         print(f"{run.path}: no agents table; run `swarmprov extract {run.path}` first")
         return 2

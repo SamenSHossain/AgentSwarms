@@ -179,7 +179,7 @@ def test_html_command_renders_a_report_again(synth_run, tmp_path):
     (d / "report.html").unlink()
     assert cli.main(["html", str(d)]) == 0 and (d / "report.html").exists()
     assert cli.main(["html", str(d), "--mapping", "strict"]) == 1   # no strict report to render
-    assert cli.main(["html", str(tmp_path / "missing")]) == 1 and not (tmp_path / "missing").exists()
+    assert cli.main(["html", str(tmp_path / "missing")]) == 2 and not (tmp_path / "missing").exists()
 
 
 def test_a_page_without_graph_tables(tmp_path):

@@ -27,6 +27,8 @@ transcript ──adapter──▶ events ──rules/LLM──▶ claims ──�
 
 ## Quick start
 
+The datasets the examples read (`data/raw`, `data/raw2`) are not in git: fetch them first, as *Where the data comes from* below says. A path that does not exist stops the run with one line pointing there.
+
 **Install:**
 ```bash
 pip install -e .            # pandas, pyarrow, networkx, matplotlib, pyfixest
@@ -116,6 +118,8 @@ Stages can be rerun on their own; each one reads and writes Parquet tables in th
 | `swarmprov trace RUN (--agent A [--item I] [--family F] \| --answer ID \| --fact 'F\|I[\|V]' \| --event ID \| --list)` | stage tables → one answer's sources, one fact's relay tree or one post's extraction (`--json`, `--png`); see below |
 | `swarmprov agent RUN NAME [--mapping strict] [--json FILE]` | stage tables → one agent's profile, its answers, whom it learned from and whom it supplied; see below |
 | `swarmprov compare RUN_A RUN_B [--mapping-a M] [--mapping-b M] [-o DIR] [--limit N] [--tol T]` | two runs, or one run under both mappings → `DIR/compare.md`, `DIR/compare.json` (default `runs/compare/`) and a printed summary: the setup and config settings that differ, the `summary.json` values that differ beyond a relative tolerance (`--tol`, default 1e-6), and per table the rows added, dropped and changed on their stable ids, with at most `--limit` examples each (default 10); see Comparing runs below |
+
+A missing input, `--config` or `--roster` file, a malformed config, or an input its adapter cannot read stops `run`, `ingest`, `inspect` and the other stages with one `swarmprov: error:` line and exit status 2, before anything is written for a missing file. Every command that reads a run does the same when the directory holds none (no `profile.json`), and never creates it. `--json` and `--png` create the directory they name.
 
 ## Asking questions of a run
 

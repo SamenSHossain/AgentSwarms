@@ -8,7 +8,6 @@ apart, and every hop says when its direction or source is uncertain.
 
 from __future__ import annotations
 
-import json
 import math
 import re
 from pathlib import Path
@@ -578,17 +577,23 @@ def timeline(fact: dict, path, highlight: str | None = None, seq: bool = False) 
 def _open(run_path: str, mapping: str, need: tuple[str, ...]) -> tuple[RunDir | None, bool]:
     """The run, once it has every table in ``need`` (else None, with what is missing printed), and whether it has a
     sequence clock; prints the mapping (and clock) lines both commands open with."""
-    run = RunDir(run_path) if Path(run_path).is_dir() else None
-    missing = [n for n in need if run is None or not run.has(n)]
+    run = RunDir.open(run_path)
+    missing = [n for n in need if not run.has(n)]
     if missing:
         print(f"{run_path}: not a finished run, it has no {', '.join(missing)} (run `swarmprov run`, or every stage "
               "up to `swarmprov graph`)")
         return None, False
     print(f"mapping: {mapping} ({MAPPING_NOTE[mapping]})")
-    seq = json.loads((run.path / "profile.json").read_text()).get("clock") == "sequence"
+    seq = run.profile().get("clock") == "sequence"
     if seq:
         print("clock: message order, no wall clock (a post's time is its position, 2000-01-01 + i s; gaps are in messages)")
     return run, seq
+
+
+def _write_json(path, obj) -> None:
+    """``--json FILE``, its directory created."""
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    Path(path).write_text(dumps(obj, indent=1), encoding="utf-8")
 
 
 def _one_agent(cands: list[str], name: str) -> str | None:
@@ -643,8 +648,7 @@ def trace(run_path: str, agent=None, item=None, family=None, answer=None, fact=N
         return 1
     print("\n".join(lines))
     if json_path:
-        Path(json_path).write_text(dumps({"mapping": mapping, "clock": "sequence" if seq else "wall", "mode": mode,
-                                          "result": res}, indent=1))
+        _write_json(json_path, {"mapping": mapping, "clock": "sequence" if seq else "wall", "mode": mode, "result": res})
     if png_path:
         facts, highlight = (res if mode == "fact" else []), None
         if mode == "answer" and len(res) == 1 and res[0]["matched_value"] is not None:
@@ -653,6 +657,7 @@ def trace(run_path: str, agent=None, item=None, family=None, answer=None, fact=N
         if len(facts) != 1:
             print("--png draws one fact: pass --fact with a value, or pick a single answer")
             return 1
+        Path(png_path).parent.mkdir(parents=True, exist_ok=True)
         print(f"timeline: {timeline(facts[0], png_path, highlight, seq)}")
     return 0
 
@@ -661,12 +666,13 @@ def agent(run_path: str, name: str, mapping: str = "merged", json_path=None) -> 
     """The ``agent`` command: one agent's profile, answers and edges."""
     run, seq = _open(run_path, mapping, ("events", "agents", f"exposures_{mapping}", f"edges_{mapping}",
                                          f"agent_profiles_{mapping}"))
-    label = _one_agent(match_agents(run, name, mapping), name) if run is not None else None
+    if run is None:
+        return 1
+    label = _one_agent(match_agents(run, name, mapping), name)
     if label is None:
         return 1
     v = agent_view(run, label, mapping)
     print("\n".join(text_agent(v, seq)))
     if json_path:
-        Path(json_path).write_text(dumps({"mapping": mapping, "clock": "sequence" if seq else "wall", "mode": "agent",
-                                          "result": v}, indent=1))
+        _write_json(json_path, {"mapping": mapping, "clock": "sequence" if seq else "wall", "mode": "agent", "result": v})
     return 0

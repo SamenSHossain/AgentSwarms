@@ -28,7 +28,7 @@ def load_config(run: RunDir, with_mined: bool = True, stage: str | None = None):
     """The adapter's built-in config, overridden by a --config file if one was given at ingest (and its fields by
     the ones ingest used); under ``auto_techniques`` with no techniques configured, the techniques extract mined
     (``with_mined``).  A ``stage`` records the settings it runs with (``record_config``)."""
-    prof = json.loads((run.path / "profile.json").read_text())
+    prof = run.profile()
     cfg = adapters.get(prof["adapter"]).config()
     if prof.get("config_path"):
         with warnings.catch_warnings():
@@ -79,7 +79,11 @@ def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | N
         warns.append(f"`fields` reach the chat reader only (chat transcripts and an AI Village message table); the "
                      f"`{a.name}` adapter reads its own schema and ignores them.")
     _log(f"ingest {path} with adapter '{a.name}'" + (f", fields {fields}" if fields else ""))
-    b = a.load(Path(path))
+    try:
+        b = a.load(Path(path))
+    except KeyError as e:   # a column or key the adapter's format needs
+        raise ValueError(f"the `{a.name}` adapter needs a {e} field that {source} lacks: is it a {a.name} source? "
+                         f"(`swarmprov inspect {source}` shows what each adapter makes of it)") from None
     warns += b.notes.pop("warnings", [])
     if cfg.digest_as_posts and b.digest is not None and not len(b.events):
         _log(f"  no message table: using the {len(b.digest):,}-event digest parsed from the daily summaries as posts (derived text)")
@@ -157,7 +161,7 @@ def extract(run: RunDir, llm: str | None = None) -> None:
         _log(f"  shared goals cover {int(era_ann['era'].notna().sum())}/{len(ev)} posts")
     if ann is not None:
         run.write("roster_events", ann)
-    caps = read_capabilities(json.loads((run.path / "profile.json").read_text()))
+    caps = read_capabilities(run.profile())
     agents = identity.resolve(ev, fam, cfg, explicit_author=caps.get("has_explicit_author", False))
     if ann is not None and "roster_agent" in ann:
         agents = roster_mod.merge_agents(agents, ev, ann, ros)
@@ -225,7 +229,7 @@ def expose(run: RunDir) -> None:
     cons = claims_mod.consensus(cl, mn) if len(cl) else {}
     channels = run.read("channels") if run.has("channels") else None
     directory = run.read("directory") if run.has("directory") else None
-    wall = json.loads((run.path / "profile.json").read_text()).get("clock") != "sequence"
+    wall = run.profile().get("clock") != "sequence"
     same = identity.one_to_one(agents)
     built = {}
     for name, col in AGENT_COLS.items():
@@ -258,7 +262,7 @@ def build_graph(run: RunDir) -> None:
         return
     import networkx as nx
     cfg = load_config(run, stage="graph")
-    prof = json.loads((run.path / "profile.json").read_text())
+    prof = run.profile()
     mn, agents, tags, events = run.read("mentions"), run.read("agents"), run.read("tags"), run.read("events")
     seq = prof.get("clock") == "sequence"
     threading = read_capabilities(prof).get("has_threading", False)

@@ -219,7 +219,7 @@ def explorer_data(run: RunDir, mapping: str = "merged", summary: dict | None = N
         slots.append({"slot": r["slot"], "kind": kind, "status": r["status"], "first": r.get("first variant"),
                       "winner": r.get("winner"), "outcome": r.get("outcome"), "variants": variants})
     people = _people(run, mapping, edges, a, set(agents))
-    prof = json.loads((run.path / "profile.json").read_text()) if (run.path / "profile.json").exists() else {}
+    prof = run.profile() if (run.path / "profile.json").exists() else {}
     return json_safe({"clock": prof.get("clock") or "wall", "res": CLOCK_RES_S, "mapping": mapping,
                           "agents": list(agents), "channels": list(chans),
                           "posts": [[e, x, c] for (e, _), (_, x, c) in posts.items()],
@@ -328,12 +328,15 @@ def build_html(run: RunDir, mapping: str = "merged") -> Path | None:
 
 
 def main(run_path: str, mapping: str = "merged") -> int:
-    """The ``html`` command: render a run's report again (after editing it, or for a run from before it was built)."""
-    run = RunDir(run_path) if Path(run_path).is_dir() else None
-    if run is None or build_html(run, mapping) is None:
-        print(f"{run_path}: no report{suffix(mapping)}.md to render (run `swarmprov report {run_path}"
+    """The ``html`` command: render a run's report again (after editing it, or for a run from before it was built).
+    A directory holding the report and no ``profile.json`` (a committed ``results/`` one) renders too."""
+    md = f"report{suffix(mapping)}.md"
+    if not (Path(run_path) / md).is_file():
+        RunDir.open(run_path)   # no run at all: NotARun
+        print(f"{run_path}: no {md} to render (run `swarmprov report {run_path}"
               + (f" --mapping {mapping}" if suffix(mapping) else "") + "` first)")
         return 1
+    build_html(RunDir.open(run_path, need=md), mapping)
     return 0
 
 

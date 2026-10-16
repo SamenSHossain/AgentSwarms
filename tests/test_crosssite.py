@@ -135,6 +135,7 @@ def test_run_crosssite_writes_its_tables_as_csv(tmp_path):
                        "text": ["fetch via https://markdown.new/x"] + ["plain"] * 5, "site": "dse",
                        "source_kind": "revision", "family": ""})
     wiki.write("events", conform(ev, "events").assign(family=""))
+    (wiki.path / "profile.json").write_text("{}")
     corpus = tmp_path / "raw2"
     corpus.mkdir()
     records = [{"id": f"r{i}", "text": "mirror https://markdown.new/y" if i == 2 else f"note {i}",

@@ -182,7 +182,7 @@ def score(run: RunDir, truth_dir: str | Path, mapping: str = "merged") -> dict:
     truth = truth.assign(who=truth["agent"].map(handle), key=[value_key(norm_value(f"{v:.2f}")) for v in truth["value"]])
     truth = truth.assign(target=_earlier_copy(truth), visible=_earlier_copy(truth, visible=True))
     col = AGENT_COLS[mapping]
-    wall = json.loads((run.path / "profile.json").read_text()).get("clock") != "sequence"
+    wall = run.profile().get("clock") != "sequence"
     ex, edges, events, agents = (run.read(t) for t in (f"exposures_{mapping}", f"edges_{mapping}", "events", "agents"))
     refs = json.loads((truth_dir / "config.json").read_text()).get("reference_values", {})
     author = events.drop_duplicates("event_id").set_index("event_id")["author_raw"]
@@ -224,8 +224,6 @@ def _missing(run: RunDir, truth_dir: Path, mapping: str) -> str | None:
     for f in ("truth.csv", "config.json"):
         if not (truth_dir / f).exists():
             return f"{truth_dir}: no {f} (synth writes truth.csv and config.json beside the transcript)"
-    if not (run.path / "profile.json").exists():
-        return f"{run.path}: not a run directory (no profile.json); run `swarmprov run` on the transcript first"
     for stage, tables in (("ingest", ("events",)), ("extract", ("agents", "tags")),
                           ("expose", ("mentions", f"exposures_{mapping}")), ("graph", (f"edges_{mapping}",))):
         if gone := [t for t in tables if not run.has(t)]:

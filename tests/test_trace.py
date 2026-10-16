@@ -261,5 +261,7 @@ def test_trace_on_runs_without_task_values(tmp_path_factory, capsys):
     part = RunDir(d / "partial")
     for t in ("events", "agents", "claims", "tags", "mentions", "exposures_merged"):
         shutil.copy(run.table_path(t), part.table_path(t))
+    assert cli.main(["trace", str(part.path), "--list"]) == 2   # no profile.json: not a run
+    shutil.copy(run.path / "profile.json", part.path)
     assert cli.main(["trace", str(part.path), "--list"]) == 1
     assert "not a finished run, it has no edges_merged, chains_merged" in capsys.readouterr().out

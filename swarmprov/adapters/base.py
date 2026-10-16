@@ -168,10 +168,14 @@ class AdapterConfig:
     @staticmethod
     def read_file(path) -> dict:
         p = Path(path)
-        if p.suffix == ".toml":
-            import tomllib
-            return tomllib.loads(p.read_text())
-        return json.loads(p.read_text())
+        kind = "TOML" if p.suffix == ".toml" else "JSON"
+        try:
+            if kind == "TOML":
+                import tomllib
+                return tomllib.loads(p.read_text(encoding="utf-8"))
+            return json.loads(p.read_text(encoding="utf-8"))
+        except ValueError as e:   # json.JSONDecodeError and tomllib.TOMLDecodeError
+            raise ValueError(f"{p}: not a valid {kind} config ({e})") from None
 
     @classmethod
     def from_file(cls, path, base: "AdapterConfig | None" = None) -> "AdapterConfig":

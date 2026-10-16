@@ -252,7 +252,7 @@ def check_run(run: RunDir, summary: dict | None = None, mapping: str | None = No
     summary).  ``summary`` is the report's (the report passes the one it is writing); by default the ``mapping``
     report's ``summary.json`` (merged) or ``summary_strict.json`` when the run has one, else that check is left out."""
     from . import village
-    prof = json.loads((run.path / "profile.json").read_text())
+    prof = run.profile()
     wall = prof.get("clock") != "sequence"
     mapping = mapping or (summary or {}).get("mapping", "merged")
     sfx = suffix(mapping)
@@ -297,11 +297,8 @@ def check_run(run: RunDir, summary: dict | None = None, mapping: str | None = No
 
 def main(run: RunDir, mapping: str = "merged") -> int:
     """``swarmprov check``: print each check, write ``checks.json`` (``checks_strict.json`` against the strict
-    report's summary); exit status 1 when an error-level check fails, 2 when the directory is no run or holds no
-    exposure or edge table (nothing to check)."""
-    if not (run.path / "profile.json").exists():
-        print(f"{run.path}: not a run directory (no profile.json); run `swarmprov run` or `ingest` first")
-        return 2
+    report's summary); exit status 1 when an error-level check fails, 2 when the run holds no exposure or edge table
+    (nothing to check)."""
     if not any(run.has(f"{t}_{m}") for t in ("exposures", "edges") for m in AGENT_COLS):
         print(f"{run.path}: no exposure or edge tables to check; run `swarmprov expose` and `swarmprov graph` on it "
               "(or `swarmprov run`) first")

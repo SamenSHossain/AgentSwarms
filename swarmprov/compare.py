@@ -145,7 +145,7 @@ def _stages(prof: dict) -> str | None:
 def setup_diff(run_a: RunDir, run_b: RunDir, mapping_a: str, mapping_b: str) -> tuple[list[dict], dict]:
     """The setup fields, capabilities and config settings that differ; and per side whether its settings were
     recorded by its stages or read from its file now, and which stages ran with different ones."""
-    pa, pb = (json.loads((r.path / "profile.json").read_text()) for r in (run_a, run_b))
+    pa, pb = run_a.profile(), run_b.profile()
     rows = [{"field": k, "a": pa.get(k), "b": pb.get(k)} for k in SETUP if pa.get(k) != pb.get(k)]
     if mapping_a != mapping_b:
         rows.append({"field": "mapping", "a": mapping_a, "b": mapping_b})
@@ -295,7 +295,7 @@ def _summary(run: RunDir, mapping: str):
 def compare(run_a, run_b, mapping_a: str = "merged", mapping_b: str = "merged", tol: float = TOL,
             limit: int = LIMIT) -> dict:
     """Everything ``compare.json`` holds; ``n_changes`` is 0 when nothing differs."""
-    ra, rb = RunDir(run_a), RunDir(run_b)
+    ra, rb = RunDir.open(run_a), RunDir.open(run_b)
     res = {"a": {"run": str(ra.path), "mapping": mapping_a}, "b": {"run": str(rb.path), "mapping": mapping_b},
            "tolerance": tol}
     res["setup"], res["config"] = setup_diff(ra, rb, mapping_a, mapping_b)
@@ -461,10 +461,6 @@ def headline(res: dict) -> list[str]:
 def main(run_a: str, run_b: str, mapping_a: str = "merged", mapping_b: str = "merged", out: str = "runs/compare",
          limit: int | None = None, tol: float = TOL) -> int:
     """``swarmprov compare``: write ``compare.md`` and ``compare.json`` to ``out`` and print the summary."""
-    for r in (run_a, run_b):
-        if not (Path(r) / "profile.json").exists():
-            print(f"{r}: not a run directory (no profile.json); `swarmprov run` makes one")
-            return 2
     limit = limit or LIMIT
     res = compare(run_a, run_b, mapping_a, mapping_b, tol, limit)
     d = Path(out)

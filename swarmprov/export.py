@@ -41,9 +41,7 @@ NONE_WHEN = {"adoptions": "no configured technique appears in a timed post", "a1
 def export(run_path, out, tables=DEFAULT, fmt: str = "csv", mapping: str = "merged", all_columns: bool = False) -> int:
     """Write each of ``tables`` (names of ``EXPORTS``) to ``out``; a table the run lacks is named and skipped.
     Returns 0, or 1 when none could be written."""
-    if not (Path(run_path) / "profile.json").exists():
-        raise SystemExit(f"{run_path}: not a run directory (no profile.json); `swarmprov run` makes one")
-    run, out = RunDir(run_path), Path(out)
+    run, out = RunDir.open(run_path), Path(out)
     out.mkdir(parents=True, exist_ok=True)
     written = 0
     for name in tables:

@@ -303,8 +303,7 @@ def test_export_writes_the_mirrors_and_the_detail(synth_run, tmp_path, capsys):
     assert (out / "claims.parquet").exists()
     with pytest.raises(SystemExit):
         cli.main(["export", str(run.path), "-o", str(out), "--tables", "exposures,nope"])
-    with pytest.raises(SystemExit):
-        cli.main(["export", str(tmp_path / "missing"), "-o", str(out)])
+    assert cli.main(["export", str(tmp_path / "missing"), "-o", str(out)]) == 2
     assert not (tmp_path / "missing").exists()
 
 

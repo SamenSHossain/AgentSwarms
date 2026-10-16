@@ -7,6 +7,7 @@ directory.  Columns are listed here once so stages and tests agree.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -156,13 +157,33 @@ def conform(df: pd.DataFrame, table: str) -> pd.DataFrame:
     return out[cols]
 
 
+class NotARun(Exception):
+    """A path that holds no run: ``RunDir.open`` finds no ``profile.json`` (or the file it was asked for) there."""
+
+    def __init__(self, path: Path, need: str = "profile.json"):
+        super().__init__(f"{path}: not a run directory (no {need}); run `swarmprov run` first")
+
+
 class RunDir:
-    """A directory holding one pipeline run's tables, figures and report."""
+    """A directory holding one pipeline run's tables, figures and report.  ``RunDir(path)`` makes the directory (a
+    run's output); ``RunDir.open(path)`` reads an existing run and creates nothing."""
 
     def __init__(self, path: str | Path):
         self.path = Path(path)
         self.path.mkdir(parents=True, exist_ok=True)
-        (self.path / "figures").mkdir(exist_ok=True)
+
+    @classmethod
+    def open(cls, path: str | Path, need: str = "profile.json") -> "RunDir":
+        """The run at ``path``; ``NotARun`` when it holds no ``need`` (ingest writes ``profile.json`` first)."""
+        run = cls.__new__(cls)
+        run.path = Path(path)
+        if not (run.path / need).is_file():
+            raise NotARun(run.path, need)
+        return run
+
+    def profile(self) -> dict:
+        """``profile.json``: what ingest found and the settings each stage ran with."""
+        return json.loads((self.path / "profile.json").read_text(encoding="utf-8"))
 
     def table_path(self, name: str) -> Path:
         return self.path / f"{name}.parquet"
@@ -191,6 +212,7 @@ class RunDir:
 
     def figure(self, name: str, mapping: str = "merged") -> Path:
         p = Path(name)
+        (self.path / "figures").mkdir(exist_ok=True)
         return self.path / "figures" / f"{p.stem}{suffix(mapping)}{p.suffix}"
 
     STAGE_OUTPUTS = ("agents", "claims", "tags", "mentions", "exposures_merged", "exposures_strict", "edges_merged",
