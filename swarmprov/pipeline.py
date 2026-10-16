@@ -13,9 +13,9 @@ import pandas as pd
 
 from . import adapters, claims as claims_mod, exposure, graph, identity, remote, roster as roster_mod, rules, village
 from .adapters.base import check_fields, read_capabilities
+from .analysis import agents as agents_mod
+from .analysis.agents import AGENT_COLS
 from .schema import RunDir, conform, empty
-
-AGENT_COLS = {"merged": "agent_merged", "strict": "agent_strict"}
 
 
 def _log(msg: str) -> None:
@@ -213,27 +213,42 @@ def expose(run: RunDir) -> None:
 
 
 def build_graph(run: RunDir) -> None:
+    """Edges and fact chains, the agent profiles, and the graph as GraphML and node-link JSON, per mapping.  Reply
+    edges only when the source has threading: elsewhere ``parent_id`` is a revision or summary id."""
     if not run.has("mentions"):
         return
+    import networkx as nx
     cfg = load_config(run)
-    mn, agents, tags = run.read("mentions"), run.read("agents"), run.read("tags")
+    prof = json.loads((run.path / "profile.json").read_text())
+    mn, agents, tags, events = run.read("mentions"), run.read("agents"), run.read("tags"), run.read("events")
+    seq = prof.get("clock") == "sequence"
+    threading = read_capabilities(prof).get("has_threading", False)
     # message positions are 1 s apart, so the 2 s clock resolution would flag every adjacent hop
-    res = None if json.loads((run.path / "profile.json").read_text()).get("clock") == "sequence" else graph.CLOCK_RES_S
+    res = None if seq else graph.CLOCK_RES_S
+    pub = claims_mod.public(mn)   # a tool result or task message relays nothing: no other agent saw it
     for name, col in AGENT_COLS.items():
         ex = run.read(f"exposures_{name}")
-        pub = claims_mod.public(mn)   # a tool result or task message relays nothing: no other agent saw it
         rel, chains = graph.relay_edges(pub, col, res) if len(pub) else (pd.DataFrame(), pd.DataFrame())
         parts = [rel, graph.exposure_edges(ex) if len(ex) else pd.DataFrame(),
                  graph.citation_edges(tags, agents, col, cfg.cohort_regex)]
+        note = ""
+        if threading:
+            rep, unresolved = graph.reply_edges(events, agents, col)
+            parts.append(rep)
+            note = f", {len(rep)} replies" + (f" ({unresolved} name a parent that is not an agent's post here)"
+                                              if unresolved else "")
         edges = conform(pd.concat([p for p in parts if len(p)], ignore_index=True), "edges") \
             if any(len(p) for p in parts) else empty("edges")
+        chains = chains if len(chains) else empty("chains")
         run.write(f"edges_{name}", edges)
-        run.write(f"chains_{name}", chains if len(chains) else empty("chains"))
-        if name == "merged" and len(edges):
-            import networkx as nx
-            G = graph.to_networkx(edges, kinds=("relay", "exposure", "citation"))
-            nx.write_graphml(G, run.path / "provenance_merged.graphml")
-        _log(f"  [{name}] {len(edges)} edges, {len(chains)} fact chains")
+        run.write(f"chains_{name}", chains)
+        profiles = agents_mod.profile(agents, events, tags, ex, edges, chains, name, wall_clock=not seq)
+        run.write(f"agent_profiles_{name}", profiles)
+        if len(edges):
+            G = graph.to_networkx(edges, events=events, nodes=profiles.set_index("label", drop=False))
+            nx.write_graphml(G, run.path / f"provenance_{name}.graphml")
+            (run.path / f"provenance_{name}.json").write_text(json.dumps(nx.node_link_data(G)))
+        _log(f"  [{name}] {len(edges)} edges{note}, {len(chains)} fact chains, {len(profiles)} agent profiles")
 
 
 def run_all(path, out, adapter="auto", llm=None, config=None, roster=None, fields=None) -> RunDir:

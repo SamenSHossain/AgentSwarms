@@ -14,6 +14,7 @@
     swarmprov crosssite runs/wiki data/raw2 -o runs/crosssite
     swarmprov trace    runs/wiki --agent "Mar16|oecd-equity" --item "Czech Republic"   # one answer's sources
     swarmprov trace    runs/wiki --fact "oecd-equity|Hungary|9.9" --png hungary.png     # one fact's relay tree
+    swarmprov agent    runs/wiki May28                                                 # one agent's profile and links
     swarmprov synth    -o data/synth.jsonl            # synthetic swarm with known provenance
     swarmprov synth    -o data/ag/autogen.jsonl --format autogen   # the same as an AutoGen stream with tool calls
 """
@@ -127,6 +128,12 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--limit", type=_positive, default=None,
                    help="at most N answers or listed facts (default 25), N hops printed per fact (JSON keeps all)")
 
+    s = sub.add_parser("agent", help="one agent's profile, answers, and whom it learned from and supplied")
+    s.add_argument("run")
+    s.add_argument("name", help="agent label or author string (case-insensitive; lists candidates when ambiguous)")
+    s.add_argument("--mapping", choices=["merged", "strict"], default="merged")
+    s.add_argument("--json", metavar="FILE", help="also write the result as JSON")
+
     s = sub.add_parser("synth", help="generate a synthetic swarm transcript with known provenance")
     s.add_argument("-o", "--out", default="data/synth/transcript.jsonl")
     s.add_argument("--agents", type=int, default=60)
@@ -171,6 +178,9 @@ def main(argv: list[str] | None = None) -> int:
         from . import query
         return query.trace(a.run, agent=a.agent, item=a.item, family=a.family, answer=a.answer, fact=a.fact,
                            event=a.event, mapping=a.mapping, json_path=a.json, png_path=a.png, limit=a.limit)
+    elif a.cmd == "agent":
+        from . import query
+        return query.agent(a.run, a.name, mapping=a.mapping, json_path=a.json)
     elif a.cmd == "synth":
         from . import synth
         synth.write(a.out, n_agents=a.agents, copy_rate=a.copy_rate, seed=a.seed, copy_from=a.copy_from, fmt=a.format)

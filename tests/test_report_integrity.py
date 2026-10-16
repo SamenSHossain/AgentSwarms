@@ -73,13 +73,20 @@ def test_synthetic_report_links_its_figures(runs):
     assert "](figures/a1_provenance.png)" in (runs["synthetic"].path / "report.md").read_text()
 
 
-def test_threading_row_does_not_claim_reply_edges(runs):
-    """The threaded chat has reply links; the graph never reads them, and the row must say so."""
+def test_threaded_chat_turns_reply_links_into_reply_edges(runs):
+    """The threaded chat's replies (each round's two replies to its first message) become 'reply' edges from the
+    parent's agent; A5 counts them for brokers, not for supply, and the report says so."""
     run = runs["chat"]
     assert json.loads((run.path / "profile.json").read_text())["capabilities"]["has_threading"] is True
-    assert "| has_threading | yes | reply links are recorded but not used; edges are still inferred from timing |" \
-        in (run.path / "report.md").read_text()
-    assert set(run.read("edges_merged")["kind"]) <= {"relay", "relay_xchannel", "exposure", "citation"}
+    e = run.read("edges_merged")
+    rep = e[e["kind"] == "reply"]
+    assert sorted(zip(rep["src"], rep["dst"], rep["src_event_id"])) == [
+        ("planner", "coder", "m10"), ("planner", "coder", "m20"), ("planner", "critic", "m10"), ("planner", "critic", "m20")]
+    text = (run.path / "report.md").read_text()
+    assert "0 explicit citations, and 4 replies; a reply is an interaction, not a knowledge transfer" in text
+    assert "Top brokers (betweenness on relay + citation + reply graph" in text
+    a5 = json.loads((run.path / "summary.json").read_text())["A5"]
+    assert a5["n_reply_edges"] == 4 and a5["n_exposure_edges"] == 4 and a5["exposure_sources"] == 1
 
 
 def test_untimed_transcript_reports_without_a_clock(runs):

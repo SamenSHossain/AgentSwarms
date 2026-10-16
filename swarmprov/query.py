@@ -1,4 +1,4 @@
-"""Ask a run about one answer, one fact or one post (``swarmprov trace``).
+"""Ask a run about one answer, one fact or one post (``swarmprov trace``), or one agent (``swarmprov agent``).
 
 Everything is read from the stage tables.  The first public copy is the post
 exposure found; the relay parent is the graph's inference (the latest earlier
@@ -16,16 +16,18 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from .analysis.agents import AGENT_COLS, match_agents
 from .claims import PRIVATE_KINDS, public, value_key
 from .exposure import match_key
-from .graph import CLOCK_RES_S
+from .graph import CLOCK_RES_S, KINDS
 from .rules import norm_value
 from .schema import RunDir, empty
 
-AGENT_COLS = {"merged": "agent_merged", "strict": "agent_strict"}
 MAPPING_NOTE = {"merged": "one agent per cohort date and task family; --mapping strict for one per author string",
                 "strict": "one agent per case-folded author string; --mapping merged joins a cohort's handles"}
 RELAY_KINDS = ("relay", "relay_xchannel")
+KIND_NOTE = {"relay_xchannel": "; cross-page hops: source unknown, attributed to the originator",
+             "reply": "; interactions, not knowledge transfers"}
 EXCERPT = 160
 
 
@@ -38,16 +40,6 @@ def excerpt(text, around: str | None = None, width: int = EXCERPT) -> str:
     i = t.lower().find(around.lower()) if around else -1
     start = max(0, i - width // 4) if i > 0 else 0
     return ("…" if start else "") + t[start:start + width] + ("…" if start + width < len(t) else "")
-
-
-def match_agents(run: RunDir, name: str, mapping: str = "merged") -> list[str]:
-    """Agent labels whose label or author string equals ``name`` ignoring case, else contains it."""
-    ag, col, q = run.read("agents"), AGENT_COLS[mapping], name.casefold()
-    lab, raw = ag[col].astype(str).str.casefold(), ag["author_raw"].astype(str).str.casefold()
-    for hit in (lab.eq(q) | raw.eq(q), lab.str.contains(q, regex=False) | raw.str.contains(q, regex=False)):
-        if hit.any():
-            return sorted(set(ag.loc[hit, col]))
-    return []
 
 
 def _is(s: pd.Series, v: str) -> pd.Series:
@@ -289,6 +281,32 @@ def list_facts(run: RunDir, mapping: str = "merged", family: str | None = None, 
                       for r in c.head(top).itertuples(index=False)]}
 
 
+def agent_view(run: RunDir, label: str, mapping: str = "merged") -> dict:
+    """One agent: its profile (``agent_profiles_*``, None for an author with no public post), its author strings,
+    its answers with their first public source, and the agents its edges link it to, by kind: ``learned_from``
+    (edges into it) and ``supplied`` (edges out of it)."""
+    prof, ag = run.read(f"agent_profiles_{mapping}"), run.read("agents")
+    p = prof[prof["label"] == label]
+    ex, edges = _table(run, f"exposures_{mapping}"), run.read(f"edges_{mapping}")
+    answers = [{"claim_id": r.claim_id, "family": r.family, "item": r.item,
+                "value": None if pd.isna(r.value_norm) else r.value_norm,
+                "matched_value": match_key(None if pd.isna(r.value_norm) else r.value_norm, r.consensus_value),
+                "D": int(r.D), "first_public_source": r.src_agent if r.D == 1 else None,
+                "head_start_s": (r.t_report - r.t_public).total_seconds() if r.D == 1 else None,
+                "t_report": r.t_report, "report_event_id": r.report_event_id}
+               for r in ex[ex["agent"] == label].sort_values(["t_report", "claim_id"]).itertuples(index=False)]
+
+    def by_kind(e: pd.DataFrame, other: str) -> dict:
+        return {k: [{"agent": a, "edges": int(n)} for a, n in sorted(g[other].value_counts().items(),
+                                                                       key=lambda x: (-x[1], x[0]))]
+                for k in KINDS if len(g := e[e["kind"] == k])}
+    return {"label": label, "author_strings": sorted(ag.loc[ag[AGENT_COLS[mapping]] == label, "author_raw"]),
+            "profile": {k: None if pd.isna(x) else x for k, x in p.iloc[0].items()} if len(p) else None,
+            "answers": answers,
+            "learned_from": by_kind(edges[edges["dst"] == label], "src"),
+            "supplied": by_kind(edges[edges["src"] == label], "dst")}
+
+
 # --- text and figure ---------------------------------------------------------------------------
 
 def _ts(t) -> str:
@@ -437,6 +455,46 @@ def text_event(v: dict) -> list[str]:
     return L
 
 
+def text_agent(v: dict, seq: bool = False, limit: int = 10) -> list[str]:
+    """``limit`` agents per edge kind (JSON keeps all)."""
+    p, a = v["profile"], v["author_strings"]
+    head = f"agent {v['label']}: {_n(len(a), 'author string')} ({', '.join(a[:5])}{', ...' if len(a) > 5 else ''})"
+    if p is None:
+        return [head + "; no public post (task messages and tool results are no agent's posts)"]
+    L = [head + (f"; cohort {p['cohort']}" if p["cohort"] else "") + (f"; family {p['family']}" if p["family"] else "")
+         + (f" (posts in {p['families']})" if p["families"] and p["families"] != p["family"] else ""),
+         f"  posts: {p['n_posts']:,}, first {_ts(p['first_seen'])}, last {_ts(p['last_seen'])}"]
+    k_n = f" ({p['exposed_k_of_n']})" if p["exposed_k_of_n"] else ""
+    L.append(f"  answers: {p['n_answers']}; no earlier public copy {p['n_no_prior_copy']}, exposed {p['n_exposed']}{k_n}, "
+             + ("at least 1 h before and head starts need a wall clock" if seq else
+                f"at least 1 h before {p['n_exposed_60m']}, median head start "
+                + ("-" if pd.isna(p["median_head_h"]) else f"{p['median_head_h']:.1f} h"))
+             + f"; self-prepared {p['n_self_prepared']}; wrong {p['n_wrong']}")
+    if p["answers_supplied"]:
+        L.append(f"  first public source for {_n(p['answers_supplied'], 'answer')} on {_n(p['items_first_sourced'], 'item')}"
+                 + (f" (origin of those answers: {p['origin']})" if p["origin"] else ""))
+    L.append(f"  same-page relays: {p['relay_in']} in, {p['relay_out']} out; task values posted first: "
+             f"{p['facts_originated']}, carried by {p['reach_of_originated']} other agents in all; "
+             f"betweenness {p['betweenness']:.4f}" + (f"; techniques: {p['techniques_used']}" if p["techniques_used"] else ""))
+    L.append("  exposure is a floor (only captured posts are searched): an answer with no earlier public copy is not "
+             "proof of computation")
+    L.append(f"answers ({len(v['answers'])}):")
+    for x in v["answers"]:
+        val = x["value"] if x["value"] is not None else f"(no value; matched on the consensus {x['matched_value']})"
+        L.append(f"  {x['family']} | {x['item']} = {val}: " + (
+            "no earlier public copy (D=0)" if not x["D"] else
+            f"public before the report (D=1); first public source {x['first_public_source']}, head start "
+            + (_gap(x["head_start_s"], seq) if seq else _dur(x["head_start_s"]))) + f"  [{x['claim_id']}]")
+    for key, what in (("learned_from", "learned from (edges into this agent)"),
+                      ("supplied", "supplied (edges out of this agent)")):
+        L.append(f"{what}:" + ("" if v[key] else " none"))
+        for k, rows in v[key].items():
+            more = len(rows) - limit
+            L.append(f"  {k} ({_n(sum(r['edges'] for r in rows), 'edge')}, {_n(len(rows), 'agent')}{KIND_NOTE.get(k, '')}): "
+                     + ", ".join(f"{r['agent']} {r['edges']}" for r in rows[:limit]) + (f", ... {more} more" if more > 0 else ""))
+    return L
+
+
 def text_list(res: dict, family: str | None) -> list[str]:
     what = f"family {family}" if family else "task values"
     L = [f"{res['n_facts']:,} facts ({what}), {res['n_repeated']:,} carried by more than one agent; top by carriers:"]
@@ -502,31 +560,46 @@ def to_json(obj):
     return obj
 
 
-def trace(run_path: str, agent=None, item=None, family=None, answer=None, fact=None, event=None,
-          mapping: str = "merged", json_path=None, png_path=None, limit: int | None = None) -> int:
-    """The ``trace`` command: an answer (agent or claim id), a fact, a post, or else the fact list."""
+def _open(run_path: str, mapping: str, need: tuple[str, ...]) -> tuple[RunDir | None, bool]:
+    """The run, once it has every table in ``need`` (else None, with what is missing printed), and whether it has a
+    sequence clock; prints the mapping (and clock) lines both commands open with."""
     run = RunDir(run_path) if Path(run_path).is_dir() else None
-    need = ("events", "agents", "claims", "tags", "mentions", f"exposures_{mapping}", f"edges_{mapping}", f"chains_{mapping}")
     missing = [n for n in need if run is None or not run.has(n)]
     if missing:
         print(f"{run_path}: not a finished run, it has no {', '.join(missing)} (run `swarmprov run`, or every stage "
               "up to `swarmprov graph`)")
-        return 1
+        return None, False
     print(f"mapping: {mapping} ({MAPPING_NOTE[mapping]})")
     seq = json.loads((run.path / "profile.json").read_text()).get("clock") == "sequence"
     if seq:
         print("clock: message order, no wall clock (a post's time is its position, 2000-01-01 + i s; gaps are in messages)")
+    return run, seq
+
+
+def _one_agent(cands: list[str], name: str) -> str | None:
+    if len(cands) != 1:
+        print(f"no agent matches {name!r}" if not cands else
+              f"{len(cands)} agents match {name!r}; pass one of:\n  " + "\n  ".join(cands[:50]))
+        return None
+    return cands[0]
+
+
+def trace(run_path: str, agent=None, item=None, family=None, answer=None, fact=None, event=None,
+          mapping: str = "merged", json_path=None, png_path=None, limit: int | None = None) -> int:
+    """The ``trace`` command: an answer (agent or claim id), a fact, a post, or else the fact list."""
+    run, seq = _open(run_path, mapping, ("events", "agents", "claims", "tags", "mentions", f"exposures_{mapping}",
+                                         f"edges_{mapping}", f"chains_{mapping}"))
+    if run is None:
+        return 1
     if agent is not None or answer is not None:
         ex = _table(run, f"exposures_{mapping}")
         if agent is not None:
             cands = match_agents(run, agent, mapping)
             if len(cands) > 1 and (item is not None or family is not None):   # the ones with a matching answer
                 cands = sorted(set(_answers(ex, cands, item, family)["agent"])) or cands
-            if len(cands) != 1:
-                print(f"no agent matches {agent!r}" if not cands else
-                      f"{len(cands)} agents match {agent!r}; pass one of:\n  " + "\n  ".join(cands[:50]))
+            agent = _one_agent(cands, agent)
+            if agent is None:
                 return 1
-            agent = cands[0]
         res = answer_lineage(run, claim_id=answer, agent=agent, item=item, family=family, mapping=mapping)[:limit]
         note = claim_note(run, answer, res, mapping) if answer is not None else None
         if note:
@@ -567,4 +640,20 @@ def trace(run_path: str, agent=None, item=None, family=None, answer=None, fact=N
             print("--png draws one fact: pass --fact with a value, or pick a single answer")
             return 1
         print(f"timeline: {timeline(facts[0], png_path, highlight, seq)}")
+    return 0
+
+
+def agent(run_path: str, name: str, mapping: str = "merged", json_path=None) -> int:
+    """The ``agent`` command: one agent's profile, answers and edges."""
+    run, seq = _open(run_path, mapping, ("events", "agents", f"exposures_{mapping}", f"edges_{mapping}",
+                                         f"agent_profiles_{mapping}"))
+    label = _one_agent(match_agents(run, name, mapping), name) if run is not None else None
+    if label is None:
+        return 1
+    v = agent_view(run, label, mapping)
+    print("\n".join(text_agent(v, seq)))
+    if json_path:
+        with open(json_path, "w") as fh:
+            json.dump(to_json({"mapping": mapping, "clock": "sequence" if seq else "wall", "mode": "agent", "result": v}),
+                      fh, indent=1, default=str)
     return 0

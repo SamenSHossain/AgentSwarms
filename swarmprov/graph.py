@@ -8,6 +8,9 @@ Edge kinds
                 is attributed to the originator (source unknown).
 * ``exposure``  the agent-round's first public source -> the answering agent.
 * ``citation``  explicit references: @Name, "Name's report", "per Mar16".
+* ``reply``     an explicit reply link (a post's ``parent_id`` is another agent's
+                post), built only when the source has threading.  An interaction,
+                not a knowledge transfer: A5 counts it for brokers, never for supply.
 
 ``event_id`` is the destination's post and ``src_event_id`` the source's (see
 schema.TABLES['edges']); ``value_norm`` is the fact's value_key for every kind.
@@ -21,11 +24,15 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 
+from .claims import PRIVATE_KINDS
 from .exposure import match_key
 from .identity import cohort_token
 
 # two 1 s clocks: a hop shorter than this cannot be ordered reliably
 CLOCK_RES_S = 2.0
+KINDS = ("relay", "relay_xchannel", "exposure", "citation", "reply")
+SHORT = {"relay": "n_relay", "relay_xchannel": "n_xchannel", "exposure": "n_exposure", "citation": "n_citation",
+         "reply": "n_reply"}
 
 
 def relay_edges(mentions: pd.DataFrame, agent_col: str,
@@ -113,11 +120,77 @@ def citation_edges(tags: pd.DataFrame, agents: pd.DataFrame, agent_col: str, coh
     return pd.DataFrame(rows)
 
 
-def to_networkx(edges: pd.DataFrame, kinds=("relay", "relay_xchannel", "citation")) -> nx.DiGraph:
+def reply_edges(events: pd.DataFrame, agents: pd.DataFrame, agent_col: str) -> tuple[pd.DataFrame, int]:
+    """The parent's agent -> the replier, for each post whose ``parent_id`` is another agent's post.  Self-replies
+    are dropped, and task messages and tool results neither reply nor are replied to (they are no agent's post).
+    Also returns how many replies name a parent that is not an agent's post in the run."""
+    ev = events[~events["source_kind"].isin(PRIVATE_KINDS)] if "source_kind" in events else events
+    label = agents.drop_duplicates("author_raw").set_index("author_raw")[agent_col]
+    ev = ev.assign(_agent=ev["author_raw"].map(label).fillna(ev["author_raw"]))
+    parent = ev.drop_duplicates("event_id").set_index("event_id")
+    r = ev[ev["parent_id"].notna()]
+    known = r["parent_id"].isin(parent.index)
+    r = r[known]
+    p = parent.loc[r["parent_id"]]
+    out = pd.DataFrame({"src": p["_agent"].values, "dst": r["_agent"].values,
+                        "family": r["family"].fillna("").values if "family" in r else "", "item": None,
+                        "value_norm": None, "kind": "reply",
+                        "dt_s": (r["ts"].values - p["ts"].values) / np.timedelta64(1, "s"),
+                        "event_id": r["event_id"].values, "src_event_id": r["parent_id"].values})
+    return out[out["src"] != out["dst"]].reset_index(drop=True), int((~known).sum())
+
+
+def edge_table(edges: pd.DataFrame, events: pd.DataFrame) -> pd.DataFrame:
+    """Per (src, dst): its edges by kind, the distinct facts they carried, the first and last destination post's
+    time, the median delay and the hops inside the clock resolution."""
+    ts = events.drop_duplicates("event_id").set_index("event_id")["ts"]
+    e = edges.assign(_ts=edges["event_id"].map(ts), _res=edges["within_clock_res"].fillna(False).astype(bool))
+    g = e.groupby(["src", "dst"])
+    out = pd.crosstab([e["src"], e["dst"]], e["kind"]).reindex(columns=KINDS, fill_value=0).rename(columns=SHORT)
+    facts = e[e["item"].notna()].drop_duplicates(["src", "dst", "family", "item", "value_norm"])
+    return out.assign(n_facts=facts.groupby(["src", "dst"]).size().reindex(out.index, fill_value=0),
+                      first_ts=g["_ts"].min(), last_ts=g["_ts"].max(), median_dt_s=g["dt_s"].median(),
+                      n_within_clock_res=g["_res"].sum())
+
+
+def scalar_frame(df: pd.DataFrame) -> pd.DataFrame:
+    """One scalar type per column, as GraphML needs: a count stays an integer, other numbers floats, times ISO
+    text; a missing number becomes -1 and a missing time or text ''."""
+    out = {}
+    for c in df.columns:
+        s = df[c]
+        if pd.api.types.is_bool_dtype(s):
+            out[c] = s.astype(bool).tolist()
+        elif pd.api.types.is_datetime64_any_dtype(s):
+            out[c] = [t.isoformat() if pd.notna(t) else "" for t in s]
+        elif pd.api.types.is_integer_dtype(s):
+            out[c] = [int(v) for v in s.fillna(-1)]
+        elif pd.api.types.is_numeric_dtype(s):
+            out[c] = [float(v) for v in s.fillna(-1.0)]
+        else:
+            out[c] = ["" if v is None or v is pd.NaT or (isinstance(v, float) and np.isnan(v)) else str(v) for v in s]
+    return pd.DataFrame(out, index=df.index)
+
+
+def to_networkx(edges: pd.DataFrame, kinds=KINDS, events: pd.DataFrame | None = None,
+                nodes: pd.DataFrame | None = None) -> nx.DiGraph:
+    """One edge per (src, dst) over ``kinds``.  ``weight`` counts its edges except ``relay_xchannel`` hops, whose
+    source is unknown (with ``events`` they are counted apart, as ``n_xchannel``); ``kinds`` lists the kinds.
+    ``events`` adds ``edge_table``'s attributes, ``nodes`` (indexed by agent label, e.g. ``agents.profile``) node
+    attributes, both through ``scalar_frame``; a node missing from ``nodes`` gets -1 and ''."""
     G = nx.DiGraph()
     e = edges[edges["kind"].isin(kinds)]
     for (s, d), g in e.groupby(["src", "dst"]):
-        G.add_edge(s, d, weight=len(g), kinds=",".join(sorted(set(g["kind"]))))
+        G.add_edge(s, d, weight=int((g["kind"] != "relay_xchannel").sum()), kinds=",".join(sorted(set(g["kind"]))))
+    if events is not None and len(e):
+        for (s, d), row in scalar_frame(edge_table(e, events)).to_dict("index").items():
+            G.edges[s, d].update(row)
+    if nodes is not None and len(G):
+        attrs = scalar_frame(nodes)
+        blank = {c: False if pd.api.types.is_bool_dtype(v) else -1 if pd.api.types.is_integer_dtype(v)
+                 else -1.0 if pd.api.types.is_float_dtype(v) else "" for c, v in attrs.items()}
+        known = attrs.to_dict("index")
+        nx.set_node_attributes(G, {n: known.get(n, blank) for n in G})
     return G
 
 

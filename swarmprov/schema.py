@@ -108,6 +108,8 @@ TABLES: dict[str, list[str]] = {
     # page (relay), the originator's first post (relay_xchannel) or the first public copy (exposure).
     # ``claim_id`` is set on exposure edges only.  ``within_clock_res``: the hop is inside the summed
     # 1 s + 1 s clock uncertainty, so its direction is not reliable.
+    # A ``reply`` edge (threaded sources only) runs from the parent post's agent (``src_event_id``) to the replier's
+    # post (``event_id``); it is an interaction, not a knowledge transfer.
     "edges": ["src", "dst", "family", "item", "value_norm", "kind", "dt_s", "event_id", "within_clock_res",
               "claim_id", "src_event_id"],
     # One row per fact (family, item, value_key): its first carrier and time, how many agents carried it,
@@ -167,12 +169,14 @@ class RunDir:
         return self.path / "figures" / name
 
     STAGE_OUTPUTS = ("agents", "claims", "tags", "mentions", "exposures_merged", "exposures_strict", "edges_merged",
-                     "edges_strict", "chains_merged", "chains_strict", "roster_events", "lifecycle", "reads", "roster",
-                     "directory", "channels", "activity", "probes", "eras", "summaries", "digest")
+                     "edges_strict", "chains_merged", "chains_strict", "agent_profiles_merged", "agent_profiles_strict",
+                     "roster_events", "lifecycle", "reads", "roster", "directory", "channels", "activity", "probes",
+                     "eras", "summaries", "digest")
 
     def clear(self) -> None:
         """Remove every table a previous run left behind, so a re-ingest cannot mix runs."""
         for name in self.STAGE_OUTPUTS:
             self.table_path(name).unlink(missing_ok=True)
-        for f in ("items.json", "agent_aliases.csv", "report.md", "summary.json", "provenance_merged.graphml"):
+        graphs = [f"provenance_{m}.{x}" for m in ("merged", "strict") for x in ("graphml", "json")]
+        for f in ("items.json", "agent_aliases.csv", "report.md", "summary.json", *graphs):
             (self.path / f).unlink(missing_ok=True)

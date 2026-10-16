@@ -9,10 +9,10 @@ from fractions import Fraction
 import numpy as np
 import pandas as pd
 
-from . import identity, lifecycle as lifecycle_mod, roster as roster_mod, village as village_mod
+from . import graph, identity, lifecycle as lifecycle_mod, roster as roster_mod, village as village_mod
 from .adapters.base import read_capabilities
 from .adapters.chat import no_author_warning
-from .analysis import causal, diffusion, errors, origins, provenance, structure
+from .analysis import agents as agents_mod, causal, diffusion, errors, origins, provenance, structure
 from .claims import agent_rounds, public
 from .schema import TABLES, RunDir
 
@@ -32,14 +32,15 @@ CONSEQUENCES = {
                         "no request-level rows"),
     "derived_text": ("posts are an LLM digest of what agents did, not their words: values and quotes are second-hand",
                      "posts are the agents' own text"),
-    "has_threading": ("reply links are recorded but not used; edges are still inferred from timing",
+    "has_threading": ("reply links become 'reply' edges: interactions, not knowledge transfers, so A5 counts them for "
+                      "brokers and the GraphML, never for supply or relays",
                       "no reply links: edges are inferred from timing"),
     "has_episodes": ("rounds are fields", "rounds are parsed from text"),
     "has_activity": ("a presence log says when each agent was running", "no presence log; activity is inferred from posts"),
 }
 
 SECTIONS = {"A1": "A1. Provenance split", "A2": "A2. Does availability cause copying?", "A3": "A3. Technique diffusion",
-            "A4": "A4. Error propagation", "A5": "A5. Structure", "A6": "A6. Reach"}
+            "A4": "A4. Error propagation", "A5": "A5. Structure", "agents": "Agents", "A6": "A6. Reach"}
 
 
 def md_table(df: pd.DataFrame, floatfmt: str = "{:.2f}", pct: tuple[str, ...] = (), index: bool = True) -> str:
@@ -482,15 +483,21 @@ def build(run: RunDir, mapping: str = "merged") -> str:
 
     # A5 / A6
     r6 = structure.reach(chains)
-    if len(edges):
-        r5 = structure.analyze(edges, chains, ex=ex if len(ex) else None, events=events)
+    agents = run.read("agents")
+    r5 = structure.analyze(edges, chains, ex=ex if len(ex) else None, events=events) if len(edges) else None
+    profiles = agents_mod.profile(agents, events, tags, ex, edges, chains, mapping, wall_clock=not seq,
+                                  btw=r5["betweenness"] if r5 else None)
+    threading = bool(caps.get("has_threading"))
+    if r5:
         figs["structure"] = structure.figure(r5, chains, run.figure("a5_structure.png"))
         summary["A5"] = {k: v for k, v in r5.items() if not isinstance(v, (pd.Series, pd.DataFrame))}
         L.append(f"## {SECTIONS['A5']}\n")
         L.append(f"Graph: {r5['n_nodes']:,} agents, {r5['n_edges']:,} weighted links "
                  f"({r5['n_relay_edges']:,} same-page relay hops, {r5['n_xchannel_edges']:,} cross-page hops attributed to the originator, "
                  f"{r5['n_exposure_edges']:,} first-source exposures, "
-                 f"{r5['n_citation_edges']:,} explicit citations). "
+                 f"{r5['n_citation_edges']:,} explicit citations"
+                 + (_replies(r5["n_reply_edges"], graph.reply_edges(events, agents, agent_col)[1]) if threading else "")
+                 + "). "
                  + (_hub_headline(r5) if r5.get("n_exposure_edges") else
                     "No answer had a first public source here, so there is no exposure concentration to report. ")
                  + _depth_sentence(r5, r6, edges))
@@ -498,6 +505,13 @@ def build(run: RunDir, mapping: str = "merged") -> str:
             L.append(f"![structure](figures/{run.figure('a5_structure.png').name})\n")
         top = r5["top_sources"].rename("answers").to_frame()
         if r5.get("n_exposure_edges"):
+            figs["supply"] = structure.supply_figure(edges, profiles.set_index("label"), r5,
+                                                     run.figure("a7_supply_network.png"))
+            L.append("Who supplied whom under one attribution rule, *first source*, which credits whoever first posted "
+                     "the value before the report: each line joins an agent with an exposed answer (a dot, coloured by "
+                     "task family) to that source (a grey disc sized by the answers it supplied). The rows below give "
+                     "the other rules, and nothing records who read whom.\n")
+            L.append(f"![supply network](figures/{run.figure('a7_supply_network.png').name})\n")
             L += _attribution_block(r5, summary)
             lines, first = _origins_block({m: e for m, e in ((mapping, ex), (alt, ex_alt)) if len(e) and e["D"].any()},
                                          mapping, summary)
@@ -506,21 +520,22 @@ def build(run: RunDir, mapping: str = "merged") -> str:
         L.append("Top first-sources (answers they were first public source for"
                  + (", on how many items, and the origin of those answers" if "origin" in top else "") + "):\n")
         L.append(md_table(top))
-        L.append("\nTop brokers (betweenness on relay + citation graph"
+        L.append(f"\nTop brokers (betweenness on relay + citation{' + reply' if r5['n_reply_edges'] else ''} graph"
                  + (f", estimated from {r5['betweenness_sampled_sources']} sampled sources" if r5["betweenness_sampled_sources"] else "")
                  + "):\n")
         L.append(md_table(r5["top_brokers"].rename("betweenness").to_frame(), floatfmt="{:.3f}"))
-        if r6:
-            figs["reach"] = structure.reach_figure(chains, run.figure("a6_reach.png"))
-            summary["A6"] = r6
-            L.append(f"## {SECTIONS['A6']}\n")
-            L.append(md_table(pd.DataFrame(r6).T, floatfmt="{:.2f}"))
-            L.append(f"\n![reach](figures/{run.figure('a6_reach.png').name})\n")
-        else:
-            L += _skipped("A6", "needs facts (an item–value pair or a URL) to follow; none was posted")
     else:
-        L += _skipped("A5", _a5_gap(mentions, agent_col, ex, untimed, notes.get("clock") == "none"))
-        L += _skipped("A6", "needs the provenance graph (see A5)")
+        L += _skipped("A5", _a5_gap(mentions, agent_col, ex, untimed, notes.get("clock") == "none", threading))
+    L += _agents_block(profiles, mapping, summary)
+    if r5 and r6:
+        figs["reach"] = structure.reach_figure(chains, run.figure("a6_reach.png"))
+        summary["A6"] = r6
+        L.append(f"## {SECTIONS['A6']}\n")
+        L.append(md_table(pd.DataFrame(r6).T, floatfmt="{:.2f}"))
+        L.append(f"\n![reach](figures/{run.figure('a6_reach.png').name})\n")
+    else:
+        L += _skipped("A6", "needs facts (an item–value pair or a URL) to follow; none was posted" if r5 else
+                      "needs the provenance graph (see A5)")
 
     # Validation
     L.append("## Validation\n")
@@ -657,9 +672,11 @@ def _framework_a1(fw: dict, n_ind: int, n: int) -> str:
     return " ".join(out)
 
 
-def _a5_gap(mentions: pd.DataFrame, agent_col: str, ex: pd.DataFrame, untimed: int, joined: bool) -> str:
+def _a5_gap(mentions: pd.DataFrame, agent_col: str, ex: pd.DataFrame, untimed: int, joined: bool,
+            threading: bool = False) -> str:
     """Why the provenance graph has no edge, from what each edge kind needs: relay edges a fact two agents carried
-    in timed posts, exposure edges an exposed answer, citation edges a post naming another agent."""
+    in timed posts, exposure edges an exposed answer, citation edges a post naming another agent, reply edges (on a
+    threaded source) a reply to another agent's post."""
     n_rep = int((mentions.groupby(["family", "item", "value_key"])[agent_col].nunique() > 1).sum()) if len(mentions) else 0
     facts = ("no fact was carried by two agents" if not n_rep else
              f"{n_rep:,} fact{'s were' if n_rep > 1 else ' was'} carried by two or more agents, but not in posts with a "
@@ -668,7 +685,69 @@ def _a5_gap(mentions: pd.DataFrame, agent_col: str, ex: pd.DataFrame, untimed: i
     answers = ("no answer was exposed" if len(ex) else
                f"none of the {untimed:,} agent-rounds has a timestamp to be exposed against" if untimed else
                "there are no agent-rounds to expose")
-    return f"needs provenance edges; {facts}, {answers} and no post cites another agent"
+    return (f"needs provenance edges; {facts}, {answers} and no post cites another agent"
+            + (" or replies to another agent's post" if threading else ""))
+
+
+def _replies(n: int, unresolved: int) -> str:
+    """The A5 graph sentence's reply clause (threaded sources)."""
+    return (f", and {n:,} repl{'y' if n == 1 else 'ies'}; a reply is an interaction, not a knowledge transfer, so "
+            "replies count toward the brokers below but never toward supply or relays"
+            + (f" ({unresolved:,} more repl{'y names' if unresolved == 1 else 'ies name'} a parent that is not an "
+               f"agent's post here and {'is' if unresolved == 1 else 'are'} left out)" if unresolved else ""))
+
+
+def _agents_block(p: pd.DataFrame, mapping: str, summary: dict) -> list[str]:
+    """Per-agent counts from ``agents.profile``: who answered with no earlier public copy, and whether the
+    suppliers were themselves exposed (also ``summary['agents']``)."""
+    ans = p[p["n_answers"] > 0]
+    if not len(ans):
+        return _skipped("agents", "needs agent-rounds (see A1)")
+    k3 = agents_mod.MIN_ROUNDS
+    free, src = ans[ans["n_exposed"] == 0], p[p["answers_supplied"] > 0]
+    s = summary["agents"] = {
+        "mapping": mapping, "n_agents": len(p), "n_answering": len(ans), "n_answers": int(ans["n_answers"].sum()),
+        "n_all_no_prior_copy": len(free), f"n_all_no_prior_copy_min{k3}": int((free["n_answers"] >= k3).sum()),
+        "n_all_exposed": int((ans["n_no_prior_copy"] == 0).sum()), "n_sources": len(src),
+        "n_sources_answering": int((src["n_answers"] > 0).sum()),
+        "n_sources_with_no_prior_copy": int((src["n_no_prior_copy"] > 0).sum())}
+    first = (p[p["n_no_prior_copy"] > 0].sort_values(["n_no_prior_copy", "n_answers", "label"],
+                                                     ascending=[False, False, True]).head(10))
+    sup = src.sort_values(["answers_supplied", "label"], ascending=[False, True]).head(10)
+    s["top_no_prior_copy"] = [{k: _cell(v) for k, v in r.items()} for r in first[
+        ["label", "n_author_strings", "n_answers", "n_no_prior_copy", "n_exposed", "n_self_prepared",
+         "answers_supplied"]].to_dict("records")]
+    s["top_suppliers"] = [{k: _cell(v) for k, v in r.items()} for r in sup[
+        ["label", "n_author_strings", "answers_supplied", "items_first_sourced", "n_answers", "n_no_prior_copy",
+         "n_exposed"]].to_dict("records")]
+    kn, own = f"exposed (k/n, from {k3} answers)", f"own exposed (k/n, from {k3} answers)"
+    L = [f"## {SECTIONS['agents']}\n",
+         f"**{len(ans):,} of the {len(p):,} agents with a post gave answers** ({s['n_answers']:,} agent-rounds; median "
+         f"{ans['n_answers'].median():g} per agent, at most {ans['n_answers'].max()}). For {len(free):,} of them no answer "
+         f"had an earlier public copy ({s[f'n_all_no_prior_copy_min{k3}']:,} with {k3} or more answers), and for "
+         f"{s['n_all_exposed']:,} every answer had one. {len(src):,} agent{'s were' if len(src) != 1 else ' was'} the first "
+         f"public source for someone's answer: {s['n_sources_answering']:,} of them gave answers of their own, and "
+         f"{s['n_sources_with_no_prior_copy']:,} had at least one with no earlier public copy. Exposure is a floor (only "
+         "captured posts are searched), so an answer with no earlier public copy is not proof of computation and its "
+         "count is a ceiling on independent answers. One or two answers say little about an agent, so the tables give "
+         f"an agent's exposed answers as k/n only from {k3} answers on. *Author strings* = how many author strings the "
+         f"{mapping} label joins (`agent_aliases.csv`). "
+         f"`agent_profiles_{mapping}.parquet` holds every agent's profile, and `swarmprov agent RUN NAME` prints one.\n",
+         "Agents with the most answers that had no earlier public copy:\n",
+         md_table(first.rename(columns={"label": "agent", "n_author_strings": "author strings", "n_answers": "answers",
+                                        "n_no_prior_copy": "no earlier public copy", "exposed_k_of_n": kn,
+                                        "n_self_prepared": "self-prepared", "answers_supplied": "answers supplied"})
+                  [["agent", "author strings", "answers", "no earlier public copy", kn, "self-prepared",
+                    "answers supplied"]], index=False)]
+    if len(sup):
+        L += ["\nTop suppliers (first source) and their own answers:\n",
+              md_table(sup.rename(columns={"label": "agent", "n_author_strings": "author strings",
+                                           "answers_supplied": "answers supplied", "items_first_sourced": "items",
+                                           "n_answers": "own answers", "n_no_prior_copy": "own: no earlier public copy",
+                                           "exposed_k_of_n": own})
+                       [["agent", "author strings", "answers supplied", "items", "own answers",
+                         "own: no earlier public copy", own]], index=False)]
+    return L
 
 
 def _funnel_counts(events: pd.DataFrame, tags: pd.DataFrame, claims: pd.DataFrame, rounds: pd.DataFrame,

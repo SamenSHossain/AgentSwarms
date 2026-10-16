@@ -154,12 +154,13 @@ For each (agent, episode, item):
 - Rule: use **only** the wall clock. Clocks that agents report are kept as features but are never used for ordering.
 
 ### Step 7: Provenance graph (2h)
-- Nodes are agents and carry attributes such as cohort, number of active episodes, and first-seen time.
+- Nodes are agents and carry attributes such as cohort, number of active episodes, and first-seen time. Implemented as the agent profile (`analysis/agents.py`, `agent_profiles_{merged,strict}.parquet`): cohort, family, posts with first- and last-seen time, answers and how many had no earlier public copy, answers supplied, relays in and out, facts originated, betweenness.
 - Edges come from three sources, each tagged with `kind`:
   1. `citation`: an explicit mention or reference.
   2. `read`: observed exposure, when the source has reads.
   3. `inferred`: the consumer states the same (item, value) within window W after the source posted it, makes no independent-work claim, and the source is the **latest earlier** poster of that value. Report how results change with W.
-- Store the graph as both NetworkX and a Parquet edge list, and export GraphML for Gephi.
+  4. `reply` (added): an explicit reply link on a threaded source. It is an interaction, not a knowledge transfer, so it counts for brokers (betweenness) and never for supply.
+- Store the graph as both NetworkX and a Parquet edge list, and export GraphML for Gephi. Implemented for both mappings as `provenance_{merged,strict}.graphml` and node-link `.json`, with per-kind edge counts and first and last post times on every edge.
 
 ### Step 8: Analyses (4h)
 Each analysis is a function `analysis(tables, profile) -> (DataFrame, Figure)` that does nothing when the capabilities it needs are missing.
