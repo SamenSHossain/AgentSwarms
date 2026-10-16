@@ -99,6 +99,8 @@
   "A1": {
     "n_answers": 1108,
     "n_independent": 83,
+    "n_self_originated": 6,
+    "n_independent_at_most": 89,
     "share_exposed": 0.9250902527075813,
     "share_exposed_10m": 0.907942238267148,
     "share_exposed_60m": 0.8321299638989169,
@@ -133,6 +135,7 @@
       "min_clusters": 5
     },
     "n_independent_visible": 104,
+    "n_independent_at_most_visible": 110,
     "n_src_deleted_before_report": 171,
     "n_only_deleted_copies": 21,
     "threshold_curve": {
@@ -355,7 +358,7 @@
       "p": 0.3128479808354039,
       "ci_lo": -0.19546087968454443,
       "ci_hi": 0.06279099138471747,
-      "note": null
+      "note": "weakly identified: only 17 agents switch (< 20)"
     },
     {
       "outcome": "y_instant",
@@ -409,7 +412,7 @@
       "p": 0.8007810134182798,
       "ci_lo": -0.0065935243205079005,
       "ci_hi": 0.008526966357705827,
-      "note": null
+      "note": "weakly identified: only 10 agents switch (< 20)"
     },
     {
       "outcome": "y_consensus",
@@ -445,7 +448,7 @@
       "p": 0.7934186708477071,
       "ci_lo": -0.16137038264096454,
       "ci_hi": 0.21090144742636002,
-      "note": null
+      "note": "weakly identified: only 15 agents switch (< 20)"
     },
     {
       "outcome": "y_winner",
@@ -974,6 +977,7 @@
       "median_hours_to_adopt_lo": null,
       "median_hours_to_adopt_hi": null,
       "median_hours_among_adopters": 0.7844444444444445,
+      "at_risk_basis": "families",
       "contagion": {
         "n_carrying_pages": 16,
         "n_posts_page_name_only": 0,
@@ -1002,6 +1006,7 @@
       "median_hours_to_adopt_lo": 4.796944444444445,
       "median_hours_to_adopt_hi": 8.450555555555555,
       "median_hours_among_adopters": 4.196111111111111,
+      "at_risk_basis": "families",
       "contagion": {
         "n_carrying_pages": 34,
         "n_posts_page_name_only": 0,
@@ -1030,6 +1035,7 @@
       "median_hours_to_adopt_lo": null,
       "median_hours_to_adopt_hi": null,
       "median_hours_among_adopters": 80.57305555555556,
+      "at_risk_basis": "families",
       "contagion": {
         "n_carrying_pages": 80,
         "n_posts_page_name_only": 0,
@@ -1058,6 +1064,7 @@
       "median_hours_to_adopt_lo": null,
       "median_hours_to_adopt_hi": null,
       "median_hours_among_adopters": 451.09055555555557,
+      "at_risk_basis": "families",
       "contagion": {
         "n_carrying_pages": 35,
         "n_posts_page_name_only": 67,
@@ -1077,6 +1084,7 @@
       "median_hours_to_adopt_lo": null,
       "median_hours_to_adopt_hi": null,
       "median_hours_among_adopters": 12.1875,
+      "at_risk_basis": "families",
       "contagion": {
         "n_carrying_pages": 27,
         "n_posts_page_name_only": 0,
@@ -1105,6 +1113,7 @@
       "median_hours_to_adopt_lo": null,
       "median_hours_to_adopt_hi": null,
       "median_hours_among_adopters": 12.698611111111111,
+      "at_risk_basis": "families",
       "contagion": {
         "n_carrying_pages": 109,
         "n_posts_page_name_only": 0,
@@ -1125,6 +1134,12 @@
   "A4": {
     "n_value_slots_disputed": 13,
     "n_sequence_slots_disputed": 2,
+    "status_counts": {
+      "held": 3,
+      "overturned": 9,
+      "contested": 3,
+      "contested (small n)": 1
+    },
     "rule": {
       "bin_hours": 3.0,
       "tail_share": 0.3333333333333333,
@@ -1741,6 +1756,53 @@
         }
       },
       {
+        "slot": "ihme-cvd-deaths | Poland",
+        "kind": "value",
+        "variants (agents)": "8016 (4), 8090.38 (5)",
+        "agents carrying both": 0,
+        "first variant": "8090.38",
+        "winner": "8090.38",
+        "status": "held",
+        "late carriers (winner/total)": "3/3",
+        "winner first seen": "2026-06-18T21:51:17+00:00",
+        "winner majority from": "2026-06-21T06:51:17+00:00",
+        "hours to overtake": null,
+        "reference (analyst input)": null,
+        "outcome": null,
+        "independent / after-public rounds": "8016: 0 / 2; 8090.38: 0 / 0",
+        "consensus \u2260 winner": "no",
+        "precision variants": "no",
+        "featured": false,
+        "tail counts": {
+          "8090.38": 3
+        },
+        "tie": false,
+        "first seen tie": false,
+        "corrected": false,
+        "consensus": "8090.38",
+        "precision_variants": false,
+        "variant_provenance": {
+          "by_variant": {
+            "8090.38": {
+              "answer_rounds": 0,
+              "derived_independently": 0,
+              "independent_dissent": 0,
+              "adopted_after_public": 0,
+              "median_head_start_h": null
+            },
+            "8016": {
+              "answer_rounds": 2,
+              "derived_independently": 0,
+              "independent_dissent": 0,
+              "adopted_after_public": 2,
+              "median_head_start_h": 7.665277777777778
+            }
+          },
+          "n_inherited": 39,
+          "n_other_value": 0
+        }
+      },
+      {
         "slot": "datausa-construction-workforce | R4",
         "kind": "sequence",
         "variants (agents)": "Florida (45), New Mexico (9)",
@@ -1786,61 +1848,61 @@
         "corrected": true
       }
     ],
-    "references_unknown": [],
-    "references_outside_table": []
+    "references_unknown": []
   },
   "A5": {
     "n_nodes": 1434,
     "n_edges": 2439,
-    "n_exposure_edges": 1025,
+    "n_exposure_edges": 1019,
     "n_relay_edges": 9262,
     "n_xchannel_edges": 11809,
     "n_citation_edges": 227,
     "n_reply_edges": 0,
-    "exposure_sources": 49,
-    "gini_exposure_outdegree": 0.691806869089099,
-    "top10_share_exposure": 0.7336585365853658,
+    "exposure_sources": 46,
+    "gini_exposure_outdegree": 0.6778811281307334,
+    "top10_share_exposure": 0.7360157016683022,
     "top10_share_exposure_loo": [
-      0.7153284671532847,
-      0.7565392354124748
+      0.7177334732423925,
+      0.7591093117408907
     ],
     "gini_exposure_outdegree_loo": [
-      0.6749189696349369,
-      0.7039581961816985
+      0.6596635770683145,
+      0.6858493752110774
     ],
     "gini_relay_outdegree": 0.6636840406130874,
     "betweenness_sampled_sources": null,
     "mean_chain_depth": 2.0314465408805034,
     "mean_agents_per_fact": 9.371069182389936,
-    "gini_item_exposures": 0.5568972411035585,
+    "n_self_originated": 6,
+    "gini_item_exposures": 0.5589536511205135,
     "items_exposed": 61,
-    "items_one_source": 47,
+    "items_one_source": 52,
     "attribution": [
       {
         "rule": "first source",
         "answers": "all exposed",
-        "n": 1025,
-        "sources": 49,
-        "top10_share": 0.7336585365853658,
-        "gini": 0.691806869089099,
+        "n": 1019,
+        "sources": 46,
+        "top10_share": 0.7360157016683022,
+        "gini": 0.6778811281307334,
         "unmatched": 0,
-        "top10_share_loo_lo": 0.7153284671532847,
-        "top10_share_loo_hi": 0.7565392354124748,
-        "gini_loo_lo": 0.6749189696349369,
-        "gini_loo_hi": 0.7039581961816985
+        "top10_share_loo_lo": 0.7177334732423925,
+        "top10_share_loo_hi": 0.7591093117408907,
+        "gini_loo_lo": 0.6596635770683145,
+        "gini_loo_hi": 0.6858493752110774
       },
       {
         "rule": "latest source",
         "answers": "all exposed",
-        "n": 1025,
-        "sources": 327,
-        "top10_share": 0.2,
-        "gini": 0.4733348250913702,
+        "n": 1019,
+        "sources": 325,
+        "top10_share": 0.20019627085377822,
+        "gini": 0.47344153393221106,
         "unmatched": 0,
-        "top10_share_loo_lo": 0.17006109979633402,
-        "top10_share_loo_hi": 0.21074380165289255,
-        "gini_loo_lo": 0.4515343460577863,
-        "gini_loo_hi": 0.4776647403229682
+        "top10_share_loo_lo": 0.17093142272262027,
+        "top10_share_loo_hi": 0.21101871101871103,
+        "gini_loo_lo": 0.4520714904338241,
+        "gini_loo_hi": 0.47778062285952055
       },
       {
         "rule": "same-page relay parent",
@@ -1849,7 +1911,7 @@
         "sources": 140,
         "top10_share": 0.20642201834862386,
         "gini": 0.2718872870249017,
-        "unmatched": 807,
+        "unmatched": 801,
         "top10_share_loo_lo": 0.19339622641509435,
         "top10_share_loo_hi": 0.21428571428571427,
         "gini_loo_lo": 0.2590466313567169,
@@ -1858,28 +1920,28 @@
       {
         "rule": "first source",
         "answers": "instant only",
-        "n": 460,
+        "n": 458,
         "sources": 32,
-        "top10_share": 0.7956521739130434,
-        "gini": 0.6078804347826087,
+        "top10_share": 0.7969432314410481,
+        "gini": 0.6105349344978166,
         "unmatched": 0,
-        "top10_share_loo_lo": 0.7740384615384616,
-        "top10_share_loo_hi": 0.8224719101123595,
-        "gini_loo_lo": 0.5827359617682198,
-        "gini_loo_hi": 0.6267715419501134
+        "top10_share_loo_lo": 0.7753623188405797,
+        "top10_share_loo_hi": 0.8239277652370203,
+        "gini_loo_lo": 0.5855963990997749,
+        "gini_loo_hi": 0.6283744131455399
       },
       {
         "rule": "latest source",
         "answers": "instant only",
-        "n": 460,
+        "n": 458,
         "sources": 210,
-        "top10_share": 0.17391304347826086,
-        "gini": 0.36869565217391304,
+        "top10_share": 0.17467248908296942,
+        "gini": 0.3686837180286962,
         "unmatched": 0,
-        "top10_share_loo_lo": 0.16743119266055045,
-        "top10_share_loo_hi": 0.18518518518518517,
-        "gini_loo_lo": 0.3543384643577057,
-        "gini_loo_hi": 0.3747927031509121
+        "top10_share_loo_lo": 0.16820276497695852,
+        "top10_share_loo_hi": 0.18604651162790697,
+        "gini_loo_lo": 0.35413789929117184,
+        "gini_loo_hi": 0.3746615758417216
       },
       {
         "rule": "same-page relay parent",
@@ -1888,7 +1950,7 @@
         "sources": 89,
         "top10_share": 0.2540983606557377,
         "gini": 0.219745809541352,
-        "unmatched": 338,
+        "unmatched": 336,
         "top10_share_loo_lo": 0.2413793103448276,
         "top10_share_loo_hi": 0.26785714285714285,
         "gini_loo_lo": 0.19159240604416894,
@@ -1900,51 +1962,59 @@
         "merged": {
           "first source": {
             "computed": 214,
-            "no answer round observed": 644,
-            "dissent": 70,
-            "relayed": 97
+            "no answer round observed": 643,
+            "dissent": 68,
+            "relayed": 0,
+            "posted before its own source": 94
           },
           "latest source": {
             "computed": 16,
-            "no answer round observed": 338,
-            "dissent": 29,
-            "relayed": 642
+            "no answer round observed": 336,
+            "dissent": 27,
+            "relayed": 639,
+            "posted before its own source": 1
           }
         },
         "strict": {
           "first source": {
             "computed": 181,
-            "no answer round observed": 727,
-            "dissent": 74,
-            "relayed": 99
+            "no answer round observed": 725,
+            "dissent": 72,
+            "relayed": 0,
+            "posted before its own source": 97
           },
           "latest source": {
             "computed": 11,
-            "no answer round observed": 402,
-            "dissent": 25,
-            "relayed": 643
+            "no answer round observed": 399,
+            "dissent": 24,
+            "relayed": 640,
+            "posted before its own source": 1
           }
         }
+      },
+      "self_originated": {
+        "merged": 6,
+        "strict": 6
       },
       "mapping": "merged",
       "roots": {
         "first source": {
           "computed": 214,
-          "no answer round observed": 644,
-          "dissent": 70,
-          "posted before its own source": 97,
+          "no answer round observed": 643,
+          "dissent": 68,
+          "posted before its own source": 94,
           "chain cut (its latest source posted after it)": 0
         },
         "latest source": {
           "computed": 45,
-          "no answer round observed": 616,
-          "dissent": 76,
+          "no answer round observed": 614,
+          "dissent": 74,
           "posted before its own source": 1,
-          "chain cut (its latest source posted after it)": 287
+          "chain cut (its latest source posted after it)": 285
         }
       },
       "max depth": {
-        "first source": 2,
+        "first source": 1,
         "latest source": 16
       },
       "no answer round observed, top sources": [
@@ -2019,8 +2089,8 @@
     "n_all_no_prior_copy": 38,
     "n_all_no_prior_copy_min3": 1,
     "n_all_exposed": 542,
-    "n_sources": 49,
-    "n_sources_answering": 34,
+    "n_sources": 46,
+    "n_sources_answering": 31,
     "n_sources_with_no_prior_copy": 19,
     "top_no_prior_copy": [
       {
@@ -2172,8 +2242,8 @@
       {
         "label": "Apr27|datausa-grocery-workforce",
         "n_author_strings": 1,
-        "answers_supplied": 42,
-        "items_first_sourced": 3,
+        "answers_supplied": 41,
+        "items_first_sourced": 2,
         "n_answers": 2,
         "n_no_prior_copy": 0,
         "n_exposed": 2
@@ -2199,8 +2269,8 @@
       {
         "label": "Sep21|datausa-grocery-workforce",
         "n_author_strings": 3,
-        "answers_supplied": 33,
-        "items_first_sourced": 2,
+        "answers_supplied": 32,
+        "items_first_sourced": 1,
         "n_answers": 4,
         "n_no_prior_copy": 1,
         "n_exposed": 3
@@ -2297,21 +2367,8 @@
   },
   "integrity": {
     "n_checks": 19,
-    "n_pass": 17,
-    "failing": [
-      {
-        "check": "self_prepared_before_public",
-        "table": "exposures_merged",
-        "n_violations": 6,
-        "severity": "warning"
-      },
-      {
-        "check": "self_prepared_before_public",
-        "table": "exposures_strict",
-        "n_violations": 6,
-        "severity": "warning"
-      }
-    ]
+    "n_pass": 19,
+    "failing": []
   },
   "validation": {
     "validation_dev": {
@@ -2424,11 +2481,11 @@
     }
   },
   "headline": [
-    "**A1. Provenance split**: 93% (95% CI 88\u201396%) of 1,108 answers by 617 agents were already public before the agent reported them (another agent had posted the same item and value), 83% (75\u201388%) at least an hour before, with a median head start of 11.6 h (9.0\u201316.5 h); at most 83 were independent lookups (104 under `D_visible`, which counts a copy deleted before the report as never public). These are floors: only the posts this run captured are searched, so a copy anywhere else is invisible.",
-    "**A2. Does availability cause copying?** Its effect is not identified (3\u201337 agents switch exposure status): no estimate of `y_instant`, `y_instant|known` or `y_consensus` under `D_cons` or `D_cons_w60m` from two-way fixed effects (`Y ~ D | agent + item`, SEs clustered by agent) rests on enough switching agents with a 95% CI that excludes 0.",
+    "**A1. Provenance split**: 93% (95% CI 88\u201396%) of 1,108 answers by 617 agents were already public before the agent reported them (another agent had posted the same item and value), 83% (75\u201388%) at least an hour before, with a median head start of 11.6 h (9.0\u201316.5 h); at most 89 were independent lookups (83 with nothing public before the report; 6 more were first posted by the agent itself before any other copy; at most 110 under `D_visible`, which counts a copy deleted before the report as never public). These are floors: only the posts this run captured are searched, so a copy anywhere else is invisible.",
+    "**A2. Does availability cause copying?** Not identified for most rows (3\u201317 agents switch exposure status); `y_instant` under `D_cons_w60m`: no effect detected (37 agents switch, 95% CI -0.34 to +0.11). From two-way fixed effects (`Y ~ D | agent + item`, SEs clustered by agent), a row is identified with at least 20 switching agents and a 95% CI that excludes 0.",
     "**A3. Technique diffusion**: adoption share = the share of the agents at risk (active in its task families after its first post) that went on to use it: `live-tooltip-value` 47% (35 of 74), `blob-hostname-bypass` 23% (17 of 73), `heartbeat-beacon` 9% (96 of 1,113), `clock-wait-fastforward` 8% (135 of 1,592), `rng-seed-crack` 3% (42 of 1,600); lower for the rest. Consistent with contagion (adoptions landed on a page that already carried the technique more often than the adopters' own posts did, after Holm's correction; posting on a page is not reading it): `rng-seed-crack`, `clock-wait-fastforward`.",
     "**A4. Error propagation**: winner = the most common variant among the last third of a slot's carriers; overturned = a later winner that kept the majority of new carriers. datausa-grocery-workforce | G5 (cracked-seed forecast vs observed): `Maryland (RNG forecast)` \u2192 `Montana (observed)`, overturned as soon as it appeared; oecd-equity | Poland: `16.4` \u2192 `16.38`, overturned as soon as it appeared (against the analyst's reference value: precision variant: reference prevailed); oecd-equity | Hungary: `9.9` first, `9.91` leads the late carriers 16 to 13 but never kept the majority of new carriers: contested (against the analyst's reference value: precision variant: unresolved); oecd-equity | Slovak Republic: `14.6` \u2192 `14.59`, overturned as soon as it appeared (against the analyst's reference value: precision variant: reference prevailed).",
-    "**A5. Structure**: the top 10 sources supplied 20\u201373% of 1,025 exposed answers, depending on who is credited (nothing records who read whom, so each rule credits one source per answer): 73% credited to the first agent to post the value (out-degree Gini 0.69; leaving out any one item moves it between 72% and 76%), 20% to the latest earlier carrier, 21% of the 218 with a same-page relay parent.",
+    "**A5. Structure**: the top 10 sources supplied 20\u201374% of 1,019 exposed answers (6 more, first posted by the answering agent itself, are credited to nobody), depending on who is credited (nothing records who read whom, so each rule credits one source per answer): 74% credited to the first agent to post the value (out-degree Gini 0.68; leaving out any one item moves it between 72% and 76%), 20% to the latest earlier carrier, 21% of the 218 with a same-page relay parent.",
     "**A6. Reach**: 159 of 365 task values were repeated by other agents, travelling 2.0 hops on average and at most 10; 5,373 of 23,560 URLs were repeated by other agents, travelling 1.7 hops on average and at most 18 (a hop links a carrier to an inferred source: plausible paths, not proven ones)."
   ]
 }

@@ -5,7 +5,7 @@ Source: `data/synth/transcript.jsonl` (adapter `chat`), 300 posts from 60 author
 ## Key findings
 
 - **A1. Provenance split**: 81% (95% CI 78–83%) of 300 answers by 60 agents were already public before the agent reported them (another agent had posted the same item and value), 76% (72–79%) at least an hour before, with a median head start of 9.6 h (8.3–10.8 h); at most 58 were independent lookups. These are floors: only the posts this run captured are searched, so a copy anywhere else is invisible.
-- **A2. Does availability cause copying?** Identified, from two-way fixed effects (`Y ~ D | agent + item`, SEs clustered by agent), where enough agents switch exposure status and the 95% CI excludes 0: `y_instant` under `D_cons` +0.70 (95% CI +0.49 to +0.90, 24 agents switch; also under `D_cons_w60m`); `y_instant|known` under `D_cons` +0.70 (95% CI +0.49 to +0.90, 24 agents switch; also under `D_cons_w60m`). Not identified for `y_consensus` (24–29 agents switch).
+- **A2. Does availability cause copying?** Identified, from two-way fixed effects (`Y ~ D | agent + item`, SEs clustered by agent), where enough agents switch exposure status and the 95% CI excludes 0: `y_instant` under `D_cons` +0.70 (95% CI +0.49 to +0.90, 24 agents switch; also under `D_cons_w60m`); `y_instant|known` under `D_cons` +0.70 (95% CI +0.49 to +0.90, 24 agents switch; also under `D_cons_w60m`). `y_consensus` under `D_cons`: no effect detected (24 agents switch, 95% CI -0.08 to +0.15); `y_consensus` under `D_cons_w60m`: no effect detected (29 agents switch, 95% CI -0.04 to +0.14).
 - **A3. Technique diffusion**: skipped: needs configured techniques (config `techniques`: a name and a regex each; `swarmprov suggest RUN` proposes URL ones from the posts, and `auto_techniques` mines them at extract).
 - **A4. Error propagation**: winner = the most common variant among the last third of a slot's carriers; overturned = a later winner that kept the majority of new carriers. beta-task | Belgium: `94.88` first, `92.14` leads the late carriers 2 to 1 but never kept the majority of new carriers: contested (against the analyst's reference value: unresolved (truth first)); alpha-task | Hawaii: `94.53` first, all 3 late carriers carry `93.29`, fewer than 5: contested (small n) (against the analyst's reference value: unresolved (truth first)); beta-task | Norway: `76.78` first, all 3 late carriers carry `76.08`, fewer than 5: contested (small n) (against the analyst's reference value: unresolved (error first)).
 - **A5. Structure**: the top 10 sources supplied 21–70% of 242 exposed answers, depending on who is credited (nothing records who read whom, so each rule credits one source per answer): 70% credited to the first agent to post the value (out-degree Gini 0.42; leaving out any one item moves it between 69% and 72%), 21% to the latest earlier carrier, 21% of the 242 with a same-page relay parent.
@@ -65,7 +65,7 @@ By round:
 | 5 | 60 | 36 | 82% (70–92%) | 77% (66–88%) | 58% |
 
 
-_Sensitivity_: under the other identity mapping, 300 agent-rounds, 81% exposed, 76% exposed ≥1 h.
+_Sensitivity_: both identity mappings group the author strings identically (each merged agent is one strict agent), so every number in this report is the same under the strict mapping and none is repeated for it.
 
 **Exposure vs required head start.** The share of answers whose value was public *at least t before the report*, as t grows: t = 0 is the exposed share, 1 h the ≥1 h share. The report time is an upper bound on when the question arrived, so t is a head start before the report, not before the question. Families with 40 or more answers get a row (2). Where the share falls within hours, answers had been public only briefly (a race); where it holds past a day, long before (an archive). Over every answer it falls from 81% at t = 0 to 2% at 24 h.
 
@@ -85,7 +85,7 @@ _Sensitivity_: under the other identity mapping, 300 agent-rounds, 81% exposed, 
 
 ## A2. Does availability cause copying?
 
-Two-way fixed effects on agent-rounds, `Y ~ D_cons | agent + item`, SEs clustered by agent (agents and items with a single round dropped). Item FE absorb "same question, same answer"; agent FE absorb ability. Treatment `D_cons` = the consensus value for the item was public before the agent's report; it is defined without reference to the agent's own answer, so a wrong answer cannot mechanically produce D=0. Identifying assumption: an agent's place in the run order is unrelated to its ability. Latency would be the discriminating outcome (a common cause explains the same answer, not a 1-second answer on a 14-second timer); check `agents_with_D_variation` before reading it — when few agents switch exposure status the latency estimate is uninformative.
+Two-way fixed effects on agent-rounds, `Y ~ D_cons | agent + item`, SEs clustered by agent (agents and items with a single round dropped). Item FE absorb "same question, same answer"; agent FE absorb ability. Treatment `D_cons` = the consensus value for the item was public before the agent's report; it is defined without reference to the agent's own answer, so a wrong answer cannot mechanically produce D=0. Identifying assumption: an agent's place in the run order is unrelated to its ability. Only agents whose exposure status switches (`agents_with_D_variation`) identify an effect: under 10 switchers a row is not identified, under 20 it is weakly identified (its note says so, and the figure draws it grey); from 20 on it reads *identified* where its 95% CI excludes 0 and *no effect detected* where the CI covers 0, as the key findings do. Latency would be the discriminating outcome (a common cause explains the same answer, not a 1-second answer on a 14-second timer).
 
 ![causal](figures/a2_causal.png)
 
@@ -100,18 +100,6 @@ Two-way fixed effects on agent-rounds, `Y ~ D_cons | agent + item`, SEs clustere
 
 **Warning:** on 3 disputed slots the consensus value that `y_consensus` scores against is not A4's winner (the later majority), and the 9 answer rounds there that state the winner score y_consensus = 0 (see A4).
 
-
-_Sensitivity (other identity mapping)_:
-
-| outcome | treatment | beta | se | p | n | agents_with_D_variation | note |
-|---|---|---|---|---|---|---|---|
-| y_instant | D_cons | 0.698 | 0.103 | 0.000 | 300 | 24 |  |
-| y_instant | D_cons_w60m | 0.542 | 0.115 | 0.000 | 300 | 29 |  |
-| y_instant\|known | D_cons | 0.698 | 0.103 | 0.000 | 300 | 24 |  |
-| y_instant\|known | D_cons_w60m | 0.542 | 0.115 | 0.000 | 300 | 29 |  |
-| y_consensus | D_cons | 0.033 | 0.057 | 0.562 | 300 | 24 |  |
-| y_consensus | D_cons_w60m | 0.053 | 0.045 | 0.236 | 300 | 29 |  |
-
 **Exploratory: dose response among exposed rounds.** A narrower question than the table above, asked of the exposed rounds only (`D_cons` = 1): given the consensus value was public, does instant reuse grow with how long it had been public? The dose is the consensus value's head start over the report, as `log1p(hours)` (the slope) and in bins against a head start under 1 h, with agent + item FE and SEs clustered by agent. Within an agent the head start varies across items where exposure barely does: on `y_instant|known`, 44 agents vary in both the head start and the outcome (the agents that inform the slope), against 24 whose exposure status switches (those that identify the table above). It identifies only this intensive margin and says nothing about whether exposure itself matters (the extensive margin), which this block leaves unidentified; the table above is A2's estimate of that. Identifying assumption: within an agent, how long before its report others had posted the consensus value is unrelated to its item-specific propensity to answer instantly.
 
 Both outcomes measure the head start to the report, an upper bound on arrival, so a late report gets a longer one whichever is read. `y_instant` is shown but biased: a round with no stated latency scores 0, so how often agents state a latency at all enters its slope; here every exposed round states one, so the two rows agree. An outcome is identified when the within-agent SD of log1p(head start in hours) is at least 0.25 (a spread of about 28% in 1 + hours) and at least 10 agents have rounds in two or more bins. Each term then needs 10 agents that inform it, else it reads *not identified*: for the slope, agents whose head start and outcome both vary; for a bin, agents with a round in it and in another bin whose outcome varies (an agent that answers all its exposed rounds the same way moves an estimate only through the item effects). Every bin is measured against the <1h reference, which needs them too. An estimate informed by fewer than 20 (a bin: in it or in the reference) rests on so few agents that its interval runs narrow and its p-value overstates the evidence: its note reads *weak* (the slope) or *shape only* (a bin), and it is grey in the figure. Read the bins as the shape and the slope as the test, with its leave-one-agent-out range below. *beta* is the change in the share answering instantly per unit of log1p(hours) (a 2.7-fold longer 1 + hours) for the slope, or against the reference for a bin; *mean y* is the raw share; *agents spanning* counts the agents whose head start varies (slope) or that have a round in the bin and in another, and *agents informative* those of them whose outcome varies too.
@@ -122,20 +110,18 @@ Both outcomes measure the head start to the report, an upper bound on arrival, s
 |---|---|---|---|---|---|---|---|---|---|
 | y_instant\|known | log1p(head h) | -0.164 | 0.116 | 0.163 | 244 | 0.701 | 55 | 44 |  |
 | y_instant\|known | <1h (reference) |  |  |  | 11 | 0.818 | 10 | 7 | not identified: only 7 of the 10 agents with a round here and in another bin vary in the outcome |
-| y_instant\|known | 1-6h |  |  |  | 61 | 0.672 | 23 | 20 | not identified: the <1h reference bin is not |
-| y_instant\|known | 6-24h |  |  |  | 166 | 0.699 | 23 | 21 | not identified: the <1h reference bin is not |
+| y_instant\|known | 1-6h |  |  |  | 61 | 0.672 | 23 | 20 | not identified: the <1h reference bin is not identified |
+| y_instant\|known | 6-24h |  |  |  | 166 | 0.699 | 23 | 21 | not identified: the <1h reference bin is not identified |
 | y_instant\|known | >24h |  |  |  | 6 | 0.833 | 4 | 4 | not identified: only 4 agents have a round here and in another bin |
 | y_instant | log1p(head h) | -0.164 | 0.116 | 0.163 | 244 | 0.701 | 55 | 44 |  |
 | y_instant | <1h (reference) |  |  |  | 11 | 0.818 | 10 | 7 | not identified: only 7 of the 10 agents with a round here and in another bin vary in the outcome |
-| y_instant | 1-6h |  |  |  | 61 | 0.672 | 23 | 20 | not identified: the <1h reference bin is not |
-| y_instant | 6-24h |  |  |  | 166 | 0.699 | 23 | 21 | not identified: the <1h reference bin is not |
+| y_instant | 1-6h |  |  |  | 61 | 0.672 | 23 | 20 | not identified: the <1h reference bin is not identified |
+| y_instant | 6-24h |  |  |  | 166 | 0.699 | 23 | 21 | not identified: the <1h reference bin is not identified |
 | y_instant | >24h |  |  |  | 6 | 0.833 | 4 | 4 | not identified: only 4 agents have a round here and in another bin |
 
 Samples (exposed rounds after dropping single-round agents and items): `y_instant|known` 244 rounds from 55 agents on 47 items, within-agent SD 0.43, 27 agents in two or more bins, 44 informing the slope; `y_instant` 244 rounds from 55 agents on 47 items, within-agent SD 0.43, 27 agents in two or more bins, 44 informing the slope.
 
 _Leave one agent out_: dropping one agent at a time moves the slope on `y_instant|known` from -0.164 to between -0.230 and -0.087, with 45% of its clustered variance from two agents; on `y_instant` from -0.164 to between -0.230 and -0.087, with 45% of its clustered variance from two agents.
-
-_Sensitivity (other identity mapping)_: the slope is -0.164 on `y_instant|known` (SE 0.116, p = 0.16, 244 rounds) and -0.164 on `y_instant` (SE 0.116, p = 0.16, 244 rounds).
 
 ## A3. Technique diffusion
 
@@ -150,6 +136,8 @@ Reference values are **analyst input** (config `reference_values`), not measured
 **3 of 3 slots: consensus differs from the later majority (9 rounds).** The consensus is the value most distinct agents carried over the whole run, the one A2's `y_consensus` scores against; on these value slots it is not the winner, and the 9 answer rounds there that state the winner score y_consensus = 0 (*consensus ≠ winner*). *Independent / after-public rounds* = per variant, the answer rounds (agents' answers to the item) that state it with nothing carrying it public before the report (D = 0) / with it already public (D = 1). They count answer rounds, not the carriers in *variants (agents)*, which count every agent that posted the value; 0 rounds that state no value inherit the consensus in exposure and are left out. D searches captured posts only, so the D = 0 count is an upper bound on independent derivation. 3 rounds derived a value other than the consensus with nothing carrying it public while the consensus was (D = 0, D_cons = 1): several agents re-deriving one value while another is public is the strongest sign in A4 that it was computed, not copied. *Precision variants* = every value is another one rounded (9.69 and 9.7): one quantity at two precisions, so the split speaks to provenance, not correctness. `disputes_merged.parquet` lists every carrier of every variant: when it first carried it, whether it carried two or more, and the slot's status.
 
 ![errors](figures/a4_errors.png)
+
+All 3 disputed slots are in the table: 1 contested, 2 contested (small n).
 
 | slot | kind | variants (agents) | agents carrying both | first variant | winner | status | late carriers (winner/total) | winner first seen | winner majority from | hours to overtake | reference (analyst input) | outcome | independent / after-public rounds | consensus ≠ winner | precision variants |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -180,14 +168,15 @@ Who supplied whom under one attribution rule, *first source*, which credits whoe
 | latest source | instant only | 174 | 57 | 26% | 0.23 | 0 | 25–27% | 0.22–0.24 |
 | same-page relay parent | instant only | 174 | 57 | 26% | 0.23 | 0 | 25–27% | 0.22–0.24 |
 
-**Where did copied answers come from?** Each exposed answer's credited source (under the two rules that credit every answer, and both identity mappings; answers in brackets), judged by the source's own answer round on the same item: **computed** = it answered the same value with nothing matching public before its report (D = 0); **no answer round observed** = no answer round of its own on the item was extracted, which fits an agent that only published values (an answer list, a sequence scout) but also a missed answer or an identity split, so audit the sources below before calling them compilers; **dissent** = its answer round matched a different value (its own, or the consensus when it stated none); **relayed** = it answered the same value but was itself exposed. Being the first public source is not proof of being read.
+**Where did copied answers come from?** Each exposed answer's credited source (under the two rules that credit every answer; answers in brackets), judged by the source's own answer round on the same item: **computed** = it answered the same value with nothing matching public before its report (D = 0); **no answer round observed** = no answer round of its own on the item was extracted, which fits an agent that only published values (an answer list, a sequence scout) but also a missed answer or an identity split, so audit the sources below before calling them compilers; **dissent** = its answer round matched a different value (its own, or the consensus when it stated none); **relayed** = it answered the same value but was itself exposed; **posted before its own source** = it answered the same value and had posted it before any other agent did (its own answer is self-originated: exposed only because another agent repeated the value before its report). Being the first public source is not proof of being read.
 
-| credited source | first source, merged (242) | first source, strict (242) | latest source, merged (242) | latest source, strict (242) |
-|---|---|---|---|---|
-| computed | 242 (100%) | 242 (100%) | 53 (22%) | 53 (22%) |
-| no answer round observed | 0 (0%) | 0 (0%) | 0 (0%) | 0 (0%) |
-| dissent | 0 (0%) | 0 (0%) | 0 (0%) | 0 (0%) |
-| relayed | 0 (0%) | 0 (0%) | 189 (78%) | 189 (78%) |
+| credited source | first source, merged (242) | latest source, merged (242) |
+|---|---|---|
+| computed | 242 (100%) | 53 (22%) |
+| no answer round observed | 0 (0%) | 0 (0%) |
+| dissent | 0 (0%) | 0 (0%) |
+| relayed | 0 (0%) | 189 (78%) |
+| posted before its own source | 0 (0%) | 0 (0%) |
 
 Roots (merged mapping): a relayed source is followed through its own source under the same rule until one is not relayed (hops from a relayed answer to its root, median / max: latest source 3 / 8). Relayed means exposed, not copied: a chain can run past an agent that computed the value while a copy was already public, so a root can sit earlier than the true one.
 
@@ -288,7 +277,7 @@ The interval on mean_repeaters is the 95% percentile interval from 1,000 resampl
 
 ## Validation
 
-**Integrity: 19/19 checks pass** (`checks.json`; `swarmprov check RUN` reruns them): exposure re-derived from the mentions, flag nesting, the posts behind edges and exposures, relay hops and chain carriers against the mentions, exposure edges against the rounds, the strict mapping inside the merged one, rounds held before the first public copy, and summary.json against the tables. None fails.
+**Integrity: 19/19 checks pass** (`checks.json`; `swarmprov check RUN` reruns them): exposure re-derived from the mentions, flag nesting, the posts behind edges and exposures, relay hops and chain carriers against the mentions, exposure edges against the rounds, the strict mapping inside the merged one, and summary.json against the tables. None fails.
 
 No gold labels yet. `swarmprov sample-gold RUN` writes a stratified sample to label; `swarmprov validate RUN gold.jsonl` scores the extractor against it, and `swarmprov run ... --gold DIR` scores every label file in DIR before the report.
 

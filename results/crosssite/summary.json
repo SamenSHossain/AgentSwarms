@@ -151,7 +151,7 @@
     {
       "technique": "proxy-jina",
       "origin_site": "publictestwiki",
-      "first_seen": "2026-05-17 21:30:24+00:00",
+      "first_seen": "2026-05-17T21:30:24+00:00",
       "n_sites_adopted": 6,
       "n_sites_at_risk": 14,
       "median_hours_to_site_adoption": 732.2016666666667,
@@ -161,7 +161,7 @@
     {
       "technique": "proxy-markdown-new",
       "origin_site": "dse",
-      "first_seen": "2026-05-26 09:50:02+00:00",
+      "first_seen": "2026-05-26T09:50:02+00:00",
       "n_sites_adopted": 8,
       "n_sites_at_risk": 13,
       "median_hours_to_site_adoption": 5.769444444444445,
@@ -171,7 +171,7 @@
     {
       "technique": "proxy-pure-md",
       "origin_site": "dse",
-      "first_seen": "2026-05-26 13:25:33+00:00",
+      "first_seen": "2026-05-26T13:25:33+00:00",
       "n_sites_adopted": 3,
       "n_sites_at_risk": 13,
       "median_hours_to_site_adoption": 349.94083333333333,
@@ -181,7 +181,7 @@
     {
       "technique": "proxy-allorigins",
       "origin_site": "paste.linuxiarz.pl",
-      "first_seen": "2026-05-26 15:16:26+00:00",
+      "first_seen": "2026-05-26T15:16:26+00:00",
       "n_sites_adopted": 7,
       "n_sites_at_risk": 12,
       "median_hours_to_site_adoption": 548.2518055555556,
@@ -191,7 +191,7 @@
     {
       "technique": "proxy-jqp",
       "origin_site": "dse",
-      "first_seen": "2026-05-28 13:03:06+00:00",
+      "first_seen": "2026-05-28T13:03:06+00:00",
       "n_sites_adopted": 5,
       "n_sites_at_risk": 8,
       "median_hours_to_site_adoption": 509.7591666666667,
@@ -201,7 +201,7 @@
     {
       "technique": "proxy-md-succ",
       "origin_site": "dse",
-      "first_seen": "2026-05-29 22:28:50+00:00",
+      "first_seen": "2026-05-29T22:28:50+00:00",
       "n_sites_adopted": 3,
       "n_sites_at_risk": 8,
       "median_hours_to_site_adoption": 472.9740277777778,
@@ -211,17 +211,17 @@
     {
       "technique": "zzz-backup-pages",
       "origin_site": "dse",
-      "first_seen": "2026-05-31 00:23:58+00:00",
+      "first_seen": "2026-05-31T00:23:58+00:00",
       "n_sites_adopted": 1,
       "n_sites_at_risk": 8,
-      "median_hours_to_site_adoption": NaN,
+      "median_hours_to_site_adoption": null,
       "sites_within_24h": 0,
       "n_posts": 78
     },
     {
       "technique": "shortener-da-gd",
       "origin_site": "dse",
-      "first_seen": "2026-06-04 17:30:39+00:00",
+      "first_seen": "2026-06-04T17:30:39+00:00",
       "n_sites_adopted": 4,
       "n_sites_at_risk": 8,
       "median_hours_to_site_adoption": 332.7761111111111,
@@ -231,50 +231,50 @@
     {
       "technique": "rng-seed-crack",
       "origin_site": "dse",
-      "first_seen": "2026-06-16 09:47:08+00:00",
+      "first_seen": "2026-06-16T09:47:08+00:00",
       "n_sites_adopted": 1,
       "n_sites_at_risk": 8,
-      "median_hours_to_site_adoption": NaN,
+      "median_hours_to_site_adoption": null,
       "sites_within_24h": 0,
       "n_posts": 51
     },
     {
       "technique": "clock-wait-fastforward",
       "origin_site": "dse",
-      "first_seen": "2026-06-16 11:06:46+00:00",
+      "first_seen": "2026-06-16T11:06:46+00:00",
       "n_sites_adopted": 1,
       "n_sites_at_risk": 8,
-      "median_hours_to_site_adoption": NaN,
+      "median_hours_to_site_adoption": null,
       "sites_within_24h": 0,
       "n_posts": 195
     },
     {
       "technique": "heartbeat-beacon",
       "origin_site": "dse",
-      "first_seen": "2026-06-17 00:19:12+00:00",
+      "first_seen": "2026-06-17T00:19:12+00:00",
       "n_sites_adopted": 1,
       "n_sites_at_risk": 8,
-      "median_hours_to_site_adoption": NaN,
+      "median_hours_to_site_adoption": null,
       "sites_within_24h": 0,
       "n_posts": 199
     },
     {
       "technique": "live-tooltip-value",
       "origin_site": "dse",
-      "first_seen": "2026-06-20 04:44:39+00:00",
+      "first_seen": "2026-06-20T04:44:39+00:00",
       "n_sites_adopted": 1,
       "n_sites_at_risk": 7,
-      "median_hours_to_site_adoption": NaN,
+      "median_hours_to_site_adoption": null,
       "sites_within_24h": 0,
       "n_posts": 50
     },
     {
       "technique": "blob-hostname-bypass",
       "origin_site": "dse",
-      "first_seen": "2026-06-20 05:10:21+00:00",
+      "first_seen": "2026-06-20T05:10:21+00:00",
       "n_sites_adopted": 1,
       "n_sites_at_risk": 7,
-      "median_hours_to_site_adoption": NaN,
+      "median_hours_to_site_adoption": null,
       "sites_within_24h": 0,
       "n_posts": 24
     }

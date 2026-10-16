@@ -284,9 +284,7 @@ def test_synthetic_wrong_values_are_derived_once_then_copied(synth_run):
                 assert p["derived_independently"] == 1 and p["adopted_after_public"] == p["answer_rounds"] - 1
 
 
-@pytest.mark.xfail(reason="results/openai-wiki predates self_originated in the exposure mirror", strict=True)
 def test_the_committed_exposure_mirror_has_the_export_columns():
-    """Regenerating results/ makes this pass, and must then drop the mark (strict: a pass fails)."""
     assert list(pd.read_csv(COMMITTED / "exposures_merged.csv", nrows=0).columns) == export_mod.EXPOSURE_COLUMNS
 
 

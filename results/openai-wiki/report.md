@@ -4,11 +4,11 @@ Source: `data/raw` (adapter `wiki`), 15,987 posts from 3,232 author strings, 202
 
 ## Key findings
 
-- **A1. Provenance split**: 93% (95% CI 88–96%) of 1,108 answers by 617 agents were already public before the agent reported them (another agent had posted the same item and value), 83% (75–88%) at least an hour before, with a median head start of 11.6 h (9.0–16.5 h); at most 83 were independent lookups (104 under `D_visible`, which counts a copy deleted before the report as never public). These are floors: only the posts this run captured are searched, so a copy anywhere else is invisible.
-- **A2. Does availability cause copying?** Its effect is not identified (3–37 agents switch exposure status): no estimate of `y_instant`, `y_instant|known` or `y_consensus` under `D_cons` or `D_cons_w60m` from two-way fixed effects (`Y ~ D | agent + item`, SEs clustered by agent) rests on enough switching agents with a 95% CI that excludes 0.
+- **A1. Provenance split**: 93% (95% CI 88–96%) of 1,108 answers by 617 agents were already public before the agent reported them (another agent had posted the same item and value), 83% (75–88%) at least an hour before, with a median head start of 11.6 h (9.0–16.5 h); at most 89 were independent lookups (83 with nothing public before the report; 6 more were first posted by the agent itself before any other copy; at most 110 under `D_visible`, which counts a copy deleted before the report as never public). These are floors: only the posts this run captured are searched, so a copy anywhere else is invisible.
+- **A2. Does availability cause copying?** Not identified for most rows (3–17 agents switch exposure status); `y_instant` under `D_cons_w60m`: no effect detected (37 agents switch, 95% CI -0.34 to +0.11). From two-way fixed effects (`Y ~ D | agent + item`, SEs clustered by agent), a row is identified with at least 20 switching agents and a 95% CI that excludes 0.
 - **A3. Technique diffusion**: adoption share = the share of the agents at risk (active in its task families after its first post) that went on to use it: `live-tooltip-value` 47% (35 of 74), `blob-hostname-bypass` 23% (17 of 73), `heartbeat-beacon` 9% (96 of 1,113), `clock-wait-fastforward` 8% (135 of 1,592), `rng-seed-crack` 3% (42 of 1,600); lower for the rest. Consistent with contagion (adoptions landed on a page that already carried the technique more often than the adopters' own posts did, after Holm's correction; posting on a page is not reading it): `rng-seed-crack`, `clock-wait-fastforward`.
 - **A4. Error propagation**: winner = the most common variant among the last third of a slot's carriers; overturned = a later winner that kept the majority of new carriers. datausa-grocery-workforce | G5 (cracked-seed forecast vs observed): `Maryland (RNG forecast)` → `Montana (observed)`, overturned as soon as it appeared; oecd-equity | Poland: `16.4` → `16.38`, overturned as soon as it appeared (against the analyst's reference value: precision variant: reference prevailed); oecd-equity | Hungary: `9.9` first, `9.91` leads the late carriers 16 to 13 but never kept the majority of new carriers: contested (against the analyst's reference value: precision variant: unresolved); oecd-equity | Slovak Republic: `14.6` → `14.59`, overturned as soon as it appeared (against the analyst's reference value: precision variant: reference prevailed).
-- **A5. Structure**: the top 10 sources supplied 20–73% of 1,025 exposed answers, depending on who is credited (nothing records who read whom, so each rule credits one source per answer): 73% credited to the first agent to post the value (out-degree Gini 0.69; leaving out any one item moves it between 72% and 76%), 20% to the latest earlier carrier, 21% of the 218 with a same-page relay parent.
+- **A5. Structure**: the top 10 sources supplied 20–74% of 1,019 exposed answers (6 more, first posted by the answering agent itself, are credited to nobody), depending on who is credited (nothing records who read whom, so each rule credits one source per answer): 74% credited to the first agent to post the value (out-degree Gini 0.68; leaving out any one item moves it between 72% and 76%), 20% to the latest earlier carrier, 21% of the 218 with a same-page relay parent.
 - **A6. Reach**: 159 of 365 task values were repeated by other agents, travelling 2.0 hops on average and at most 10; 5,373 of 23,560 URLs were repeated by other agents, travelling 1.7 hops on average and at most 18 (a hop links a carrier to an inferred source: plausible paths, not proven ones).
 
 ## Data capabilities
@@ -52,7 +52,7 @@ The request log contributes 101 script-injection probe requests against dse (202
 
 ## A1. Provenance split
 
-**1,108 answers given by 617 agents; 83 independent lookups** (nothing carrying that answer was public when the agent reported it). 93% (95% CI 88–96%) of answers were already public before the report, 83% (75–88%) at least an hour before (robust to the unknown lag between a question's arrival and its report). Median head start: 11.6 h (9.0–16.5 h). In 19% (12–25%) of rounds the agent itself had posted the answer in advance.
+**1,108 answers given by 617 agents; at most 89 independent lookups**: 83 with nothing carrying the answer public when the agent reported it; 6 more were first posted by the agent itself before any other copy (another agent's copy came before the report, so D = 1, but no source is credited with them). 93% (95% CI 88–96%) of answers were already public before the report, 83% (75–88%) at least an hour before (robust to the unknown lag between a question's arrival and its report). Median head start: 11.6 h (9.0–16.5 h). In 19% (12–25%) of rounds the agent itself had posted the answer in advance.
 
 Intervals are 95% percentile intervals from 1,000 resamples of whole **items**: answers to one item are not independent (one first poster supplies most of its exposures), so they are drawn together. The intervals cover sampling noise across items only, not identity-mapping or extraction error. The family and round rows below resample their own items and get no interval from fewer than 5.
 
@@ -120,18 +120,18 @@ _Sensitivity_: under the other identity mapping, 1,164 agent-rounds, 93% exposed
 
 ## A2. Does availability cause copying?
 
-Two-way fixed effects on agent-rounds, `Y ~ D_cons | agent + item`, SEs clustered by agent (agents and items with a single round dropped). Item FE absorb "same question, same answer"; agent FE absorb ability. Treatment `D_cons` = the consensus value for the item was public before the agent's report; it is defined without reference to the agent's own answer, so a wrong answer cannot mechanically produce D=0. Identifying assumption: an agent's place in the run order is unrelated to its ability. Latency would be the discriminating outcome (a common cause explains the same answer, not a 1-second answer on a 14-second timer); check `agents_with_D_variation` before reading it — when few agents switch exposure status the latency estimate is uninformative.
+Two-way fixed effects on agent-rounds, `Y ~ D_cons | agent + item`, SEs clustered by agent (agents and items with a single round dropped). Item FE absorb "same question, same answer"; agent FE absorb ability. Treatment `D_cons` = the consensus value for the item was public before the agent's report; it is defined without reference to the agent's own answer, so a wrong answer cannot mechanically produce D=0. Identifying assumption: an agent's place in the run order is unrelated to its ability. Only agents whose exposure status switches (`agents_with_D_variation`) identify an effect: under 10 switchers a row is not identified, under 20 it is weakly identified (its note says so, and the figure draws it grey); from 20 on it reads *identified* where its 95% CI excludes 0 and *no effect detected* where the CI covers 0, as the key findings do. Latency would be the discriminating outcome (a common cause explains the same answer, not a 1-second answer on a 14-second timer).
 
 ![causal](figures/a2_causal.png)
 
 | outcome | treatment | beta | se | p | n | agents | items | agents_with_D_variation | mean_y_D0 | mean_y_D1 | note |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| y_instant | D_cons | -0.066 | 0.066 | 0.313 | 787 | 302 | 57 | 17 | 0.484 | 0.484 |  |
+| y_instant | D_cons | -0.066 | 0.066 | 0.313 | 787 | 302 | 57 | 17 | 0.484 | 0.484 | weakly identified: only 17 agents switch (< 20) |
 | y_instant | D_cons_w60m | -0.113 | 0.114 | 0.325 | 787 | 302 | 57 | 37 | 0.606 | 0.468 |  |
 | y_instant\|known | D_cons |  |  |  | 328 | 144 | 35 | 4 | 1.000 | 0.900 | not identified: only 4 agents switch exposure status |
-| y_instant\|known | D_cons_w60m | 0.001 | 0.004 | 0.801 | 328 | 144 | 35 | 10 | 0.952 | 0.895 |  |
+| y_instant\|known | D_cons_w60m | 0.001 | 0.004 | 0.801 | 328 | 144 | 35 | 10 | 0.952 | 0.895 | weakly identified: only 10 agents switch (< 20) |
 | y_consensus | D_cons |  |  |  | 595 | 227 | 48 | 3 | 0.647 | 0.801 | not identified: only 3 agents switch exposure status |
-| y_consensus | D_cons_w60m | 0.025 | 0.094 | 0.793 | 595 | 227 | 48 | 15 | 0.792 | 0.797 |  |
+| y_consensus | D_cons_w60m | 0.025 | 0.094 | 0.793 | 595 | 227 | 48 | 15 | 0.792 | 0.797 | weakly identified: only 15 agents switch (< 20) |
 | y_winner | D_cons |  |  |  | 98 | 49 | 4 | 0 | 0.000 | 0.438 | not identified: only 0 agents switch exposure status |
 | y_winner | D_cons_w60m |  |  |  | 98 | 49 | 4 | 4 | 0.167 | 0.446 | not identified: only 4 agents switch exposure status |
 
@@ -144,12 +144,12 @@ _Sensitivity (other identity mapping)_:
 
 | outcome | treatment | beta | se | p | n | agents_with_D_variation | note |
 |---|---|---|---|---|---|---|---|
-| y_instant | D_cons | -0.082 | 0.070 | 0.245 | 788 | 16 |  |
+| y_instant | D_cons | -0.082 | 0.070 | 0.245 | 788 | 16 | weakly identified: only 16 agents switch (< 20) |
 | y_instant | D_cons_w60m | -0.008 | 0.137 | 0.954 | 788 | 34 |  |
 | y_instant\|known | D_cons |  |  |  | 321 | 4 | not identified: only 4 agents switch exposure status |
 | y_instant\|known | D_cons_w60m |  |  |  | 321 | 9 | not identified: only 9 agents switch exposure status |
 | y_consensus | D_cons |  |  |  | 603 | 3 | not identified: only 3 agents switch exposure status |
-| y_consensus | D_cons_w60m | 0.030 | 0.099 | 0.766 | 603 | 15 |  |
+| y_consensus | D_cons_w60m | 0.030 | 0.099 | 0.766 | 603 | 15 | weakly identified: only 15 agents switch (< 20) |
 | y_winner | D_cons |  |  |  | 90 | 0 | not identified: only 0 agents switch exposure status |
 | y_winner | D_cons_w60m |  |  |  | 90 | 3 | not identified: only 3 agents switch exposure status |
 
@@ -209,6 +209,8 @@ Analyst-declared disputes (config `disputes`: a context pattern plus one pattern
 
 ![errors](figures/a4_errors.png)
 
+All 16 disputed slots are in the table: 3 held, 9 overturned, 3 contested, 1 contested (small n).
+
 | slot | kind | variants (agents) | agents carrying both | first variant | winner | status | late carriers (winner/total) | winner first seen | winner majority from | hours to overtake | reference (analyst input) | outcome | independent / after-public rounds | consensus ≠ winner | precision variants |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | datausa-grocery-workforce \| G5 (cracked-seed forecast vs observed) | declared | Maryland (RNG forecast) (30), Montana (observed) (11) | 2 | Maryland (RNG forecast) | Montana (observed) | overturned | 11/14 | 2026-06-16 22:56 | 2026-06-16 22:56 | 0.0 |  |  |  |  |  |
@@ -224,12 +226,13 @@ Analyst-declared disputes (config `disputes`: a context pattern plus one pattern
 | datausa-maids-wage \| Male | value | 21839 (3), 22140 (11) | 1 | 21839 | 22140 | overturned | 5/5 | 2026-06-16 19:27 | 2026-06-16 19:27 | 0.0 |  |  | 21839: 0 / 0; 22140: 4 / 19 | no | no |
 | datausa-language-french \| Texas | value | 7.58 (4), 8.03 (8) | 1 | 7.58 | 8.03 | contested (small n) | 4/4 | 2026-06-16 21:23 | 2026-06-16 22:40 | 1.3 |  |  | 7.58: 1 / 0; 8.03: 0 / 0 | no | no |
 | nyc-veterans \| Gulf War | value | 14751 (5), 25276 (6) | 4 | 14751 |  | contested | 2/4 tie |  |  |  |  |  | 14751: 0 / 5; 25276: 0 / 0 |  | no |
+| ihme-cvd-deaths \| Poland | value | 8016 (4), 8090.38 (5) | 0 | 8090.38 | 8090.38 | held | 3/3 | 2026-06-18 21:51 | 2026-06-21 06:51 |  |  |  | 8016: 0 / 2; 8090.38: 0 / 0 | no | no |
 | datausa-construction-workforce \| R4 | sequence | Florida (45), New Mexico (9) | 2 | Florida | Florida | held | 17/18 | 2026-06-17 01:07 | 2026-06-17 16:07 |  |  |  |  |  |  |
 | datausa-language-french \| R5 | sequence | California (18), New Mexico (5) | 2 | New Mexico | California | overturned | 8/8 | 2026-06-17 00:02 | 2026-06-17 00:02 | 0.0 |  |  |  |  |  |
 
 ## A5. Structure
 
-Graph: 1,434 agents, 2,439 weighted links (9,262 same-page relay hops, 11,809 cross-page hops attributed to the originator, 1,025 first-source exposures, 227 explicit citations). 49 agents were the first public source for someone's answer; the top 10 supplied **73%** of all exposed answers (out-degree Gini 0.69; the exposure counts of the 61 items alone have a Gini of 0.56, which is what first-source credit gives if each item has one source of its own). Leaving out any one item moves the share between 72% and 76% and the Gini between 0.67 and 0.70; concentration gets no bootstrap interval, since resampling items would repeat their sources and inflate it. **That share depends on who is credited**: across the three attribution rules below it runs from 20% to 73% (17% to 80% on instant answers). First-source credit measures who first posted the value on an item: on 47 of the 61 items with exposed answers, one agent was the first source of every one. Facts carried by ≥2 agents travelled 2.0 hops on average (1.3 if a parent must have posted within 1 h; A6 varies that window).
+Graph: 1,434 agents, 2,439 weighted links (9,262 same-page relay hops, 11,809 cross-page hops attributed to the originator, 1,019 first-source exposures, 227 explicit citations). 46 agents were the first public source for someone's answer; the top 10 supplied **74%** of the 1,019 exposed answers credited to a source (out-degree Gini 0.68; the exposure counts of the 61 items alone have a Gini of 0.56, which is what first-source credit gives if each item has one source of its own). 6 more exposed answers were self-originated: the answering agent had posted the value before any other agent did, so no source is credited. Leaving out any one item moves the share between 72% and 76% and the Gini between 0.66 and 0.69; concentration gets no bootstrap interval, since resampling items would repeat their sources and inflate it. **That share depends on who is credited**: across the three attribution rules below it runs from 20% to 74% (17% to 80% on instant answers). First-source credit measures who first posted the value on an item: on 52 of the 61 items with exposed answers, one agent was the first source of every one. Facts carried by ≥2 agents travelled 2.0 hops on average (1.3 if a parent must have posted within 1 h; A6 varies that window).
 
 ![structure](figures/a5_structure.png)
 
@@ -237,35 +240,37 @@ Who supplied whom under one attribution rule, *first source*, which credits whoe
 
 ![supply network](figures/a7_supply_network.png)
 
-**Hub concentration by attribution rule.** Each rule credits an exposed answer to one agent. None is observed (nothing records what an agent read), so the rows are a sensitivity range, not competing estimates. *First source* = the first other agent to post the item and value before the report (the exposure edges); *latest source* = the last one before the report; *same-page relay parent* = the graph's parent of the agent's first post of the value, matched on the value key exposure used, and *unmatched* when that post arrived by a cross-page hop, the agent has no relay edge for the value, or the parent's post is not before the report. *Instant only* keeps answers reported as instant, the copy signature. *One item left out* = the lowest and highest value with each item's answers dropped in turn: how much a single item moves the concentration. On synthetic swarms the rule that copies the way the simulated agents do finds the true source (latest when they copy the latest post, first when they copy the first), so a rule's success there describes how the simulated agents copy, not how a real swarm does.
+**Hub concentration by attribution rule.** Each rule credits an exposed answer to one agent. None is observed (nothing records what an agent read), so the rows are a sensitivity range, not competing estimates. *First source* = the first other agent to post the item and value before the report (the exposure edges); *latest source* = the last one before the report; *same-page relay parent* = the graph's parent of the agent's first post of the value, matched on the value key exposure used, and *unmatched* when that post arrived by a cross-page hop, the agent has no relay edge for the value, or the parent's post is not before the report. *Instant only* keeps answers reported as instant, the copy signature. No rule credits the 6 self-originated answers (the answering agent had posted the value before any other agent did), so they are in no row. *One item left out* = the lowest and highest value with each item's answers dropped in turn: how much a single item moves the concentration. On synthetic swarms the rule that copies the way the simulated agents do finds the true source (latest when they copy the latest post, first when they copy the first), so a rule's success there describes how the simulated agents copy, not how a real swarm does.
 
 | rule | answers | n | sources | top-10 share | Gini | unmatched | top-10 share, one item left out | Gini, one item left out |
 |---|---|---|---|---|---|---|---|---|
-| first source | all exposed | 1025 | 49 | 73% | 0.69 | 0 | 72–76% | 0.67–0.70 |
-| latest source | all exposed | 1025 | 327 | 20% | 0.47 | 0 | 17–21% | 0.45–0.48 |
-| same-page relay parent | all exposed | 218 | 140 | 21% | 0.27 | 807 | 19–21% | 0.26–0.28 |
-| first source | instant only | 460 | 32 | 80% | 0.61 | 0 | 77–82% | 0.58–0.63 |
-| latest source | instant only | 460 | 210 | 17% | 0.37 | 0 | 17–19% | 0.35–0.37 |
-| same-page relay parent | instant only | 122 | 89 | 25% | 0.22 | 338 | 24–27% | 0.19–0.23 |
+| first source | all exposed | 1019 | 46 | 74% | 0.68 | 0 | 72–76% | 0.66–0.69 |
+| latest source | all exposed | 1019 | 325 | 20% | 0.47 | 0 | 17–21% | 0.45–0.48 |
+| same-page relay parent | all exposed | 218 | 140 | 21% | 0.27 | 801 | 19–21% | 0.26–0.28 |
+| first source | instant only | 458 | 32 | 80% | 0.61 | 0 | 78–82% | 0.59–0.63 |
+| latest source | instant only | 458 | 210 | 17% | 0.37 | 0 | 17–19% | 0.35–0.37 |
+| same-page relay parent | instant only | 122 | 89 | 25% | 0.22 | 336 | 24–27% | 0.19–0.23 |
 
-**Where did copied answers come from?** Each exposed answer's credited source (under the two rules that credit every answer, and both identity mappings; answers in brackets), judged by the source's own answer round on the same item: **computed** = it answered the same value with nothing matching public before its report (D = 0); **no answer round observed** = no answer round of its own on the item was extracted, which fits an agent that only published values (an answer list, a sequence scout) but also a missed answer or an identity split, so audit the sources below before calling them compilers; **dissent** = its answer round matched a different value (its own, or the consensus when it stated none); **relayed** = it answered the same value but was itself exposed. Being the first public source is not proof of being read.
+**Where did copied answers come from?** Each exposed answer's credited source (under the two rules that credit every answer, and both identity mappings; answers in brackets), judged by the source's own answer round on the same item: **computed** = it answered the same value with nothing matching public before its report (D = 0); **no answer round observed** = no answer round of its own on the item was extracted, which fits an agent that only published values (an answer list, a sequence scout) but also a missed answer or an identity split, so audit the sources below before calling them compilers; **dissent** = its answer round matched a different value (its own, or the consensus when it stated none); **relayed** = it answered the same value but was itself exposed; **posted before its own source** = it answered the same value and had posted it before any other agent did (its own answer is self-originated: exposed only because another agent repeated the value before its report); **self-originated** = no source is credited, as the answering agent had posted the value before any other agent did (outside the count in brackets). Being the first public source is not proof of being read.
 
-| credited source | first source, merged (1,025) | first source, strict (1,081) | latest source, merged (1,025) | latest source, strict (1,081) |
+| credited source | first source, merged (1,019) | first source, strict (1,075) | latest source, merged (1,019) | latest source, strict (1,075) |
 |---|---|---|---|---|
 | computed | 214 (21%) | 181 (17%) | 16 (2%) | 11 (1%) |
-| no answer round observed | 644 (63%) | 727 (67%) | 338 (33%) | 402 (37%) |
-| dissent | 70 (7%) | 74 (7%) | 29 (3%) | 25 (2%) |
-| relayed | 97 (9%) | 99 (9%) | 642 (63%) | 643 (59%) |
+| no answer round observed | 643 (63%) | 725 (67%) | 336 (33%) | 399 (37%) |
+| dissent | 68 (7%) | 72 (7%) | 27 (3%) | 24 (2%) |
+| relayed | 0 (0%) | 0 (0%) | 639 (63%) | 640 (60%) |
+| posted before its own source | 94 (9%) | 97 (9%) | 1 (0%) | 1 (0%) |
+| self-originated (the answering agent posted it first) | 6 | 6 | 6 | 6 |
 
-Roots (merged mapping): a relayed source is followed through its own source under the same rule until one is not relayed (hops from a relayed answer to its root, median / max: first source 1 / 2, latest source 2 / 16). *Posted before its own source* = the agent had posted the value no later than any other agent (the walk stops there, or the chain leads back to it), so it counts as exposed only because another agent posted the value between its own post and its report. *Chain cut (its latest source posted after it)* = the agent was exposed before its own post of the value, but the latest carrier before its report posted after that post, so the latest rule names no earlier source for it. Relayed means exposed, not copied: a chain can run past an agent that computed the value while a copy was already public, so a root can sit earlier than the true one.
+Roots (merged mapping): a relayed source is followed through its own source under the same rule until one is not relayed (hops from a relayed answer to its root, median / max: latest source 2 / 16). *Posted before its own source* = the agent had posted the value no later than any other agent (the walk stops there, or the chain leads back to it), so it counts as exposed only because another agent posted the value between its own post and its report. *Chain cut (its latest source posted after it)* = the agent was exposed before its own post of the value, but the latest carrier before its report posted after that post, so the latest rule names no earlier source for it. Relayed means exposed, not copied: a chain can run past an agent that computed the value while a copy was already public, so a root can sit earlier than the true one.
 
 | root | first source | latest source |
 |---|---|---|
 | computed | 214 | 45 |
-| no answer round observed | 644 | 616 |
-| dissent | 70 | 76 |
-| posted before its own source | 97 | 1 |
-| chain cut (its latest source posted after it) | 0 | 287 |
+| no answer round observed | 643 | 614 |
+| dissent | 68 | 74 |
+| posted before its own source | 94 | 1 |
+| chain cut (its latest source posted after it) | 0 | 285 |
 
 Sources of answers with no answer round observed (first source, top 10, for audit; *answer rounds (any item)* = 0 fits an agent that only publishes, more suggests a missed answer or an identity split on these items):
 
@@ -288,14 +293,14 @@ Top first-sources (answers they were first public source for, on how many items,
 |---|---|---|---|
 | May28\|datausa-cashiers-masters | 164 | 4 | computed 132, no answer round observed 32 |
 | Oct04\|oecd-equity | 128 | 3 | dissent 55, no answer round observed 48, computed 25 |
-| Jan29\|datausa-sector61-state | 90 | 3 | no answer round observed 48, relayed 42 |
+| Jan29\|datausa-sector61-state | 90 | 3 | no answer round observed 48, posted before its own source 42 |
 | clothingsequencescout | 86 | 2 | no answer round observed 86 |
 | Jun03\|datausa-construction-workforce | 83 | 3 | no answer round observed 83 |
 | Mar30\|oecd-equity | 50 | 2 | no answer round observed 50 |
-| Apr27\|datausa-grocery-workforce | 42 | 3 | no answer round observed 26, relayed 16 |
+| Apr27\|datausa-grocery-workforce | 41 | 2 | no answer round observed 26, posted before its own source 15 |
 | Apr04\|ihme-cvd-deaths | 39 | 1 | no answer round observed 39 |
 | Mar31\|ihme-family-planning | 37 | 3 | no answer round observed 37 |
-| Sep21\|datausa-grocery-workforce | 33 | 2 | relayed 32, dissent 1 |
+| Sep21\|datausa-grocery-workforce | 32 | 1 | posted before its own source 32 |
 
 
 Top brokers (betweenness on relay + citation graph):
@@ -315,7 +320,7 @@ Top brokers (betweenness on relay + citation graph):
 
 ## Agents
 
-**617 of the 3,014 agents with a post gave answers** (1,108 agent-rounds; median 1 per agent, at most 5). For 38 of them no answer had an earlier public copy (1 with 3 or more answers), and for 542 every answer had one. 49 agents were the first public source for someone's answer: 34 of them gave answers of their own, and 19 had at least one with no earlier public copy. Exposure is a floor (only captured posts are searched), so a count of answers with no earlier public copy is a ceiling on answers with no earlier copy anywhere. It is no bound on computed answers: an exposed answer may still have been computed, and one with no earlier public copy may copy a post this transcript lacks. One or two answers say little about an agent, so the tables give an agent's exposed answers as k/n only from 3 answers on. *Author strings* = how many author strings the merged label joins (`agent_aliases.csv`). `agent_profiles_merged.parquet` holds every agent's profile, and `swarmprov agent RUN NAME` prints one.
+**617 of the 3,014 agents with a post gave answers** (1,108 agent-rounds; median 1 per agent, at most 5). For 38 of them no answer had an earlier public copy (1 with 3 or more answers), and for 542 every answer had one. 46 agents were the first public source for someone's answer: 31 of them gave answers of their own, and 19 had at least one with no earlier public copy. Exposure is a floor (only captured posts are searched), so a count of answers with no earlier public copy is a ceiling on answers with no earlier copy anywhere. It is no bound on computed answers: an exposed answer may still have been computed, and one with no earlier public copy may copy a post this transcript lacks. One or two answers say little about an agent, so the tables give an agent's exposed answers as k/n only from 3 answers on. *Author strings* = how many author strings the merged label joins (`agent_aliases.csv`). `agent_profiles_merged.parquet` holds every agent's profile, and `swarmprov agent RUN NAME` prints one.
 
 Agents with the most answers that had no earlier public copy:
 
@@ -343,10 +348,10 @@ Top suppliers (first source) and their own answers:
 | clothingsequencescout | 1 | 86 | 2 | 0 | 0 |  |
 | Jun03\|datausa-construction-workforce | 2 | 83 | 3 | 0 | 0 |  |
 | Mar30\|oecd-equity | 1 | 50 | 2 | 0 | 0 |  |
-| Apr27\|datausa-grocery-workforce | 1 | 42 | 3 | 2 | 0 |  |
+| Apr27\|datausa-grocery-workforce | 1 | 41 | 2 | 2 | 0 |  |
 | Apr04\|ihme-cvd-deaths | 1 | 39 | 1 | 0 | 0 |  |
 | Mar31\|ihme-family-planning | 1 | 37 | 3 | 0 | 0 |  |
-| Sep21\|datausa-grocery-workforce | 3 | 33 | 2 | 4 | 1 | 3/4 |
+| Sep21\|datausa-grocery-workforce | 3 | 32 | 1 | 4 | 1 | 3/4 |
 
 ## A6. Reach
 
@@ -377,7 +382,7 @@ The interval on mean_repeaters is the 95% percentile interval from 1,000 resampl
 
 **Recreation edges** (source vs pipeline): the source marks 68 first recreations after a deletion (64 with a stored revision); the pipeline's rule finds 66, 64 identical, 0 of the 64 with a revision missed (4 have no revision to match), 2 extra (2 after the source's cutoff). 30 of 107 posts on those revisions restore pre-deletion text.
 
-**Integrity: 17/19 checks pass** (`checks.json`; `swarmprov check RUN` reruns them): exposure re-derived from the mentions, flag nesting, the posts behind edges and exposures, relay hops and chain carriers against the mentions, exposure edges against the rounds, the strict mapping inside the merged one, rounds held before the first public copy, and summary.json against the tables. Not passing: `self_prepared_before_public` (warning; 6 in exposures_merged, 6 in exposures_strict: exposed rounds whose agent had posted the value itself before the first public copy).
+**Integrity: 19/19 checks pass** (`checks.json`; `swarmprov check RUN` reruns them): exposure re-derived from the mentions, flag nesting, the posts behind edges and exposures, relay hops and chain carriers against the mentions, exposure edges against the rounds, the strict mapping inside the merged one, and summary.json against the tables. None fails.
 
 **validation_dev** — 60 labelled posts (dev (tuned on); labeller: assistant-audit (Claude); replace with human labels); 35 gold answers, 32 predicted.
 

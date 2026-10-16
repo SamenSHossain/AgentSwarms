@@ -1,6 +1,6 @@
 # Cross-site view
 
-16,858 posts across 17 surfaces: 15,987 from the primary wiki run `runs/wiki` and 871 from the corpus `data/raw2` (11840 timed origins out of 15806; 425 corpus rows dropped as redacted copies of wikis already in the dump).
+16,858 posts across 17 surfaces: 15,987 from the primary wiki run `runs/wiki` and 871 from the corpus `data/raw2` (11,840 timed origins out of 15,806; 425 corpus rows dropped as redacted copies of wikis already in the dump).
 
 ## Posts per surface
 

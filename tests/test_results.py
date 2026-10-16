@@ -14,7 +14,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from swarmprov import report
+from swarmprov import html, report
 from swarmprov.analysis import causal, origins
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -48,19 +48,29 @@ def test_every_figure_link_resolves_and_every_figure_is_linked(path):
     assert figures == links
 
 
+def test_the_committed_wiki_page_renders_the_committed_report_with_its_explorer():
+    """results/openai-wiki keeps its run's report.html, fact explorer included, for readers without the dump: it is
+    under 3 MB and its body is the committed report.md as html.md_to_html renders it, so the two are regenerated
+    together."""
+    d = RESULTS / "openai-wiki"
+    page = (d / "report.html").read_text(encoding="utf-8")
+    assert len(page.encode()) < 3_000_000
+    data = json.loads(re.search(r'<script type="application/json" id="fx-data">(.*?)</script>', page, re.S).group(1))
+    assert len(data["facts"]) >= 100 and data["slots"]
+    body = page.split("<main>", 1)[1].split("</main>", 1)[0]
+    start = body.index('<section id="fact-explorer">')
+    end = body.index('<div id="ag-card" class="card"></div></div></section>', start) + len(
+        '<div id="ag-card" class="card"></div></div></section>')
+    text = (d / "report.md").read_text(encoding="utf-8").partition("\n\n")[2].partition("\n\n")[2]   # title, source
+    assert body[:start] + body[end:] == html.md_to_html(text, d)
+
+
 def test_the_coverage_inventory_is_cited_only_where_it_describes_the_source():
     cited = {p.parent.name for p in REPORTS if "143 surfaces" in p.read_text()}
     assert cited == {"openai-wiki", "corpus", "crosssite"}
 
 
-# committed reports whose key findings predate a change in report.key_findings (the A2 reading rule, the A3 at-risk
-# basis): expected to fail until results/ is regenerated, which must drop them from here (strict: a pass then fails)
-STALE = {"corpus", "openai-wiki", "synthetic"}
-
-
-@pytest.mark.parametrize("path", [pytest.param(p, marks=pytest.mark.xfail(
-    p.parent.name in STALE, reason="results/ predates the current key-findings wording", strict=True))
-    for p in REPORTS], ids=lambda p: p.parent.name)
+@pytest.mark.parametrize("path", REPORTS, ids=lambda p: p.parent.name)
 def test_committed_key_findings_are_what_the_current_code_writes(path):
     """A wording change in report.key_findings fails here until results/ is regenerated."""
     s = json.loads((path.parent / "summary.json").read_text())
@@ -123,11 +133,7 @@ def _flat_numbers(r: dict) -> list[str]:
 
 def _independent(a1: dict) -> list[str]:
     """A1's bound on independent lookups as the key finding states it: at most n_independent + n_self_originated,
-    the two counts, and the bound under D_visible.  A summary from before self-originated answers were counted
-    apart (results/ until it is regenerated, which must then drop that branch) has n_independent and its D_visible
-    variant only."""
-    if "n_self_originated" not in a1:
-        return [f"{a1['n_independent']:,}", f"{a1['n_independent_visible']:,}"]
+    the two counts, and the bound under D_visible."""
     return [f"{a1[k]:,}" for k in ("n_independent_at_most", "n_independent", "n_self_originated",
                                    "n_independent_at_most_visible")]
 
@@ -258,9 +264,7 @@ def _results_expected(s: dict, synth: dict) -> dict[str, list]:
             *NUMBER.findall(instant), f"{a5['items_one_source']}", f"{a5['items_exposed']}",
             share("merged", "first source", "computed"), share("merged", "first source", "no answer round observed"),
             share("strict", "first source", "no answer round observed"), share("merged", "first source", "dissent"),
-            # a summary from before a source that posted first had its own label counts it as relayed
-            share("merged", "first source", origins.POSTED_FIRST if origins.POSTED_FIRST in by["merged"]["first source"]
-                  else "relayed"), share("merged", "latest source", "relayed"),
+            share("merged", "first source", origins.POSTED_FIRST), share("merged", "latest source", "relayed"),
             f"{a5['origins']['roots']['latest source']['chain cut (its latest source posted after it)']:,}",
             f"{tv['mean_hops_repeated']:.1f}", f"{tv['max_hops']}"],
         "**A6 Reach**": [

@@ -23,6 +23,8 @@
   "A1": {
     "n_answers": 300,
     "n_independent": 58,
+    "n_self_originated": 0,
+    "n_independent_at_most": 58,
     "share_exposed": 0.8066666666666666,
     "share_exposed_10m": 0.7933333333333333,
     "share_exposed_60m": 0.76,
@@ -323,7 +325,7 @@
         "loo_lo": null,
         "loo_hi": null,
         "var_share_top2": null,
-        "note": "not identified: the <1h reference bin is not"
+        "note": "not identified: the <1h reference bin is not identified"
       },
       {
         "outcome": "y_instant|known",
@@ -346,7 +348,7 @@
         "loo_lo": null,
         "loo_hi": null,
         "var_share_top2": null,
-        "note": "not identified: the <1h reference bin is not"
+        "note": "not identified: the <1h reference bin is not identified"
       },
       {
         "outcome": "y_instant|known",
@@ -438,7 +440,7 @@
         "loo_lo": null,
         "loo_hi": null,
         "var_share_top2": null,
-        "note": "not identified: the <1h reference bin is not"
+        "note": "not identified: the <1h reference bin is not identified"
       },
       {
         "outcome": "y_instant",
@@ -461,7 +463,7 @@
         "loo_lo": null,
         "loo_hi": null,
         "var_share_top2": null,
-        "note": "not identified: the <1h reference bin is not"
+        "note": "not identified: the <1h reference bin is not identified"
       },
       {
         "outcome": "y_instant",
@@ -487,239 +489,7 @@
         "note": "not identified: only 4 agents have a round here and in another bin"
       }
     ],
-    "stated_latency_slope": {},
-    "other_mapping": [
-      {
-        "outcome": "y_instant|known",
-        "outcome_label": "Answered instantly, rounds with stated latency",
-        "n": 244,
-        "agents": 55,
-        "items": 47,
-        "within_sd": 0.4335644975308164,
-        "bin_agents": 27,
-        "term": "log1p(head h)",
-        "n_term": 244,
-        "mean_y": 0.7008196721311475,
-        "agents_spanning": 55,
-        "agents_informative": 44,
-        "beta": -0.16373784511840797,
-        "se": 0.11569922094473926,
-        "p": 0.162750432331201,
-        "ci_lo": -0.3957008168500096,
-        "ci_hi": 0.0682251266131936,
-        "loo_lo": -0.22964613242746132,
-        "loo_hi": -0.087007788542573,
-        "var_share_top2": 0.4549673986594799,
-        "note": null
-      },
-      {
-        "outcome": "y_instant|known",
-        "outcome_label": "Answered instantly, rounds with stated latency",
-        "n": 244,
-        "agents": 55,
-        "items": 47,
-        "within_sd": 0.4335644975308164,
-        "bin_agents": 27,
-        "term": "<1h",
-        "n_term": 11,
-        "mean_y": 0.8181818181818182,
-        "agents_spanning": 10,
-        "agents_informative": 7,
-        "beta": null,
-        "se": null,
-        "p": null,
-        "ci_lo": null,
-        "ci_hi": null,
-        "loo_lo": null,
-        "loo_hi": null,
-        "var_share_top2": null,
-        "note": "not identified: only 7 of the 10 agents with a round here and in another bin vary in the outcome"
-      },
-      {
-        "outcome": "y_instant|known",
-        "outcome_label": "Answered instantly, rounds with stated latency",
-        "n": 244,
-        "agents": 55,
-        "items": 47,
-        "within_sd": 0.4335644975308164,
-        "bin_agents": 27,
-        "term": "1-6h",
-        "n_term": 61,
-        "mean_y": 0.6721311475409836,
-        "agents_spanning": 23,
-        "agents_informative": 20,
-        "beta": null,
-        "se": null,
-        "p": null,
-        "ci_lo": null,
-        "ci_hi": null,
-        "loo_lo": null,
-        "loo_hi": null,
-        "var_share_top2": null,
-        "note": "not identified: the <1h reference bin is not"
-      },
-      {
-        "outcome": "y_instant|known",
-        "outcome_label": "Answered instantly, rounds with stated latency",
-        "n": 244,
-        "agents": 55,
-        "items": 47,
-        "within_sd": 0.4335644975308164,
-        "bin_agents": 27,
-        "term": "6-24h",
-        "n_term": 166,
-        "mean_y": 0.6987951807228916,
-        "agents_spanning": 23,
-        "agents_informative": 21,
-        "beta": null,
-        "se": null,
-        "p": null,
-        "ci_lo": null,
-        "ci_hi": null,
-        "loo_lo": null,
-        "loo_hi": null,
-        "var_share_top2": null,
-        "note": "not identified: the <1h reference bin is not"
-      },
-      {
-        "outcome": "y_instant|known",
-        "outcome_label": "Answered instantly, rounds with stated latency",
-        "n": 244,
-        "agents": 55,
-        "items": 47,
-        "within_sd": 0.4335644975308164,
-        "bin_agents": 27,
-        "term": ">24h",
-        "n_term": 6,
-        "mean_y": 0.8333333333333334,
-        "agents_spanning": 4,
-        "agents_informative": 4,
-        "beta": null,
-        "se": null,
-        "p": null,
-        "ci_lo": null,
-        "ci_hi": null,
-        "loo_lo": null,
-        "loo_hi": null,
-        "var_share_top2": null,
-        "note": "not identified: only 4 agents have a round here and in another bin"
-      },
-      {
-        "outcome": "y_instant",
-        "outcome_label": "Answered instantly (<= 2 s claimed)",
-        "n": 244,
-        "agents": 55,
-        "items": 47,
-        "within_sd": 0.4335644975308164,
-        "bin_agents": 27,
-        "term": "log1p(head h)",
-        "n_term": 244,
-        "mean_y": 0.7008196721311475,
-        "agents_spanning": 55,
-        "agents_informative": 44,
-        "beta": -0.16373784511840797,
-        "se": 0.11569922094473926,
-        "p": 0.162750432331201,
-        "ci_lo": -0.3957008168500096,
-        "ci_hi": 0.0682251266131936,
-        "loo_lo": -0.22964613242746132,
-        "loo_hi": -0.087007788542573,
-        "var_share_top2": 0.4549673986594799,
-        "note": null
-      },
-      {
-        "outcome": "y_instant",
-        "outcome_label": "Answered instantly (<= 2 s claimed)",
-        "n": 244,
-        "agents": 55,
-        "items": 47,
-        "within_sd": 0.4335644975308164,
-        "bin_agents": 27,
-        "term": "<1h",
-        "n_term": 11,
-        "mean_y": 0.8181818181818182,
-        "agents_spanning": 10,
-        "agents_informative": 7,
-        "beta": null,
-        "se": null,
-        "p": null,
-        "ci_lo": null,
-        "ci_hi": null,
-        "loo_lo": null,
-        "loo_hi": null,
-        "var_share_top2": null,
-        "note": "not identified: only 7 of the 10 agents with a round here and in another bin vary in the outcome"
-      },
-      {
-        "outcome": "y_instant",
-        "outcome_label": "Answered instantly (<= 2 s claimed)",
-        "n": 244,
-        "agents": 55,
-        "items": 47,
-        "within_sd": 0.4335644975308164,
-        "bin_agents": 27,
-        "term": "1-6h",
-        "n_term": 61,
-        "mean_y": 0.6721311475409836,
-        "agents_spanning": 23,
-        "agents_informative": 20,
-        "beta": null,
-        "se": null,
-        "p": null,
-        "ci_lo": null,
-        "ci_hi": null,
-        "loo_lo": null,
-        "loo_hi": null,
-        "var_share_top2": null,
-        "note": "not identified: the <1h reference bin is not"
-      },
-      {
-        "outcome": "y_instant",
-        "outcome_label": "Answered instantly (<= 2 s claimed)",
-        "n": 244,
-        "agents": 55,
-        "items": 47,
-        "within_sd": 0.4335644975308164,
-        "bin_agents": 27,
-        "term": "6-24h",
-        "n_term": 166,
-        "mean_y": 0.6987951807228916,
-        "agents_spanning": 23,
-        "agents_informative": 21,
-        "beta": null,
-        "se": null,
-        "p": null,
-        "ci_lo": null,
-        "ci_hi": null,
-        "loo_lo": null,
-        "loo_hi": null,
-        "var_share_top2": null,
-        "note": "not identified: the <1h reference bin is not"
-      },
-      {
-        "outcome": "y_instant",
-        "outcome_label": "Answered instantly (<= 2 s claimed)",
-        "n": 244,
-        "agents": 55,
-        "items": 47,
-        "within_sd": 0.4335644975308164,
-        "bin_agents": 27,
-        "term": ">24h",
-        "n_term": 6,
-        "mean_y": 0.8333333333333334,
-        "agents_spanning": 4,
-        "agents_informative": 4,
-        "beta": null,
-        "se": null,
-        "p": null,
-        "ci_lo": null,
-        "ci_hi": null,
-        "loo_lo": null,
-        "loo_hi": null,
-        "var_share_top2": null,
-        "note": "not identified: only 4 agents have a round here and in another bin"
-      }
-    ]
+    "stated_latency_slope": {}
   },
   "skipped": {
     "A3": "needs configured techniques (config `techniques`: a name and a regex each; `swarmprov suggest RUN` proposes URL ones from the posts, and `auto_techniques` mines them at extract)"
@@ -727,6 +497,12 @@
   "A4": {
     "n_value_slots_disputed": 3,
     "n_sequence_slots_disputed": 0,
+    "status_counts": {
+      "held": 0,
+      "overturned": 0,
+      "contested": 1,
+      "contested (small n)": 2
+    },
     "rule": {
       "bin_hours": 3.0,
       "tail_share": 0.3333333333333333,
@@ -888,8 +664,7 @@
     ],
     "references_unknown": [
       "alpha-task|Alaska"
-    ],
-    "references_outside_table": []
+    ]
   },
   "A5": {
     "n_nodes": 60,
@@ -914,6 +689,7 @@
     "betweenness_sampled_sources": null,
     "mean_chain_depth": 4.566037735849057,
     "mean_agents_per_fact": 5.566037735849057,
+    "n_self_originated": 0,
     "gini_item_exposures": 0.19092595715972338,
     "items_exposed": 49,
     "items_one_source": 45,
@@ -1004,13 +780,15 @@
             "computed": 242,
             "no answer round observed": 0,
             "dissent": 0,
-            "relayed": 0
+            "relayed": 0,
+            "posted before its own source": 0
           },
           "latest source": {
             "computed": 53,
             "no answer round observed": 0,
             "dissent": 0,
-            "relayed": 189
+            "relayed": 189,
+            "posted before its own source": 0
           }
         },
         "strict": {
@@ -1018,15 +796,21 @@
             "computed": 242,
             "no answer round observed": 0,
             "dissent": 0,
-            "relayed": 0
+            "relayed": 0,
+            "posted before its own source": 0
           },
           "latest source": {
             "computed": 53,
             "no answer round observed": 0,
             "dissent": 0,
-            "relayed": 189
+            "relayed": 189,
+            "posted before its own source": 0
           }
         }
+      },
+      "self_originated": {
+        "merged": 0,
+        "strict": 0
       },
       "mapping": "merged",
       "roots": {
@@ -1430,7 +1214,7 @@
   },
   "headline": [
     "**A1. Provenance split**: 81% (95% CI 78\u201383%) of 300 answers by 60 agents were already public before the agent reported them (another agent had posted the same item and value), 76% (72\u201379%) at least an hour before, with a median head start of 9.6 h (8.3\u201310.8 h); at most 58 were independent lookups. These are floors: only the posts this run captured are searched, so a copy anywhere else is invisible.",
-    "**A2. Does availability cause copying?** Identified, from two-way fixed effects (`Y ~ D | agent + item`, SEs clustered by agent), where enough agents switch exposure status and the 95% CI excludes 0: `y_instant` under `D_cons` +0.70 (95% CI +0.49 to +0.90, 24 agents switch; also under `D_cons_w60m`); `y_instant|known` under `D_cons` +0.70 (95% CI +0.49 to +0.90, 24 agents switch; also under `D_cons_w60m`). Not identified for `y_consensus` (24\u201329 agents switch).",
+    "**A2. Does availability cause copying?** Identified, from two-way fixed effects (`Y ~ D | agent + item`, SEs clustered by agent), where enough agents switch exposure status and the 95% CI excludes 0: `y_instant` under `D_cons` +0.70 (95% CI +0.49 to +0.90, 24 agents switch; also under `D_cons_w60m`); `y_instant|known` under `D_cons` +0.70 (95% CI +0.49 to +0.90, 24 agents switch; also under `D_cons_w60m`). `y_consensus` under `D_cons`: no effect detected (24 agents switch, 95% CI -0.08 to +0.15); `y_consensus` under `D_cons_w60m`: no effect detected (29 agents switch, 95% CI -0.04 to +0.14).",
     "**A3. Technique diffusion**: skipped: needs configured techniques (config `techniques`: a name and a regex each; `swarmprov suggest RUN` proposes URL ones from the posts, and `auto_techniques` mines them at extract).",
     "**A4. Error propagation**: winner = the most common variant among the last third of a slot's carriers; overturned = a later winner that kept the majority of new carriers. beta-task | Belgium: `94.88` first, `92.14` leads the late carriers 2 to 1 but never kept the majority of new carriers: contested (against the analyst's reference value: unresolved (truth first)); alpha-task | Hawaii: `94.53` first, all 3 late carriers carry `93.29`, fewer than 5: contested (small n) (against the analyst's reference value: unresolved (truth first)); beta-task | Norway: `76.78` first, all 3 late carriers carry `76.08`, fewer than 5: contested (small n) (against the analyst's reference value: unresolved (error first)).",
     "**A5. Structure**: the top 10 sources supplied 21\u201370% of 242 exposed answers, depending on who is credited (nothing records who read whom, so each rule credits one source per answer): 70% credited to the first agent to post the value (out-degree Gini 0.42; leaving out any one item moves it between 69% and 72%), 21% to the latest earlier carrier, 21% of the 242 with a same-page relay parent.",

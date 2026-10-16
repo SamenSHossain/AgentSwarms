@@ -120,7 +120,7 @@ The interval on mean_repeaters is the 95% percentile interval from 1,000 resampl
 
 ## Validation
 
-**Integrity: 9/9 checks pass** (`checks.json`; `swarmprov check RUN` reruns them): the posts behind edges and exposures, relay hops and chain carriers against the mentions, the strict mapping inside the merged one, and summary.json against the tables. Not run, as this run has nothing for them to compare: exposure re-derived from the mentions, flag nesting, exposure edges against the rounds, and rounds held before the first public copy. None fails.
+**Integrity: 9/9 checks pass** (`checks.json`; `swarmprov check RUN` reruns them): the posts behind edges and exposures, relay hops and chain carriers against the mentions, the strict mapping inside the merged one, and summary.json against the tables. Not run, as this run has nothing for them to compare: exposure re-derived from the mentions, flag nesting, and exposure edges against the rounds. None fails.
 
 No gold labels yet. `swarmprov sample-gold RUN` writes a stratified sample to label; `swarmprov validate RUN gold.jsonl` scores the extractor against it, and `swarmprov run ... --gold DIR` scores every label file in DIR before the report.
 

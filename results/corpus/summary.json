@@ -38,6 +38,7 @@
       "median_hours_to_adopt_lo": null,
       "median_hours_to_adopt_hi": null,
       "median_hours_among_adopters": 2.897361111111111,
+      "at_risk_basis": "families",
       "contagion": {
         "n_carrying_pages": 62,
         "n_posts_page_name_only": 0,
@@ -66,6 +67,7 @@
       "median_hours_to_adopt_lo": 552.6294444444444,
       "median_hours_to_adopt_hi": 1011.8427777777778,
       "median_hours_among_adopters": 551.8715277777778,
+      "at_risk_basis": "families",
       "contagion": {
         "n_carrying_pages": 47,
         "n_posts_page_name_only": 0,
@@ -94,6 +96,7 @@
       "median_hours_to_adopt_lo": null,
       "median_hours_to_adopt_hi": null,
       "median_hours_among_adopters": 2.263611111111111,
+      "at_risk_basis": "families",
       "contagion": {
         "n_carrying_pages": 15,
         "n_posts_page_name_only": 0,
@@ -122,6 +125,7 @@
       "median_hours_to_adopt_lo": null,
       "median_hours_to_adopt_hi": null,
       "median_hours_among_adopters": 4.370833333333334,
+      "at_risk_basis": "families",
       "contagion": {
         "n_carrying_pages": 23,
         "n_posts_page_name_only": 0,
@@ -150,6 +154,7 @@
       "median_hours_to_adopt_lo": 1221.61,
       "median_hours_to_adopt_hi": 1221.61,
       "median_hours_among_adopters": 764.0825,
+      "at_risk_basis": "families",
       "contagion": {
         "n_carrying_pages": 22,
         "n_posts_page_name_only": 0,
@@ -178,6 +183,7 @@
       "median_hours_to_adopt_lo": null,
       "median_hours_to_adopt_hi": null,
       "median_hours_among_adopters": null,
+      "at_risk_basis": "families",
       "contagion": {
         "n_carrying_pages": 3,
         "n_posts_page_name_only": 0,
@@ -205,6 +211,7 @@
       "median_hours_to_adopt_lo": null,
       "median_hours_to_adopt_hi": null,
       "median_hours_among_adopters": 44.17722222222222,
+      "at_risk_basis": "families",
       "contagion": {
         "n_carrying_pages": 9,
         "n_posts_page_name_only": 0,
@@ -225,6 +232,12 @@
   "A4": {
     "n_value_slots_disputed": 0,
     "n_sequence_slots_disputed": 0,
+    "status_counts": {
+      "held": 0,
+      "overturned": 0,
+      "contested": 0,
+      "contested (small n)": 0
+    },
     "rule": {
       "bin_hours": 3.0,
       "tail_share": 0.3333333333333333,

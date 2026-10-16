@@ -1,5 +1,4 @@
 src,dst,family,item,value_norm,kind,dt_s,event_id,within_clock_res,claim_id,src_event_id
-Sep21|datausa-grocery-workforce,Apr27|datausa-grocery-workforce,datausa-grocery-workforce,Georgia,90725,exposure,420.0,16a9d8114e016495,,8a958227c0aae0d3,2fee76fc37e9057f
 clothingsequencescout,May15|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,1128.0,cb16bc90e3aca9e7,,c3b44091760f8497,2291f610040d92b6
 Apr27|datausa-grocery-workforce,Sep21|datausa-grocery-workforce,datausa-grocery-workforce,Arkansas,20794,exposure,655.0,d8841086f767476e,,7e24c61cf77bf07a,5d2081f4f285eb05
 clothingsequencescout,May24|datausa-clothing-workforce,datausa-clothing-workforce,California,163139,exposure,2139.0,3007eae328f5eb01,,471e82f486d35160,2291f610040d92b6
@@ -15,7 +14,6 @@ Mar13|datausa-grocery-workforce,Sep21|datausa-grocery-workforce,datausa-grocery-
 Mar13|datausa-grocery-workforce,Jan31|datausa-grocery-workforce,datausa-grocery-workforce,Nevada,20369,exposure,1819.0,0e3f225bbc8d680a,,7d70c5247d4cb253,95f8ce3e5aabbaa0
 May28|datausa-cashiers-masters,Sep09|datausa-cashiers-masters,datausa-cashiers-masters,Business,5269,exposure,2676.0,4d4d87bdd12414ba,,922571e44584964e,b40c535d730055c9
 Sep21|datausa-grocery-workforce,Apr27|datausa-grocery-workforce,datausa-grocery-workforce,Kentucky,34770,exposure,1429.0,7d1019e170b8bc15,,702bf2406044e9e7,0207aa5803deee39
-Apr27|datausa-grocery-workforce,Sep21|datausa-grocery-workforce,datausa-grocery-workforce,Kentucky,34770,exposure,1111.0,c2399cd216d0812c,,404ce066a7d90f96,0a3036671f919514
 Sep21|datausa-grocery-workforce,Jan31|datausa-grocery-workforce,datausa-grocery-workforce,Kentucky,34770,exposure,1609.0,b637de459be5f366,,925ec7dc4f722e14,0207aa5803deee39
 May28|datausa-cashiers-masters,Sep09|datausa-cashiers-masters,datausa-cashiers-masters,Visual & Performing Arts,2134,exposure,2010.0,b8fa9f0694ad4cfa,,35e2018ca723f447,96122af81306aa81
 May28|datausa-cashiers-masters,Jan12|datausa-cashiers-masters,datausa-cashiers-masters,Social Sciences,2749,exposure,3734.0,f8ba91ea45988595,,1b8d36455f859357,b05a3fd1bf96effa
@@ -242,7 +240,6 @@ clothingsequencescout,Oct18|datausa-clothing-workforce,datausa-clothing-workforc
 Jan29|datausa-sector61-state,Mar19|datausa-sector61-state,datausa-sector61-state,Michigan,1020933,exposure,7535.0,68d3672e3626e383,,7bf7f99109a89bb3,424e8769a38bb25e
 clothingsequencescout,Oct15|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,41273.0,fb72c098f89580df,,9facde20754808c5,2291f610040d92b6
 Jan29|datausa-sector61-state,Nov19|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,7601.0,fb2731b3a83352ed,,bb4d63f257926643,424e8769a38bb25e
-May24|datausa-sector61-state,Jan29|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,7607.0,9a46a8abff5fafea,,a27670121400fd94,b9b5603ce681bd71
 Jan29|datausa-sector61-state,Jul12|datausa-sector61-state,datausa-sector61-state,Michigan,1020933,exposure,7617.0,681b8f7e1eb39438,,d1f622d74e5be991,424e8769a38bb25e
 clothingsequencescout,Jan24|datausa-clothing-workforce,datausa-clothing-workforce,New York,95897,exposure,41360.0,3a4ac367d1e7b31b,,a4dae501b8b7551b,2291f610040d92b6
 Jan29|datausa-sector61-state,Aug27|datausa-sector61-state,datausa-sector61-state,West Virginia,196790,exposure,7721.0,0271c88c0f24b112,,f00d4f1e5132a989,424e8769a38bb25e
@@ -688,7 +685,6 @@ Apr04|ihme-cvd-deaths,Jun26|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,expos
 Apr04|ihme-cvd-deaths,Nov01|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,40768.0,68c142365cbedeca,,45dab0f0791739ee,366ebc7dcbc0d83e
 Apr04|ihme-cvd-deaths,Feb05|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,42146.0,0ca0aa02a0455ecc,,265e3a9b028dffae,366ebc7dcbc0d83e
 Apr04|ihme-cvd-deaths,Nov03|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,45111.0,3aaf3ca3d26b32f7,,b46d3a0dfc739ec8,366ebc7dcbc0d83e
-Jan31|ihme-cvd-deaths,Mar27|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8016,exposure,11609.0,1a5f0f3b5b9a93fa,,5249754258ce1989,f40fa3fb6307709f
 Apr04|ihme-cvd-deaths,Nov18|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,47207.0,8b5489e78510967e,,8e7df9528aa0625f,366ebc7dcbc0d83e
 May28|datausa-cashiers-masters,Jun20|datausa-cashiers-masters,datausa-cashiers-masters,Education,5432,exposure,267400.0,81cf2f8dba22507e,,5cba57d32063c343,24aa9196bd67266f
 Apr04|ihme-cvd-deaths,May12|ihme-cvd-deaths,ihme-cvd-deaths,Poland,8090.38,exposure,50520.0,8bf9a8ba1cf19625,,3bb0671d244afcbe,366ebc7dcbc0d83e
@@ -909,7 +905,6 @@ Mar30|oecd-equity,Jun26|oecd-equity,oecd-equity,Poland,16.38,exposure,25892.0,c3
 Mar30|oecd-equity,Apr06|oecd-equity,oecd-equity,Poland,16.38,exposure,26125.0,e10bffbe85bdfa80,,fd42c3de7be8c329,f2063b8a6eb0f34d
 Mar30|oecd-equity,Jun06|oecd-equity,oecd-equity,Poland,16.38,exposure,26251.0,bb8cf8bb3f6901e0,,e3a81c0df70917d5,f2063b8a6eb0f34d
 Mar30|oecd-equity,Mar16|oecd-equity,oecd-equity,Poland,16.38,exposure,26308.0,e450e90727d229af,,af302950d38eb144,f2063b8a6eb0f34d
-Mar16|uefa-pass-accuracy,Oct18|uefa-pass-accuracy,uefa-pass-accuracy,Slovenia,69,exposure,5711.0,1d26ca36ba85ec36,,073da4a8d9a7f182,bf44256495bc0db2
 Mar30|oecd-equity,Aug02|oecd-equity,oecd-equity,Poland,16.38,exposure,28220.0,17b7ed7fbb9d3fc2,,90e70c69f07fc27c,f2063b8a6eb0f34d
 Mar30|oecd-equity,Feb28|oecd-equity,oecd-equity,Poland,16.38,exposure,29691.0,31923d2bd6e08117,,39b87dde9091c66a,f2063b8a6eb0f34d
 Oct18|uefa-pass-accuracy,Apr04|uefa-pass-accuracy,uefa-pass-accuracy,Slovenia,69,exposure,23163.0,9cecee0b054c2d0d,,2f93a2246d6fa1e9,270324c11bfe13bc
@@ -1010,7 +1005,6 @@ Mar14|datausa-occupation-salary-61-62,Apr01|datausa-occupation-salary-61-62,data
 Jun27|sdg-index-score,Mar05|oecd-regional-co2,oecd-regional-co2,Italy,393.46,exposure,25519.0,639f5af3000aa635,,0ffadc0fac8e2cfa,a67d2c73be4c65d5
 Aug09|datausa-occupation-salary-61-62,Feb17|datausa-occupation-salary-61-62,datausa-occupation-salary-61-62,Maids and housekeeping cleaners,24924,exposure,8829.0,f2c07cd0907b8e78,,e9ab56aff986996f,b37ee0316e3a5a4d
 Mar14|datausa-occupation-salary-61-62,Jun20|datausa-occupation-salary-61-62,datausa-occupation-salary-61-62,Medical transcriptionists,25841,exposure,11631.0,6d3b50cb8b3ba18e,,9fd5a766cfcf18b3,f19c79dacbec1fd3
-Mar13|oecd-regional-co2,Jan04|oecd-regional-co2,oecd-regional-co2,Poland,690.42,exposure,3952.0,73ed4971a342e78e,,6482de55312b9967,493020f6a00545ac
 Jun27|sdg-index-score,Jan04|oecd-regional-co2,oecd-regional-co2,Italy,393.46,exposure,26311.0,c347a733ca2013ed,,dfdb8a0df255a648,a67d2c73be4c65d5
 Jun27|sdg-index-score,Oct23|oecd-regional-co2,oecd-regional-co2,Italy,393.46,exposure,27409.0,9fe730d31300959b,,92d9b03ddfde8a09,a67d2c73be4c65d5
 Mar31|ihme-family-planning,Mar13|ihme-family-planning,ihme-family-planning,Albania,13.46,exposure,127406.0,5522b095bf402b7c,,5c48601267ec2619,6b39ff6020b3786b
