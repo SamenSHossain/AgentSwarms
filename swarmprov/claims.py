@@ -76,6 +76,7 @@ def agent_rounds(claims: pd.DataFrame, agent_col: str) -> pd.DataFrame:
             "value_norm": vals.iloc[0] if len(vals) else None,
             "t_report": first["ts"],
             "latency_class": lat.iloc[0] if len(lat) else None,
+            "latency_s": g.loc[lat.index[0], "latency_s"] if len(lat) else None,   # the number behind that class
             "timer_s": g["timer_s"].dropna().iloc[0] if g["timer_s"].notna().any() else None,
             "wrong_flag": bool(g["wrong_flag"].any()),
             "correct_flag": bool(g["correct_flag"].fillna(False).any()),

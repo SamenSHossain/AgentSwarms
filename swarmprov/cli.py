@@ -8,7 +8,7 @@
     swarmprov extract  runs/wiki [--llm claude-haiku-4-5]
     swarmprov expose   runs/wiki
     swarmprov graph    runs/wiki
-    swarmprov report   runs/wiki [--mapping merged|strict]
+    swarmprov report   runs/wiki [--mapping merged|strict] [--boot 1000]
     swarmprov sample-gold runs/wiki [-n 120]
     swarmprov validate runs/wiki gold.jsonl
     swarmprov crosssite runs/wiki data/raw2 -o runs/crosssite
@@ -34,6 +34,12 @@ from .schema import RunDir
 def _positive(v: str) -> int:
     if not v.isdigit() or int(v) < 1:
         raise argparse.ArgumentTypeError(f"expected a whole number of at least 1, got {v!r}")
+    return int(v)
+
+
+def _count(v: str) -> int:
+    if not v.isdigit():
+        raise argparse.ArgumentTypeError(f"expected a whole number (0 or more), got {v!r}")
     return int(v)
 
 
@@ -94,6 +100,9 @@ def main(argv: list[str] | None = None) -> int:
     s = sub.add_parser("report")
     s.add_argument("run")
     s.add_argument("--mapping", choices=["merged", "strict"], default="merged")
+    s.add_argument("--boot", type=_count, default=None, metavar="N",
+                   help="bootstrap resamples behind the confidence intervals (seeded; default: the config's "
+                        "bootstrap_reps, 1000); 0 leaves the intervals out")
 
     s = sub.add_parser("sample-gold", help="write a stratified sample of posts to hand-label")
     s.add_argument("run")
@@ -164,7 +173,7 @@ def main(argv: list[str] | None = None) -> int:
         pipeline.build_graph(RunDir(a.run))
     elif a.cmd == "report":
         from . import report
-        report.build(RunDir(a.run), mapping=a.mapping)
+        report.build(RunDir(a.run), mapping=a.mapping, boot=a.boot)
     elif a.cmd == "sample-gold":
         from . import validate
         validate.sample(RunDir(a.run), a.n, a.seed, a.exclude, a.name)

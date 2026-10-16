@@ -121,12 +121,15 @@ def test_sequence_clock_suppresses_every_hour_based_number(runs):
     run = runs["openai"]
     text = _report(run)
     for gone in ("at least an hour before", "Median head start", "exposed_60m", "exposed ≥1 h", "Majority from",
-                 "| hours to overtake", "winner first seen", "carry no reliable direction", "UTC"):
+                 "| hours to overtake", "winner first seen", "carry no reliable direction", "UTC",
+                 "Exposure vs required head start", "a1_threshold.png", "Sensitivity to the relay window", "within 1 h"):
         assert gone not in text, gone
-    assert text.count("need a wall clock and are not shown") == 2          # A1 shares, A4 bins
+    assert text.count("need a wall clock and are not shown") == 3          # A1 shares, A4 bins, A6 relay window
     assert "**Message order is not time.**" in text
     a1 = json.loads((run.path / "summary.json").read_text())["A1"]
     assert a1["share_exposed_60m"] is None and a1["median_gap_h"] is None and a1["share_exposed"] == pytest.approx(6 / 9)
+    assert a1["share_exposed_60m_ci"] is None and a1["median_gap_h_ci"] is None and "threshold_curve" not in a1
+    assert "window_sensitivity" not in json.loads((run.path / "summary.json").read_text()).get("A6", {})
     assert run.read("edges_merged").query("kind == 'relay'")["within_clock_res"].isna().all()
     ex = run.read("exposures_merged")                       # positions are not seconds: no gap, no threshold flag
     assert ex[["gap_s", "D_w10m", "D_w60m", "D_cons_w60m"]].isna().all().all() and ex["D"].notna().all()

@@ -99,6 +99,8 @@ class AdapterConfig:
     reference_values: dict[str, float | str] = field(default_factory=dict)
     # claimed latency at or under this many seconds counts as "instant"
     instant_threshold_s: float = 2.0
+    # resamples behind the report's bootstrap intervals (A1 by item, A6 by fact; seeded); 0 turns them off
+    bootstrap_reps: int = 1000
     # authors to drop (admins, maintenance bots)
     ignore_authors: tuple[str, ...] = ()
     # use the channel name as the task family when nothing else matches

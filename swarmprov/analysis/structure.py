@@ -1,4 +1,5 @@
-"""A5 - structure: hub concentration, brokers, relay chain lengths, the supply network.  A6 - reach.
+"""A5 - structure: hub concentration, brokers, relay chain lengths, the supply network.  A6 - reach, and how the
+relay trees change with a relay window W.
 
 Concentration depends on who is credited with an exposed answer, so it is given under
 three attribution rules (and on instant answers only, the copy signature), none of them
@@ -14,10 +15,13 @@ import pandas as pd
 
 from .. import plotting
 from ..exposure import match_key
-from ..graph import gini, to_networkx
+from ..graph import gini, relay_edges, to_networkx
 from ..plotting import plt
+from .uncertainty import cluster_bootstrap, wmean
 
 
+# A6's relay windows W in seconds (None: no limit, the graph's own edges)
+WINDOWS = (600, 3600, 21600, 86400, None)
 # exact betweenness up to this many nodes (seconds on the wiki's ~1,400); sampled from 300 sources above it
 EXACT_BETWEENNESS_NODES = 5000
 # the brokers' graph: replies are interactions, so they count here but never toward supply (exposure) or relays
@@ -56,17 +60,35 @@ def concentration(sources: pd.Series, top_k: int = 10) -> dict:
             "gini": gini(deg.values) if tot else float("nan")}
 
 
+def leave_one_item_out(sources: pd.Series, items: pd.Series, top_k: int = 10) -> dict:
+    """How far one item moves the concentration: the lowest and highest top-k share and Gini (``*_loo_lo`` /
+    ``*_loo_hi``) over the credits with each item's answers left out in turn; NaN with fewer than two items.
+    Concentration gets no bootstrap interval: resampling items repeats their sources and inflates it."""
+    keys = items.unique()
+    runs = [concentration(sources[items != i], top_k) for i in keys] if len(keys) > 1 else []
+    out = {}
+    for stat in (f"top{top_k}_share", "gini"):
+        v = np.array([r[stat] for r in runs], dtype=float)
+        ok = v[~np.isnan(v)]
+        out |= {f"{stat}_loo_lo": float(ok.min()) if len(ok) else float("nan"),
+                f"{stat}_loo_hi": float(ok.max()) if len(ok) else float("nan")}
+    return out
+
+
 def attribution(ex: pd.DataFrame, edges: pd.DataFrame, events: pd.DataFrame, top_k: int = 10) -> pd.DataFrame:
     """Concentration of exposed answers (D == 1) under each attribution rule, on every exposed
-    answer and on instant ones only.  ``unmatched`` counts the answers a rule credits to nobody."""
+    answer and on instant ones only, with its ``leave_one_item_out`` range.  ``unmatched`` counts the answers a
+    rule credits to nobody."""
     x = ex[ex["D"] == 1]
     rules = {"first source": x["src_agent"], "latest source": x["src_latest"],
              "same-page relay parent": relay_parents(x, edges, events)}
+    items = x["family"] + "|" + x["item"]
     rows = []
     for subset, idx in (("all exposed", x.index), ("instant only", x.index[x["y_instant"] == 1])):
         for rule, src in rules.items():
             s = src.loc[idx]
-            rows.append({"rule": rule, "answers": subset, **concentration(s, top_k), "unmatched": int(s.isna().sum())})
+            rows.append({"rule": rule, "answers": subset, **concentration(s, top_k), "unmatched": int(s.isna().sum()),
+                         **leave_one_item_out(s, items.loc[idx], top_k)})
     return pd.DataFrame(rows)
 
 
@@ -74,7 +96,10 @@ def analyze(edges: pd.DataFrame, chains: pd.DataFrame, top_k: int = 10, ex: pd.D
             events: pd.DataFrame | None = None) -> dict:
     """``ex`` (the exposure table) adds the attribution-rule table and the per-item null; it needs
     ``events`` for the relay parents' post times."""
-    outdeg = edges[edges["kind"] == "exposure"].groupby("src").size().sort_values(ascending=False)
+    expo = edges[edges["kind"] == "exposure"]
+    outdeg = expo.groupby("src").size().sort_values(ascending=False)
+    items = expo["family"] + "|" + expo["item"] if len(expo) else pd.Series(dtype=object)
+    loo = leave_one_item_out(expo["src"], items, top_k)   # first-source credit, one item left out at a time
     relay_out = edges[edges["kind"] == "relay"].groupby("src").size().sort_values(ascending=False)
     G = to_networkx(edges, kinds=BROKER_KINDS)
     btw, k = betweenness(G)
@@ -90,6 +115,8 @@ def analyze(edges: pd.DataFrame, chains: pd.DataFrame, top_k: int = 10, ex: pd.D
         "exposure_sources": int(len(outdeg)),
         "gini_exposure_outdegree": gini(outdeg.values) if len(outdeg) else float("nan"),
         f"top{top_k}_share_exposure": float(outdeg.head(top_k).sum() / outdeg.sum()) if len(outdeg) else float("nan"),
+        f"top{top_k}_share_exposure_loo": [loo[f"top{top_k}_share_loo_lo"], loo[f"top{top_k}_share_loo_hi"]],
+        "gini_exposure_outdegree_loo": [loo["gini_loo_lo"], loo["gini_loo_hi"]],
         "gini_relay_outdegree": gini(relay_out.values) if len(relay_out) else float("nan"),
         "top_sources": outdeg.head(top_k),
         "top_brokers": btw.sort_values(ascending=False).head(top_k), "betweenness": btw,
@@ -111,8 +138,9 @@ def analyze(edges: pd.DataFrame, chains: pd.DataFrame, top_k: int = 10, ex: pd.D
     return res
 
 
-def reach(chains: pd.DataFrame) -> dict:
-    """A6: for every fact (item+value, or URL): how many agents repeated it, how many hops."""
+def reach(chains: pd.DataFrame, boot: int = 0, seed: int = 0) -> dict:
+    """A6: for every fact (item+value, or URL): how many agents repeated it, how many hops.  ``boot`` > 0 adds a
+    95% interval for ``mean_repeaters`` (``mean_repeaters_lo`` / ``_hi``) from that many resamples of the facts."""
     if chains.empty:
         return {}
     out = {}
@@ -125,7 +153,30 @@ def reach(chains: pd.DataFrame) -> dict:
             "p90_repeaters": float((g["n_agents"] - 1).quantile(0.9)),
             "max_hops": int(g["max_depth"].max()), "mean_hops_repeated": float(g.loc[g["n_agents"] > 1, "max_depth"].mean()),
         }
+        if boot:
+            lo, hi = cluster_bootstrap(g, None, lambda d, w: wmean(d["n_agents"] - 1, w), boot, seed)
+            out[kind] |= {"mean_repeaters_lo": float(lo), "mean_repeaters_hi": float(hi)}
     return out
+
+
+def window_sensitivity(mentions: pd.DataFrame, agent_col: str, windows=WINDOWS) -> pd.DataFrame:
+    """A6's task-value relay trees re-inferred under each relay window W in seconds (``graph.relay_edges`` with
+    ``max_gap_s=W``; None = no limit, the graph's own trees).  Per W: the same-page and cross-page hops, the
+    carriers left unattributed (their parent posted more than W before them), the linked repeaters per fact
+    (carriers with a parent inside W; with no limit, every repeater: A6's ``mean_repeaters``) and the mean deepest
+    hop of the facts carried by two or more agents (with no limit, A6's ``mean_hops_repeated``).  URLs are left
+    out: their trees are many times larger and would take seconds per window."""
+    m = mentions[mentions["family"] != "url"]
+    rows = []
+    for w in windows:
+        e, c = relay_edges(m, agent_col, clock_res_s=None, max_gap_s=w) if len(m) else (pd.DataFrame(), pd.DataFrame())
+        kinds = e["kind"].value_counts() if len(e) else pd.Series(dtype=int)
+        multi = c[c["n_agents"] > 1] if len(c) else c
+        rows.append({"W_s": w, "relay": int(kinds.get("relay", 0)), "relay_xchannel": int(kinds.get("relay_xchannel", 0)),
+                     "unattributed": int((multi["n_agents"] - 1).sum()) - len(e) if len(c) else 0,
+                     "mean_linked_repeaters": len(e) / len(c) if len(c) else float("nan"),
+                     "mean_max_depth": float(multi["max_depth"].mean()) if len(multi) else float("nan")})
+    return pd.DataFrame(rows)
 
 
 def figure(res: dict, chains: pd.DataFrame, path, top: int = 10) -> str | None:

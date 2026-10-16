@@ -4,8 +4,9 @@ At-risk set: agents active (posting) in the technique's families after its
 first appearance (any task family for techniques without a family; every agent
 when no post has a family at all).  Adoption = the agent's first post mentioning/using it.
 Agents who never adopt are censored at their last post.  Survival is a
-plain Kaplan-Meier estimator (no lifelines dependency).  Posts without a
-timestamp take no part.
+plain Kaplan-Meier estimator (no lifelines dependency), and the median time to
+adopt carries Greenwood's 95% interval where it is reached
+(``uncertainty.km_greenwood``).  Posts without a timestamp take no part.
 """
 
 from __future__ import annotations
@@ -15,19 +16,7 @@ import pandas as pd
 
 from .. import plotting
 from ..plotting import plt
-
-
-def kaplan_meier(durations: np.ndarray, events: np.ndarray) -> pd.DataFrame:
-    order = np.argsort(durations)
-    d, e = durations[order], events[order]
-    times = np.unique(d[e == 1])
-    s, rows = 1.0, [(0.0, 1.0)]
-    for t in times:
-        at_risk = (d >= t).sum()
-        n_ev = ((d == t) & (e == 1)).sum()
-        s *= 1 - n_ev / at_risk
-        rows.append((float(t), s))
-    return pd.DataFrame(rows, columns=["t", "survival"])
+from .uncertainty import km_greenwood, km_median
 
 
 def familyless(tags: pd.DataFrame) -> bool:
@@ -60,13 +49,16 @@ def analyze(tags: pd.DataFrame, techniques, agent_col: str) -> dict:
                 dur.append((last - t0).total_seconds() / 3600)
                 ev.append(0)
         dur, ev = np.array(dur), np.array(ev)
-        km = kaplan_meier(dur, ev) if len(dur) else pd.DataFrame(columns=["t", "survival"])
-        adopted = km[km["survival"] <= 0.5]
+        km = km_greenwood(dur, ev)
+        median, lo, hi = km_median(km)
         out[tech.name] = {
             "description": tech.description, "first_seen": t0, "originator": origin,
             "at_risk": int(len(dur)), "adopters": int(ev.sum()),
             "adoption_share": float(ev.mean()) if len(ev) else float("nan"),
-            "median_hours_to_adopt": float(adopted["t"].iloc[0]) if len(adopted) else float("nan"),
+            "median_hours_to_adopt": median,
+            # Greenwood's interval, only where the median is reached; an upper bound the band never reaches is NaN
+            "median_hours_to_adopt_lo": lo if median == median else float("nan"),
+            "median_hours_to_adopt_hi": hi if median == median else float("nan"),
             "median_hours_among_adopters": float(np.median(dur[ev == 1])) if ev.sum() else float("nan"),
             "n_posts": int(len(hit)), "km": km,
         }
