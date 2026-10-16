@@ -15,6 +15,8 @@
     swarmprov check    runs/wiki                          # do the tables agree? exit 1 on an error
     swarmprov truth-score runs/synth data/synth           # a synthetic run against what synth planted
     swarmprov crosssite runs/wiki data/raw2 -o runs/crosssite
+    swarmprov compare  runs/wiki runs/wiki2 -o runs/cmp                    # what changed: setup, summary, rows
+    swarmprov compare  runs/wiki runs/wiki --mapping-b strict              # the two identity mappings of one run
     swarmprov trace    runs/wiki --agent "Mar16|oecd-equity" --item "Czech Republic"   # one answer's sources
     swarmprov trace    runs/wiki --fact "oecd-equity|Hungary|9.9" --png hungary.png     # one fact's relay tree
     swarmprov agent    runs/wiki May28                                                 # one agent's profile and links
@@ -69,6 +71,16 @@ def _fields(v: str) -> dict[str, str]:
         return check_fields({k.strip(): key for k, key in pairs})
     except ValueError as e:
         raise argparse.ArgumentTypeError(str(e)) from None
+
+
+def _tolerance(v: str) -> float:
+    try:
+        t = float(v)
+    except ValueError:
+        t = float("nan")
+    if not 0 <= t < 1:
+        raise argparse.ArgumentTypeError(f"expected a relative tolerance from 0 up to (not including) 1, got {v!r}")
+    return t
 
 
 def _tables(v: str) -> list[str]:
@@ -159,6 +171,16 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("wiki_run", help="run directory of the primary wiki (e.g. runs/wiki)")
     s.add_argument("corpus", help="directory with records.jsonl, shortener-logs.json, other-wikis.json, site-coverage.csv")
     s.add_argument("-o", "--out", default="runs/crosssite")
+
+    s = sub.add_parser("compare", help="what changed between two runs, configs or identity mappings: setup, summary, rows")
+    s.add_argument("run_a")
+    s.add_argument("run_b", help="another run, or RUN_A again to compare its two mappings")
+    s.add_argument("--mapping-a", choices=["merged", "strict"], default="merged")
+    s.add_argument("--mapping-b", choices=["merged", "strict"], default="merged")
+    s.add_argument("-o", "--out", default="runs/compare", help="directory for compare.md and compare.json")
+    s.add_argument("--limit", type=_positive, default=None, help="at most N examples per change (default 10)")
+    s.add_argument("--tol", type=_tolerance, default=1e-6,
+                   help="relative tolerance within which summary numbers count as equal (default 1e-6)")
 
     s = sub.add_parser("trace", help="one answer's sources, one fact's relay tree, one post's extraction")
     s.add_argument("run")
@@ -257,6 +279,9 @@ def main(argv: list[str] | None = None) -> int:
     elif a.cmd == "crosssite":
         from .crosssite_pipeline import run_crosssite
         run_crosssite(a.wiki_run, a.corpus, a.out)
+    elif a.cmd == "compare":
+        from . import compare
+        return compare.main(a.run_a, a.run_b, a.mapping_a, a.mapping_b, a.out, a.limit, a.tol)
     elif a.cmd == "trace":
         from . import query
         return query.trace(a.run, agent=a.agent, item=a.item, family=a.family, answer=a.answer, fact=a.fact,
