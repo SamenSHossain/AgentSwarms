@@ -156,7 +156,8 @@ def test_median_head_start_needs_items_with_an_exposed_answer():
     every resample has one, but four items are too few.  The shares keep their intervals; five items give one."""
     def frame(k: int) -> pd.DataFrame:
         return pd.DataFrame({"item_fe": [f"f|{i}" for i in range(100)], "family": "f", "agent": [f"x{i}" for i in range(100)],
-                             "D": [1] * k + [0] * (100 - k), "D_w10m": 0, "D_w60m": 0, "self_prepared": 0, "y_instant": 0,
+                             "D": [1] * k + [0] * (100 - k), "D_w10m": 0, "D_w60m": 0, "self_prepared": 0,
+                             "self_originated": 0, "y_instant": 0,
                              "gap_s": [3600.0 * (h + 1) for h in range(k)] + [np.nan] * (100 - k), "episode": 1})
     for k in (1, 4):
         r = provenance.summarize(frame(k), boot=300)
@@ -168,7 +169,7 @@ def test_median_head_start_needs_items_with_an_exposed_answer():
 
 def test_family_rows_with_few_items_get_no_interval():
     ex = pd.DataFrame({"family": ["f"] * 6 + ["g"] * 6, "item_fe": ["f|a", "f|b", "f|c"] * 2 + [f"g|{i}" for i in range(6)],
-                       "D": [1, 0] * 6, "D_w10m": 0, "D_w60m": 0, "self_prepared": 0, "y_instant": 0,
+                       "D": [1, 0] * 6, "D_w10m": 0, "D_w60m": 0, "self_prepared": 0, "self_originated": 0, "y_instant": 0,
                        "gap_s": np.nan, "agent": [f"x{i}" for i in range(12)], "episode": 1})
     fam = provenance.summarize(ex, min_n=1, boot=100)["by_family"]
     assert np.isnan(fam.loc["f", "exposed_lo"]) and fam.loc["f", "items"] == 3
@@ -310,7 +311,7 @@ def test_a5_one_item_left_out_collapses_to_one_value():
            "unmatched": 0, "top10_share_loo_lo": 1.0, "top10_share_loo_hi": 1.0, "gini_loo_lo": 0.23, "gini_loo_hi": 0.31}
     r5 = {"attribution": pd.DataFrame([row]), "items_exposed": 12, "items_one_source": 12, "exposure_sources": 7,
           "top10_share_exposure": 1.0, "gini_exposure_outdegree": 0.31, "gini_item_exposures": 0.07,
-          "top10_share_exposure_loo": [1.0, 1.0], "gini_exposure_outdegree_loo": [0.23, 0.31]}
+          "top10_share_exposure_loo": [1.0, 1.0], "gini_exposure_outdegree_loo": [0.23, 0.31], "n_self_originated": 0}
     assert "Leaving out any one item leaves the share at 100% and moves the Gini between 0.23 and 0.31;" in _hub_headline(r5)
     table = _attribution_block(r5, {"A5": {}})[-1]
     assert "| 0 | 100% | 0.23–0.31 |" in table and "100–100%" not in table

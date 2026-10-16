@@ -15,6 +15,9 @@ with a wiki timestamp.
   report, which is robust to the unknown report lag.
 * ``t_self_prepared``  the agent itself posted the item+value before its
   report (it was holding the answer in advance).
+* ``self_originated``  it did so before any other agent's copy (``t_self_prepared <
+  t_public``): D stays 1, as the value was public before the report, but no source is
+  credited with the answer (``credited``), so it gives no exposure edge and no A5 credit.
 * ``D_cons``    the *consensus* value was public before the report.  This is the
   causal treatment: unlike D it does not depend on the agent's own answer, so
   "wrong answer => nothing matching was public" cannot manufacture an effect.
@@ -66,6 +69,12 @@ def match_key(value_norm, consensus) -> str | None:
     """The value an agent-round is matched on: its own value's ``value_key``, or the consensus
     value when the agent did not restate one.  Exposure, edges, trace and A5 all join on it."""
     return value_key(value_norm) or (consensus if isinstance(consensus, str) else None)
+
+
+def credited(ex: pd.DataFrame) -> pd.Series:
+    """The exposed rounds a source is credited with: D == 1 and not self-originated (the agent posted the value
+    before any other agent did).  Exposure edges, A5's attribution and origins, and the agent profiles read it."""
+    return (ex["D"] == 1) & (ex["self_originated"] == 0)
 
 
 def _score(r, target) -> float:
@@ -176,6 +185,7 @@ def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: s
             "D_w10m": int(t_pub is not None and gap >= 600),
             "D_w60m": int(t_pub is not None and gap >= 3600),
             "self_prepared": int(t_self is not None),
+            "self_originated": int(t_self is not None and t_pub is not None and t_self < t_pub),
             "D_cons": int(t_cons is not None),
             "D_cons_w60m": int(t_cons is not None and gap_c >= 3600),
             "t_cons": t_cons, "gap_cons_s": gap_c,

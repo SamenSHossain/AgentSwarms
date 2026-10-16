@@ -89,6 +89,8 @@ TABLES: dict[str, list[str]] = {
     "exposures": [
         "claim_id", "agent", "family", "episode", "item", "value_norm", "t_report",
         "t_public", "src_agent", "t_self_prepared", "gap_s", "D", "D_w10m", "D_w60m", "D_cons", "D_cons_w60m",
+        # the agent posted the value before any other agent's copy: no source is credited (exposure.credited)
+        "self_originated",
         # the first public copy of the consensus value and its head start over the report (A2's dose)
         "t_cons", "gap_cons_s",
         "y_instant", "y_consensus", "consensus_value", "latency_class", "wrong_flag",

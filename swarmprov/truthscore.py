@@ -8,7 +8,8 @@ Reads ``truth.csv`` (and ``truth_techniques.csv`` and ``config.json``) beside th
 * A2's estimate against the true effect, the share of rounds public at arrival that copied (a round answers
   instantly by copying, which needs the answer on the board, or as a fast agent, whatever is on the board);
 * for each A5 attribution rule (and, with deletions, the first copy still visible) the share of copied answers it
-  credits to the agent whose post was copied, and its top-10 share on instant answers against the true one;
+  credits to the agent whose post was copied (none for a self-originated answer, as in A5), and its top-10 share on
+  instant answers against the true one;
 * A3's adoption share and Kaplan-Meier median against the planted adoptions;
 * A4's status and outcome per disputed slot against the same rule run on the true answers;
 * each identity mapping's purity (the share of posts whose agent's main true agent wrote them) and how many true
@@ -30,6 +31,7 @@ from .analysis import causal, diffusion, errors, structure
 from .analysis.agents import AGENT_COLS
 from .analysis.uncertainty import km_greenwood, km_median
 from .claims import public, value_key
+from .exposure import credited
 from .fmt import dumps, json_safe
 from .rules import norm_value
 from .schema import RunDir, suffix
@@ -105,7 +107,7 @@ def _sources(ex: pd.DataFrame, j: pd.DataFrame, edges: pd.DataFrame, events: pd.
     if deleted:
         rules[VISIBLE] = "src_visible_agent"
         shares[VISIBLE] = structure.concentration(
-            ex.loc[(ex["D"] == 1) & (ex["y_instant"] == 1), "src_visible_agent"])["top10_share"]
+            ex.loc[credited(ex) & (ex["y_instant"] == 1), "src_visible_agent"])["top10_share"]
     cp = j[j["copied"]]
     if cp.empty:   # nobody copied: no source to name
         return []
@@ -180,6 +182,8 @@ def score(run: RunDir, truth_dir: str | Path, mapping: str = "merged") -> dict:
     author = events.drop_duplicates("event_id").set_index("event_id")["author_raw"]
     ex = ex.assign(relay_parent=structure.relay_parents(ex, edges, events),
                    src_visible_agent=ex["src_visible_event_id"].map(author).map(agents.set_index("author_raw")[col]))
+    rules = [*RULES.values(), "src_visible_agent"]   # a self-originated answer is credited to nobody, as in A5
+    ex[rules] = ex[rules].astype(object).where(ex["self_originated"] == 0, None)
     cols = {"agent": "author_raw", "family": "family", "item": "item", "public_at_arrival": "public_at_arrival",
             "copied": "copied", "src_agent": "true_src", "target": "target", "visible": "visible"}
     j = (ex.merge(events[["event_id", "author_raw"]].drop_duplicates("event_id"), left_on="report_event_id",

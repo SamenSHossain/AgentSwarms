@@ -4,7 +4,8 @@ relay trees change with a relay window W.
 Concentration depends on who is credited with an exposed answer, so it is given under
 three attribution rules (and on instant answers only, the copy signature), none of them
 privileged: the *first* other carrier before the report (``src_agent``), the *latest*
-(``src_latest``) and the same-page relay parent from the graph.
+(``src_latest``) and the same-page relay parent from the graph.  None credits a self-originated
+answer (its agent posted the value before any other agent did; ``exposure.credited``).
 """
 
 from __future__ import annotations
@@ -16,7 +17,7 @@ from matplotlib.ticker import MaxNLocator
 
 from .. import plotting
 from ..claims import url_domain
-from ..exposure import match_key
+from ..exposure import credited, match_key
 from ..graph import gini, relay_edges, to_networkx
 from ..plotting import plt
 from .uncertainty import cluster_bootstrap, wmean
@@ -86,10 +87,10 @@ def leave_one_item_out(sources: pd.Series, items: pd.Series, top_k: int = 10) ->
 
 
 def attribution(ex: pd.DataFrame, edges: pd.DataFrame, events: pd.DataFrame, top_k: int = 10) -> pd.DataFrame:
-    """Concentration of exposed answers (D == 1) under each attribution rule, on every exposed
-    answer and on instant ones only, with its ``leave_one_item_out`` range.  ``unmatched`` counts the answers a
+    """Concentration of the credited exposed answers (``exposure.credited``) under each attribution rule, on all
+    of them and on instant ones only, with its ``leave_one_item_out`` range.  ``unmatched`` counts the answers a
     rule credits to nobody."""
-    x = ex[ex["D"] == 1]
+    x = ex[credited(ex)]
     rules = {"first source": x["src_agent"], "latest source": x["src_latest"],
              "same-page relay parent": relay_parents(x, edges, events)}
     items = x["family"] + "|" + x["item"]
@@ -104,8 +105,9 @@ def attribution(ex: pd.DataFrame, edges: pd.DataFrame, events: pd.DataFrame, top
 
 def analyze(edges: pd.DataFrame, chains: pd.DataFrame, top_k: int = 10, ex: pd.DataFrame | None = None,
             events: pd.DataFrame | None = None) -> dict:
-    """``ex`` (the exposure table) adds the attribution-rule table and the per-item null; it needs
-    ``events`` for the relay parents' post times."""
+    """``ex`` (the exposure table) adds the attribution-rule table, the per-item null over the credited answers and
+    ``n_self_originated`` (the exposed answers credited to nobody); it needs ``events`` for the relay parents' post
+    times."""
     expo = edges[edges["kind"] == "exposure"]
     outdeg = expo.groupby("src").size().sort_values(ascending=False)
     items = expo["family"] + "|" + expo["item"] if len(expo) else pd.Series(dtype=object)
@@ -137,10 +139,11 @@ def analyze(edges: pd.DataFrame, chains: pd.DataFrame, top_k: int = 10, ex: pd.D
         "outdeg": outdeg,
     }
     if ex is not None and len(ex):
-        x = ex[ex["D"] == 1]
+        x = ex[credited(ex)]
         per_item = x.groupby(["family", "item"])
         # the Gini a first-to-post rule gives if every item's answers went to its own single source
-        res |= {"item_exposures": per_item.size(),
+        res |= {"n_self_originated": int(((ex["D"] == 1) & (ex["self_originated"] == 1)).sum()),
+                "item_exposures": per_item.size(),
                 "gini_item_exposures": gini(per_item.size().values) if len(x) else float("nan"),
                 "items_exposed": int(per_item.ngroups),
                 "items_one_source": int((per_item["src_agent"].nunique() == 1).sum()),
@@ -371,7 +374,8 @@ def supply_figure(edges: pd.DataFrame, nodes: pd.DataFrame, res: dict, path, top
     n_exp = int(supplied.sum())
     share = supplied.nlargest(top).sum() / n_exp
     ax.set_title(f"Who supplied whom, first-source rule: each exposed answer is credited to whoever first posted its "
-                 f"value\nbefore the report; the top {top} sources supplied {share:.0%} of {n_exp:,} exposed answers",
+                 f"value\nbefore the report; the top {top} sources supplied {share:.0%} of the {n_exp:,} exposed answers it "
+                 "credits",
                  loc="left", fontsize=11)
     handles = [Line2D([], [], ls="", marker="o", markersize=10, color=plotting.INK_2, alpha=0.7,
                       label="first source (size: answers supplied)")]

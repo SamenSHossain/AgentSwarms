@@ -72,7 +72,7 @@ def test_relay_parent_join_uses_the_exposure_key():
         {"agent": "F", "family": "f", "item": "y", "value_norm": "7", "consensus_value": "7", "D": 1,
          "src_agent": "A", "src_latest": "C", "y_instant": 0, "t_report": _t(10)},
         {"agent": "G", "family": "f", "item": "y", "value_norm": "7", "consensus_value": "7", "D": 1,
-         "src_agent": "A", "src_latest": "C", "y_instant": 0, "t_report": _t(10)}])
+         "src_agent": "A", "src_latest": "C", "y_instant": 0, "t_report": _t(10)}]).assign(self_originated=0)
     edges = pd.DataFrame([
         {"src": "A", "dst": "B", "family": "f", "item": "x", "value_norm": "163139", "kind": "relay", "src_event_id": "a"},
         {"src": "B", "dst": "C", "family": "f", "item": "y", "value_norm": "7", "kind": "relay", "src_event_id": "b"},
@@ -100,7 +100,8 @@ def test_concentration():
 def test_item_null_and_single_source_items():
     ex = pd.DataFrame({"D": [1, 1, 1, 1, 0], "family": "f", "item": ["x", "x", "x", "y", "y"],
                        "src_agent": ["A", "A", "B", "C", None], "src_latest": ["A", "B", "B", "C", None],
-                       "agent": list("PQRST"), "value_norm": "1", "consensus_value": "1", "y_instant": 0})
+                       "agent": list("PQRST"), "value_norm": "1", "consensus_value": "1", "y_instant": 0,
+                       "self_originated": 0})
     edges = pd.DataFrame({"src": ["A", "A", "B", "C"], "dst": list("PQRS"), "kind": "exposure", "family": "f",
                           "item": ["x", "x", "x", "y"], "value_norm": "1", "src_event_id": None})
     r = structure.analyze(edges, pd.DataFrame(columns=["family", "n_agents", "max_depth"]), ex=ex.assign(t_report=T0),
@@ -110,14 +111,18 @@ def test_item_null_and_single_source_items():
 
 
 def _ex(rows):
+    """Exposure rows, ``self_originated`` from their times as exposure sets it."""
     cols = {"claim_id": None, "family": "f", "item": "x", "value_norm": "9.9", "consensus_value": "9.9", "D": 1,
             "src_latest": None, "t_latest": None, "t_self_prepared": None}
-    return pd.DataFrame([cols | {"claim_id": r["agent"]} | r for r in rows])
+    rows = [cols | {"claim_id": r["agent"]} | r for r in rows]
+    return pd.DataFrame([r | {"self_originated": int(r["t_self_prepared"] is not None and r["t_public"] is not None
+                                                     and r["t_self_prepared"] < r["t_public"])} for r in rows])
 
 
 def test_trace_root_follows_a_three_hop_chain():
     """D copied from C, C from B, B from A, who computed it; E's source answered another value; F's source has
-    no answer round; G's source had posted the value before its own first copy appeared."""
+    no answer round; G's source H had posted the value before its own first copy appeared, so H's own answer is
+    self-originated and credits nobody."""
     ex = _ex([
         {"agent": "A", "D": 0, "src_agent": None, "t_public": None},
         {"agent": "B", "src_agent": "A", "t_public": _t(1)},
@@ -133,8 +138,7 @@ def test_trace_root_follows_a_three_hop_chain():
     assert r.loc["B", ["origin", "root", "depth"]].tolist() == ["computed", "A", 1]
     assert r.loc["E", "origin"] == "dissent" and r.loc["F", "origin"] == "no answer round observed"
     assert r.loc["G", ["origin", "root", "root_origin", "depth"]].tolist() == ["relayed", "H", origins.POSTED_FIRST, 1]
-    # the chain from H leads back to H itself: G is credited to H and H to G
-    assert r.loc["H", ["root", "root_origin", "depth"]].tolist() == ["H", origins.POSTED_FIRST, 2]
+    assert "H" not in r.index
     assert set(r["origin"]) <= set(origins.LABELS)
 
 

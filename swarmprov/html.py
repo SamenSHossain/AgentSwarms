@@ -268,7 +268,9 @@ def tiles(summary: dict) -> list[tuple[str, str, str]]:
     if a1 := summary.get("A1"):
         out += [(f"{a1['n_answers']:,}", "answers", f"by {a1['n_agents']:,} agents"),
                 (pct(a1["share_exposed"]), "already public before the report", "a floor: only captured posts are searched"),
-                (f"≤ {a1['n_independent']:,}", "independent lookups", "nothing carrying the answer was public")]
+                (f"≤ {a1['n_independent_at_most']:,}", "independent lookups",
+                 f"{a1['n_independent']:,} with nothing public, {a1['n_self_originated']:,} first posted by the agent "
+                 "itself" if a1["n_self_originated"] else "nothing carrying the answer was public")]
     if rng := top10_range(summary.get("A5") or {}):
         out.append((rng[0], "top-10 source share", f"of {rng[1]:,} exposed answers, across attribution rules"))
     if (tv := (summary.get("A6") or {}).get("task values")) and tv.get("max_hops") is not None:

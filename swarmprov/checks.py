@@ -5,19 +5,21 @@
 * exposure against the mentions: a plain loop over each fact's public mentions the agent could read before every
   report finds the first and the latest other agent's post, the first still undeleted at the report, the agent's own
   earliest one and the first other agent's post of the consensus value, and every exposure column built from them must
-  follow (``D``, ``D_visible``, ``self_prepared``, ``D_cons``, their times, posts and sources, the head starts and the
-  10 min / 1 h flags; no helper is shared with ``exposure.build``, or the check would prove nothing);
+  follow (``D``, ``D_visible``, ``self_prepared``, ``self_originated``, ``D_cons``, their times, posts and sources,
+  the head starts and the 10 min / 1 h flags; no helper is shared with ``exposure.build``, or the check would prove
+  nothing);
 * the flags nest: ``D_w60m <= D_w10m <= D``, ``D_visible <= D`` and ``D_cons_w60m <= D_cons``;
 * the graph against the chains and the exposures: every multi-carrier fact has ``n_agents - 1`` relay hops, a chain
-  counts the fact's distinct timed carriers, and each exposed round has exactly one exposure edge, from its source;
+  counts the fact's distinct timed carriers, each exposed round has exactly one exposure edge, from its source, and
+  a self-originated one (the agent had posted the value before the first public copy, ``t_self_prepared <
+  t_public``) has none;
 * the posts behind the edges and exposures exist: every edge's ``event_id`` and ``src_event_id`` is a post, every
   report post is one, and every ``src_event_id`` is a mention of the round's value by its ``src_agent``;
 * the strict mapping refines the merged one (identity resolves per strict handle), except where a handle's case
   variants carry conflicting cohorts or roster ids, which ``identity.resolve`` keeps apart by design.
 
 Those are errors.  Warnings: those designed splits (``strict_handles_kept_apart``; ``agent_aliases.csv`` lists them),
-exposed rounds the agent had itself posted before the first public copy (``t_self_prepared < t_public``: it was
-holding the answer), and ``summary.json``'s A1 and A5 numbers against a recomputation from the tables (within
+and ``summary.json``'s A1 and A5 numbers against a recomputation from the tables (within
 ``REL_TOL``; a stale report after a rerun stage shows here; left out when the summary states none of them).  The result
 is one row per check and table, also written to ``checks.json`` (``checks_strict.json`` against the strict report).
 """
@@ -51,13 +53,13 @@ CHECKS = {
                        "relay hops and chain carriers against the mentions"),
     "exposure_edges": ("error", "rounds without exactly one exposure edge from their first public source",
                        "exposure edges against the rounds"),
+    "self_originated_no_edge": ("error", "self-originated rounds (the agent had posted the value before the first "
+                                         "public copy) that carry an exposure edge", "exposure edges against the rounds"),
     "strict_refines_merged": ("error", "author handles split between merged agents with no conflicting cohort or "
                                        "roster id behind it", "the strict mapping inside the merged one"),
     "strict_handles_kept_apart": ("warning", "author handles whose case variants carry conflicting cohorts or roster "
                                              "ids, kept apart in the merged mapping as designed; agent_aliases.csv "
                                              "lists them", "the strict mapping inside the merged one"),
-    "self_prepared_before_public": ("warning", "exposed rounds whose agent had posted the value itself before the "
-                                               "first public copy", "rounds held before the first public copy"),
     "summary_matches_tables": ("warning", "summary.json numbers that differ from the tables (a stage rerun after the "
                                           "report?)", "summary.json against the tables"),
 }
@@ -112,6 +114,7 @@ def _expected(r, facts: dict, audience: dict, wall: bool) -> dict:
            "D_visible": int(bool(still)), "t_public_visible": vis[0], "src_visible_event_id": vis[1],
            "src_deleted_before_report": int(_given(first[4]) and first[4] <= r.t_report), "t_src_deleted": first[4],
            "self_prepared": int(bool(own)), "t_self_prepared": mine[0], "self_event_id": mine[1],
+           "self_originated": int(bool(others) and bool(own) and mine[0] < first[0]),
            "D_cons": int(bool(cons)), "t_cons": c[0]}
     if not wall:   # message positions are not seconds: no head start, no windowed flag
         return out | dict.fromkeys(("gap_s", "D_w10m", "D_w60m", "gap_cons_s", "D_cons_w60m"))
@@ -155,16 +158,24 @@ def _carriers(mentions: pd.DataFrame, chains: pd.DataFrame, agent_col: str) -> l
     return ["|".join(map(str, k)) for k in both.index[both["want"] != both["got"]]]
 
 
-def _exposure_edges(ex: pd.DataFrame, edges: pd.DataFrame) -> list:
+def _own_first(ex: pd.DataFrame) -> pd.Series:
+    """Exposed rounds whose agent had posted the value before the first public copy: no source is credited."""
+    return (ex["D"] == 1) & (ex["t_self_prepared"] < ex["t_public"])
+
+
+def _exposure_edges(ex: pd.DataFrame, edges: pd.DataFrame) -> tuple[list, list]:
+    """The rounds without exactly one exposure edge from their first public source (none when D = 0), and the
+    self-originated rounds that carry one."""
     e = edges[edges["kind"] == "exposure"]
     per = e.groupby("claim_id").agg(n=("src", "size"), src=("src", "first"), dst=("dst", "first"))
     x = ex.set_index("claim_id")
+    own = set(x.index[_own_first(x).to_numpy()])
     bad = [c for c in per.index if c not in x.index]
-    for c, r in x.iterrows():
+    for c, r in x[~x.index.isin(own)].iterrows():
         n = per.loc[c, "n"] if c in per.index else 0
         if n != r["D"] or (n and (per.loc[c, "src"] != r["src_agent"] or per.loc[c, "dst"] != r["agent"])):
             bad.append(c)
-    return bad
+    return bad, sorted(own & set(per.index))
 
 
 def _edge_posts(edges: pd.DataFrame, posts: set) -> list:
@@ -207,6 +218,8 @@ def _summary(summary: dict, run: RunDir) -> list | None:
         want |= {"A1.n_answers": len(ex), "A1.n_independent": int((ex["D"] == 0).sum()),
                  "A1.n_agents": ex["agent"].nunique(), "A1.share_exposed": ex["D"].mean(),
                  "A1.share_self_prepared": ex["self_prepared"].mean()}
+        if "n_self_originated" in summary["A1"]:
+            want["A1.n_self_originated"] = int(_own_first(ex).sum())
         if summary["A1"].get("share_exposed_60m") is not None:
             want |= {"A1.share_exposed_10m": ex["D_w10m"].mean(), "A1.share_exposed_60m": ex["D_w60m"].mean(),
                      "A1.median_gap_h": ex["gap_s"].median() / 3600}
@@ -215,7 +228,7 @@ def _summary(summary: dict, run: RunDir) -> list | None:
         want |= {f"A5.n_{k}_edges": int(kinds.get(kind, 0))
                  for k, kind in (("exposure", "exposure"), ("relay", "relay"), ("xchannel", "relay_xchannel"),
                                  ("citation", "citation"))}
-        src = ex.loc[ex["D"] == 1, "src_agent"].value_counts()
+        src = ex.loc[(ex["D"] == 1) & ~_own_first(ex), "src_agent"].value_counts()
         if src.sum():
             want["A5.top10_share_exposure"] = src.head(10).sum() / src.sum()
     if not want:
@@ -261,9 +274,7 @@ def check_run(run: RunDir, summary: dict | None = None, mapping: str | None = No
                 t = f"exposures_{name}"
                 rows += [_row("exposure_matches_mentions", t, _exposure(ex, _facts(mn, col), aud or {}, wall)),
                          _row("flag_nesting", t, _nesting(ex)),
-                         _row("exposure_posts_resolve", t, _exposure_posts(ex, mn, posts, col)),
-                         _row("self_prepared_before_public", t,
-                              ex.loc[(ex["D"] == 1) & (ex["t_self_prepared"] < ex["t_public"]), "claim_id"].tolist())]
+                         _row("exposure_posts_resolve", t, _exposure_posts(ex, mn, posts, col))]
             if run.has(f"edges_{name}"):
                 edges, chains = run.read(f"edges_{name}"), run.read(f"chains_{name}")
                 t = f"edges_{name}"
@@ -271,7 +282,8 @@ def check_run(run: RunDir, summary: dict | None = None, mapping: str | None = No
                          _row("chain_carriers", f"chains_{name}", _carriers(mn, chains, col) if len(mn) else []),
                          _row("edge_posts_resolve", t, _edge_posts(edges, posts))]
                 if len(ex):
-                    rows.append(_row("exposure_edges", t, _exposure_edges(ex, edges)))
+                    bad, own = _exposure_edges(ex, edges)
+                    rows += [_row("exposure_edges", t, bad), _row("self_originated_no_edge", t, own)]
     if summary and run.has("mentions") and (bad := _summary(summary, run)) is not None:
         rows.append(_row("summary_matches_tables", f"summary{sfx}.json", bad))
     out = pd.DataFrame(rows, columns=COLS)

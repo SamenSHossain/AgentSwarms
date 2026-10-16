@@ -47,11 +47,17 @@ def summarize(ex: pd.DataFrame, min_n: int = FAMILY_MIN_N, wall_clock: bool = Tr
     with fewer than ``uncertainty.MIN_CLUSTERS`` items, and none for the median head start when fewer items have an
     exposed answer).  No interval is measured in hours without a wall clock.
 
+    ``n_self_originated`` counts the exposed answers the agent itself had posted before any other agent's copy, so
+    at most ``n_independent_at_most`` (those and the ``n_independent`` with nothing public) were independent.
+
     ``by_family`` keeps the families with ``min_n`` answers or more, ``by_family_all`` every family."""
     n = len(ex)
+    k = int(((ex["D"] == 1) & (ex["self_originated"] == 1)).sum())
     out = {
         "n_answers": n,
         "n_independent": int((ex["D"] == 0).sum()),
+        "n_self_originated": k,
+        "n_independent_at_most": int((ex["D"] == 0).sum()) + k,
         "share_exposed": float(ex["D"].mean()) if n else float("nan"),
         "share_exposed_10m": float(ex["D_w10m"].mean()) if n else float("nan"),
         "share_exposed_60m": float(ex["D_w60m"].mean()) if n else float("nan"),

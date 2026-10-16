@@ -51,10 +51,12 @@ def test_relay_edges_name_the_source_post():
 
 
 def test_exposure_edges_carry_the_report_post_and_value_key():
-    exp = pd.DataFrame([{"D": 1, "src_agent": "A", "agent": "B", "family": "f", "item": "x", "value_norm": "163139/166813",
-                         "consensus_value": "163139", "gap_s": 60.0, "claim_id": "c1", "report_event_id": "r1",
-                         "src_event_id": "s1"}])
-    e = graph.exposure_edges(exp).iloc[0]
+    """One edge per credited round: a self-originated one (C posted the value before A did) gives none."""
+    row = {"D": 1, "src_agent": "A", "agent": "B", "family": "f", "item": "x", "value_norm": "163139/166813",
+           "consensus_value": "163139", "gap_s": 60.0, "claim_id": "c1", "report_event_id": "r1", "src_event_id": "s1",
+           "self_originated": 0}
+    exp = pd.DataFrame([row, row | {"agent": "C", "claim_id": "c2", "report_event_id": "r2", "self_originated": 1}])
+    (e,) = [r for _, r in graph.exposure_edges(exp).iterrows()]
     assert (e["event_id"], e["claim_id"], e["src_event_id"], e["value_norm"]) == ("r1", "c1", "s1", "163139")
 
 

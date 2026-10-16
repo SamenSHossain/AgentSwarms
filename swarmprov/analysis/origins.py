@@ -6,7 +6,8 @@ was itself exposed and **relayed** it (D == 1), or was matched on a different va
 (**dissent**: its own, or the consensus when it stated none).  A source with no answer
 round on the item reads **no answer round observed**: an agent that only published values (an answer list, a sequence scout),
 or an answer the extractor missed, or an identity split.  Being the first public
-source is not proof of being read.
+source is not proof of being read.  A self-originated answer (its agent posted the value
+before any other agent did) credits no source, so it has no row here.
 """
 
 from __future__ import annotations
@@ -16,6 +17,8 @@ import pandas as pd
 from ..exposure import match_key
 
 LABELS = ("computed", "no answer round observed", "dissent", "relayed")
+# the exposed answers no source is credited with, a row of their own in A5's origins table
+SELF = "self-originated (the answering agent posted it first)"
 # attribution rule: the source column and the time of the source's post
 SOURCE_TIME = {"src_agent": "t_public", "src_latest": "t_latest"}
 # roots where the walk stops because the source had posted the value no later than the post it is credited to.
@@ -32,11 +35,12 @@ def _rounds(ex: pd.DataFrame) -> dict:
 
 
 def origin_status(ex: pd.DataFrame, src_col: str = "src_agent") -> pd.DataFrame:
-    """One row per exposed answer (D == 1): its source under ``src_col`` and that source's origin."""
+    """One row per credited exposed answer (``exposure.credited``): its source under ``src_col`` and that source's
+    origin."""
     rounds = _rounds(ex)
     rows = []
     for r, key in rounds.values():
-        if r.D != 1:
+        if r.D != 1 or r.self_originated:
             continue
         src = getattr(r, src_col)
         own = rounds.get((src, r.family, r.item))

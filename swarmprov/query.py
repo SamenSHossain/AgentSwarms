@@ -196,7 +196,8 @@ def answer_lineage(run: RunDir, claim_id: str | None = None, agent: str | None =
             "value": value, "matched_value": target, "consensus_value": r.consensus_value,
             "report": _post(ev, r.report_event_id, r.item) or {"ts": r.t_report},
             "D": int(r.D), "D_w60m": None if pd.isna(r.D_w60m) else int(r.D_w60m), "D_visible": int(r.D_visible),
-            "first_public_copy": src,
+            # the agent posted the value before any other agent did: the first public copy is a later repeat
+            "self_originated": int(r.self_originated), "first_public_copy": src,
             "first_visible_copy": _post(ev, r.src_visible_event_id, r.item)
             if r.src_visible_event_id != r.src_event_id else None,
             "own_earlier_post": _post(ev, r.self_event_id, r.item),
@@ -299,7 +300,8 @@ def agent_view(run: RunDir, label: str, mapping: str = "merged") -> dict:
     answers = [{"claim_id": r.claim_id, "family": r.family, "item": r.item,
                 "value": None if pd.isna(r.value_norm) else r.value_norm,
                 "matched_value": match_key(None if pd.isna(r.value_norm) else r.value_norm, r.consensus_value),
-                "D": int(r.D), "first_public_source": r.src_agent if r.D == 1 else None,
+                "D": int(r.D), "self_originated": int(r.self_originated),
+                "first_public_source": r.src_agent if r.D == 1 and not r.self_originated else None,
                 "head_start_s": (r.t_report - r.t_public).total_seconds() if r.D == 1 else None,
                 "t_report": r.t_report, "report_event_id": r.report_event_id}
                for r in ex[ex["agent"] == label].sort_values(["t_report", "claim_id"]).itertuples(index=False)]
@@ -366,21 +368,27 @@ def text_answers(answers: list[dict], seq: bool = False) -> list[str]:
         w60 = "needs a wall clock" if a["D_w60m"] is None else yn(a["D_w60m"])
         L.append(f"  public before the report: {yn(a['D'])} (D); at least 60 min before: {w60} (D_w60m); "
                  f"a copy still visible at the report: {yn(a['D_visible'])} (D_visible)")
-        s = a["first_public_copy"]
+        s, p = a["first_public_copy"], a["own_earlier_post"]
+        first = bool(a["self_originated"] and p)
+        if first:
+            L.append(f"  posted first by this agent, at {_ts(p['ts'])}: post {p['event_id']} on {p['channel']} "
+                     "(self-originated: no source is credited with this answer)")
+            L.append(f"    \"{p['excerpt']}\"")
         if s:
             gone = (f"; page deleted {_ts(s['deleted_at'])} ({'before' if s['deleted_before_report'] else 'after'} "
                     "the report)") if s["deleted_at"] is not None else ""
             head = (f"head start needs a wall clock ({_gap((rep['ts'] - s['ts']).total_seconds(), True)} earlier in the "
                     "file)" if seq else f"head start {_dur(s['head_start_s'])}")
-            L.append(f"  first public copy: {s['agent']}, post {_post_line(s)}; {head}{gone}")
+            what = "a later repeat by another agent, before the report" if first else "first public copy"
+            L.append(f"  {what}: {s['agent']}, post {_post_line(s)}; {head}{gone}")
             L.append(f"    \"{s['excerpt']}\"")
             v = a["first_visible_copy"]
             if v:
                 L.append(f"  first copy still visible at the report: {_post_line(v)}")
         else:
             L.append("  first public copy: none before the report")
-        p = a["own_earlier_post"]
-        L.append(f"  own earlier post: {_post_line(p)}" if p else "  own earlier post: none")
+        if not first:
+            L.append(f"  own earlier post: {_post_line(p)}" if p else "  own earlier post: none")
         for key, what in (("own_lookup", "own tool output before the report"), ("given_in_task", "value given in the task")):
             p = a.get(key)
             if p:
@@ -503,6 +511,8 @@ def text_agent(v: dict, seq: bool = False, limit: int = 10) -> list[str]:
         val = x["value"] if x["value"] is not None else f"(no value; matched on the consensus {x['matched_value']})"
         L.append(f"  {x['family']} | {x['item']} = {val}: " + (
             "no earlier public copy (D=0)" if not x["D"] else
+            "public before the report (D=1), but this agent posted it first (self-originated: no source credited)"
+            if x["self_originated"] else
             f"public before the report (D=1); first public source {x['first_public_source']}, head start "
             + (_gap(x["head_start_s"], seq) if seq else _dur(x["head_start_s"]))) + f"  [{x['claim_id']}]")
     for key, what in (("learned_from", "learned from (edges into this agent)"),

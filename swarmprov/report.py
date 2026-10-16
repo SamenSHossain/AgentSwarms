@@ -16,6 +16,7 @@ from .adapters.base import read_capabilities
 from .adapters.chat import no_author_warning
 from .analysis import agents as agents_mod, causal, diffusion, errors, origins, provenance, structure, uncertainty
 from .claims import agent_rounds, consensus, public, value_key
+from .exposure import credited
 from .fmt import dumps, json_safe, pct
 from .schema import TABLES, RunDir, other_mapping, suffix
 
@@ -438,10 +439,16 @@ def _a1(c: _Ctx) -> list[str]:
     if c.boot:
         a["bootstrap"] = {"reps": c.boot, "cluster": provenance.CLUSTER, "level": uncertainty.LEVEL,
                           "seed": 0, "min_clusters": uncertainty.MIN_CLUSTERS}
+    k = r1["n_self_originated"]
     L = [f"## {SECTIONS['A1']}\n",
          f"**{r1['n_answers']:,} answers given by {r1['n_agents']:,} agents; "
-         f"{r1['n_independent']:,} independent lookups** (nothing carrying that answer was public when the agent reported it). "
-         f"{pct(r1['share_exposed'])}{_ci_text(a, 'share_exposed', first=True)} of answers were already public before the report"
+         + (f"at most {r1['n_independent_at_most']:,} independent lookups**: {r1['n_independent']:,} with nothing "
+            f"carrying the answer public when the agent reported it; {k:,} more {'were' if k != 1 else 'was'} first "
+            "posted by the agent itself before any other copy (another agent's copy came before the report, so D = 1, "
+            f"but no source is credited with {'them' if k != 1 else 'it'}). " if k else
+            f"{r1['n_independent']:,} independent lookups** (nothing carrying that answer was public when the agent "
+            "reported it). ")
+         + f"{pct(r1['share_exposed'])}{_ci_text(a, 'share_exposed', first=True)} of answers were already public before the report"
          + (". " if seq else
             f", {pct(r1['share_exposed_60m'])}{_ci_text(a, 'share_exposed_60m')} at least an hour before (robust to the "
             "unknown lag between a question's arrival and its report). "
@@ -800,7 +807,7 @@ def _a5(c: _Ctx) -> list[str]:
         L.append(f"![supply network](figures/{run.figure('a7_supply_network.png', mapping).name})\n")
         L += _attribution_block(r5, summary)
         exs = ((mapping, ex),) if c.same else ((mapping, ex), (c.alt, c.ex_alt))
-        lines, first = _origins_block({m: e for m, e in exs if len(e) and e["D"].any()}, mapping, summary)
+        lines, first = _origins_block({m: e for m, e in exs if len(e) and credited(e).any()}, mapping, summary)
         L += lines
         top = top.join(origins.by_source(first, ex)[["items", "origin"]])
     L.append("Top first-sources (answers they were first public source for"
@@ -958,10 +965,14 @@ def _kf_a1(a: dict, s: dict, seq: bool) -> str:
         out += f", {pct(a['share_exposed_60m'])}{_ci_text(a, 'share_exposed_60m')} at least an hour before"
         if a.get("median_gap_h") is not None:
             out += f", with a median head start of {a['median_gap_h']:.1f} h{_ci_text(a, 'median_gap_h', hours=True)}"
-    out += f"; at most {a['n_independent']:,} were independent lookups"
-    if a.get("n_independent_visible") is not None:
-        out += (f" ({a['n_independent_visible']:,} under `D_visible`, which counts a copy deleted before the report as "
-                "never public)")
+    vis = (f"{a['n_independent_visible']:,} under `D_visible`, which counts a copy deleted before the report as never "
+           "public") if a.get("n_independent_visible") is not None else ""
+    if k := a.get("n_self_originated"):
+        out += (f"; at most {a['n_independent_at_most']:,} were independent lookups ({a['n_independent']:,} with nothing "
+                f"public before the report{', ' + vis if vis else ''}; {k:,} more {'were' if k != 1 else 'was'} first "
+                "posted by the agent itself before any other copy)")
+    else:
+        out += f"; at most {a['n_independent']:,} were independent lookups" + (f" ({vis})" if vis else "")
     return out + ". These are floors: only the posts this run captured are searched, so a copy anywhere else is invisible."
 
 
@@ -1075,8 +1086,12 @@ def _kf_a5(a: dict, s: dict, seq: bool) -> str:
         parts.append(f"{pct(r['top10_share'])} to the latest earlier carrier")
     if (r := rows.get("same-page relay parent")) is not None:
         parts.append(f"{pct(r['top10_share'])} of the {r['n']:,} with a same-page relay parent")
-    return (f"the top 10 sources supplied {whole} of {n:,} exposed answers, depending on who is credited (nothing "
-            "records who read whom, so each rule credits one source per answer): " + ", ".join(parts) + ".")
+    k = a.get("n_self_originated")
+    return (f"the top 10 sources supplied {whole} of {n:,} exposed answers"
+            + (f" ({k:,} more, first posted by the answering agent itself, {'are' if k != 1 else 'is'} credited to "
+               "nobody)" if k else "")
+            + ", depending on who is credited (nothing records who read whom, so each rule credits one source per "
+            "answer): " + ", ".join(parts) + ".")
 
 
 def top10_range(a5: dict) -> tuple[str, int] | None:
@@ -1650,11 +1665,15 @@ def _hub_headline(r5: dict) -> str:
     v_share, share_loo = moves("share", pct(s_lo), pct(s_hi))
     v_gini, gini_loo = moves("Gini", f"{g_lo:.2f}", f"{g_hi:.2f}")
     loo = f"{v_share} {share_loo} and " + (gini_loo if v_gini == v_share else f"{v_gini} {gini_loo}")
+    k = r5["n_self_originated"]
     return (f"{n_src} agent{'s were' if n_src != 1 else ' was'} the first public source for someone's answer; "
-            f"the top 10 supplied **{pct(r5['top10_share_exposure'])}** of all exposed answers "
-            f"(out-degree Gini {r5['gini_exposure_outdegree']:.2f}; the exposure counts of the {n_items} "
+            f"the top 10 supplied **{pct(r5['top10_share_exposure'])}** of "
+            + (f"the {r5['n_exposure_edges']:,} exposed answers credited to a source " if k else "all exposed answers ")
+            + f"(out-degree Gini {r5['gini_exposure_outdegree']:.2f}; the exposure counts of the {n_items} "
             f"item{'s' * (n_items != 1)} alone have a Gini of {r5['gini_item_exposures']:.2f}, which is what first-source "
             "credit gives if each item has one source of its own). "
+            + (f"{k:,} more exposed answer{'s were' if k != 1 else ' was'} self-originated: the answering agent had "
+               "posted the value before any other agent did, so no source is credited. " if k else "")
             + (f"Leaving out any one item {loo}; concentration gets no bootstrap interval, since resampling items would "
                "repeat their sources and inflate it. " if s_lo == s_lo else "")
             + "**That share depends on who is credited**: across the "
@@ -1677,7 +1696,12 @@ def _attribution_block(r5: dict, summary: dict) -> list[str]:
          "*latest source* = the last one before the report; *same-page relay parent* = the graph's parent of the agent's "
          "first post of the value, matched on the value key exposure used, and *unmatched* when that post arrived by a "
          "cross-page hop, the agent has no relay edge for the value, or the parent's post is not before the report. "
-         "*Instant only* keeps answers reported as instant, the copy signature. *One item left out* = the lowest and "
+         "*Instant only* keeps answers reported as instant, the copy signature. "
+         + (f"No rule credits the {r5['n_self_originated']:,} self-originated answer"
+            f"{'s' * (r5['n_self_originated'] != 1)} (the answering agent had posted the value before any other agent "
+            f"did), so {'they are' if r5['n_self_originated'] != 1 else 'it is'} in no row. "
+            if r5["n_self_originated"] else "")
+         + "*One item left out* = the lowest and "
          "highest value with each item's answers dropped in turn: how much a single item moves the concentration. "
          "On synthetic swarms the rule that copies the way the simulated agents do finds the true "
          "source (latest when they copy the latest post, first when they copy the first), so a rule's success there "
@@ -1703,9 +1727,12 @@ def _origins_block(exs: dict[str, pd.DataFrame], mapping: str, summary: dict) ->
     first-source origins under ``mapping`` for the top-sources table."""
     tr = {(rule, m): origins.trace_root(e, col) for rule, col in (("first source", "src_agent"), ("latest source", "src_latest"))
           for m, e in exs.items()}
+    own = {m: int(((e["D"] == 1) & (e["self_originated"] == 1)).sum()) for m, e in exs.items()}
+    labels = origins.LABELS + ((origins.SELF,) if any(own.values()) else ())
     tbl = pd.DataFrame({f"{rule}, {m} ({len(t):,})": [f"{n:,} ({pct(n / len(t))})" for n in
                                                       t["origin"].value_counts().reindex(origins.LABELS, fill_value=0)]
-                        for (rule, m), t in tr.items()}, index=pd.Index(origins.LABELS, name="credited source"))
+                        + ([f"{own[m]:,}"] if len(labels) > len(origins.LABELS) else [])
+                        for (rule, m), t in tr.items()}, index=pd.Index(labels, name="credited source"))
     rules = ("first source", "latest source")
     root_labels = [k for k in origins.LABELS if k != "relayed"] + [origins.POSTED_FIRST, origins.CUT]
     roots = pd.DataFrame({r: tr[(r, mapping)]["root_origin"].value_counts().reindex(root_labels, fill_value=0) for r in rules})
@@ -1717,6 +1744,7 @@ def _origins_block(exs: dict[str, pd.DataFrame], mapping: str, summary: dict) ->
     summary["A5"]["origins"] = {
         "by_mapping": {m: {r: tr[(r, m)]["origin"].value_counts().reindex(origins.LABELS, fill_value=0).to_dict()
                            for r in rules} for m in exs},
+        "self_originated": own,
         "mapping": mapping, "roots": roots.to_dict(), "max depth": {r: int(tr[(r, mapping)]["depth"].max()) for r in rules},
         "no answer round observed, top sources": audit.reset_index().to_dict("records")}
     L = ["**Where did copied answers come from?** Each exposed answer's credited source (under the two rules that credit "
@@ -1726,8 +1754,10 @@ def _origins_block(exs: dict[str, pd.DataFrame], mapping: str, summary: dict) ->
          "**no answer round observed** = no answer round of its own on the item was extracted, which fits an agent that "
          "only published values (an answer list, a sequence scout) but also a missed answer or an identity split, so audit "
          "the sources below before calling them compilers; **dissent** = its answer round matched a different value (its "
-         "own, or the consensus when it stated none); **relayed** = it answered the same value but was itself exposed. "
-         "Being the first public source is not proof of being read.\n",
+         "own, or the consensus when it stated none); **relayed** = it answered the same value but was itself exposed"
+         + ("; **self-originated** = no source is credited, as the answering agent had posted the value before any other "
+            "agent did (outside the count in brackets)" if any(own.values()) else "")
+         + ". Being the first public source is not proof of being read.\n",
          md_table(tbl),
          f"Roots ({mapping} mapping): a relayed source is followed through its own source under the same rule until one "
          "is not relayed" + (" (hops from a relayed answer to its root, median / max: " + ", ".join(

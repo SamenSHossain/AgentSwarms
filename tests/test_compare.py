@@ -128,11 +128,13 @@ def test_merged_against_strict_translates_labels(synth_strict, tmp_path, capsys)
     assert all(r[t]["added"] == r[t]["dropped"] == 0 and not r[t]["changed"] for t in r)
     assert r["agents"]["regrouped"] == 0 and r["agents"]["agents_a"] == r["agents"]["agents_b"] == 60
     # summary.json against summary_strict.json, which was built without resamples: only they differ, and the origin
-    # counts, which each report keeps under its own mapping only (the other groups the authors alike)
+    # and self-originated counts, which each report keeps under its own mapping only (the other groups the authors
+    # alike)
     s = res["summary"]
     paths = [c["path"] for c in s["changed"]]
     assert s["n_compared"] > 500 and "A1.share_exposed_ci[0]" in paths and "A6.task values.mean_repeaters_lo" in paths
-    assert all("_ci[" in x or x.startswith(("A1.bootstrap.", "A5.origins.by_mapping.")) or x.endswith(("_lo", "_hi"))
+    assert all("_ci[" in x or x.startswith(("A1.bootstrap.", "A5.origins.by_mapping.", "A5.origins.self_originated."))
+               or x.endswith(("_lo", "_hi"))
                for x in paths), paths
     by = [json.loads((synth_strict.path / f).read_text())["A5"]["origins"]["by_mapping"]
           for f in ("summary.json", "summary_strict.json")]

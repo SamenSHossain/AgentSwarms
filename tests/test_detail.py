@@ -226,7 +226,7 @@ def test_y_winner_scores_overturned_slots_only_beside_y_consensus():
 def test_every_family_is_kept_beside_the_printed_cut():
     ex = pd.DataFrame({"family": ["big"] * 12 + ["small"] * 3, "item_fe": [f"big|{i % 6}" for i in range(12)] + ["s|0"] * 3,
                        "agent": [f"a{i}" for i in range(15)], "D": [1, 0] * 6 + [1, 1, 0], "D_w10m": 0, "D_w60m": 0,
-                       "self_prepared": 0, "y_instant": 0, "gap_s": 60.0, "episode": 1.0})
+                       "self_prepared": 0, "self_originated": 0, "y_instant": 0, "gap_s": 60.0, "episode": 1.0})
     r = provenance.summarize(ex, boot=50)
     assert list(r["by_family"].index) == ["big"] and list(r["by_family_all"].index) == ["big", "small"]
     pd.testing.assert_frame_equal(r["by_family_all"].loc[["big"]], r["by_family"])   # the same row, intervals included

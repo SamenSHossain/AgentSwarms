@@ -23,6 +23,8 @@
  "A1": {
   "n_answers": 300,
   "n_independent": 58,
+  "n_self_originated": 0,
+  "n_independent_at_most": 58,
   "share_exposed": 0.8066666666666666,
   "share_exposed_10m": 0.7933333333333333,
   "share_exposed_60m": 0.76,
@@ -682,6 +684,7 @@
   "betweenness_sampled_sources": null,
   "mean_chain_depth": 4.566037735849057,
   "mean_agents_per_fact": 5.566037735849057,
+  "n_self_originated": 0,
   "gini_item_exposures": 0.19092595715972338,
   "items_exposed": 49,
   "items_one_source": 45,
@@ -781,6 +784,9 @@
       "relayed": 189
      }
     }
+   },
+   "self_originated": {
+    "merged": 0
    },
    "mapping": "merged",
    "roots": {

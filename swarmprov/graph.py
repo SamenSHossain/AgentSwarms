@@ -7,7 +7,8 @@ Edge kinds
                 trees whose depth is the number of hops from the originator.
 * ``relay_xchannel``  the carrier's channel had no earlier carrier, so the hop
                 is attributed to the originator (source unknown).
-* ``exposure``  the agent-round's first public source -> the answering agent.
+* ``exposure``  the agent-round's first public source -> the answering agent (none for a
+                self-originated round, whose agent posted the value before any other agent did).
 * ``citation``  explicit references: @Name, "Name's report", "per Mar16".
 * ``reply``     an explicit reply link (a post's ``parent_id`` is another agent's
                 post), built only when the source has threading.  An interaction,
@@ -26,7 +27,7 @@ import numpy as np
 import pandas as pd
 
 from .claims import PRIVATE_KINDS
-from .exposure import match_key
+from .exposure import credited, match_key
 from .identity import cohort_token
 
 # two 1 s clocks: a hop shorter than this cannot be ordered reliably
@@ -98,9 +99,9 @@ def relay_edges(mentions: pd.DataFrame, agent_col: str, clock_res_s: float | Non
 
 
 def exposure_edges(exp: pd.DataFrame) -> pd.DataFrame:
-    """First public copy -> answering agent.  ``event_id`` is the report post (the claim
-    is ``claim_id``), and the value is the key exposure matched on."""
-    e = exp[exp["D"] == 1]
+    """First public copy -> answering agent, for the credited rounds (``exposure.credited``).  ``event_id`` is the
+    report post (the claim is ``claim_id``), and the value is the key exposure matched on."""
+    e = exp[credited(exp)]
     return pd.DataFrame({
         "src": e["src_agent"], "dst": e["agent"], "family": e["family"], "item": e["item"],
         "value_norm": [match_key(v, c) for v, c in zip(e["value_norm"], e["consensus_value"])], "kind": "exposure",

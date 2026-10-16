@@ -102,11 +102,11 @@ def test_other_corruptions_fail_their_own_check(clean, tmp_path):
     run.write("edges_merged", e)
     out = checks.check_run(run)
     bad = out[out["n_violations"] > 0].set_index("check")
-    # the doctored own-post time follows from no mention either
-    assert set(bad.index) == {"strict_refines_merged", "self_prepared_before_public", "edge_posts_resolve",
+    # the doctored own-post time follows from no mention either, and it makes the round self-originated: no edge
+    assert set(bad.index) == {"strict_refines_merged", "self_originated_no_edge", "edge_posts_resolve",
                               "exposure_matches_mentions"}
     assert bad.loc["exposure_matches_mentions", "example_ids"] == [f"{ex.loc[i, 'claim_id']} (t_self_prepared)"]
-    assert bad.loc["self_prepared_before_public", "severity"] == "warning"
+    assert bad.loc["self_originated_no_edge", ["severity", "example_ids"]].tolist() == ["error", [ex.loc[i, "claim_id"]]]
     assert bad.loc["strict_refines_merged", "example_ids"] == [ag["agent_strict"].iloc[0]]
 
 
@@ -197,7 +197,7 @@ def test_integrity_line_names_what_ran_what_had_nothing_to_compare_and_what_fail
     assert line.startswith("**Integrity: 1/2 checks pass** (`checks.json`; `swarmprov check RUN` reruns them): ")
     assert "reruns them): relay hops and chain carriers against the mentions and the strict mapping inside the " \
            "merged one. Not run, as this run has nothing for them to compare: exposure re-derived from the mentions, " in line
-    assert ", rounds held before the first public copy, and summary.json against the tables. Not passing" in line
+    assert ", exposure edges against the rounds, and summary.json against the tables. Not passing" in line
     assert line.rstrip().endswith("Not passing: `relay_hops_per_chain` (error; 2 in edges_merged: facts without one "
                                   "relay hop per carrier after the first).")
     assert summary["integrity"]["n_checks"] == 2 and summary["integrity"]["failing"][0]["n_violations"] == 2
