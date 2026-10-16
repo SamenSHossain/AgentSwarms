@@ -128,7 +128,9 @@ def reach(chains: pd.DataFrame) -> dict:
     return out
 
 
-def figure(res: dict, chains: pd.DataFrame, path) -> str | None:
+def figure(res: dict, chains: pd.DataFrame, path, top: int = 10) -> str | None:
+    """Lorenz curves of the first sources' exposure counts (a dot where the ``top`` sources begin) and of the per-item
+    null; relay chain lengths."""
     plotting.setup()
     fig, (ax, ax2) = plt.subplots(1, 2, figsize=(10, 3.8))
 
@@ -139,6 +141,12 @@ def figure(res: dict, chains: pd.DataFrame, path) -> str | None:
     if len(res["outdeg"]):
         lorenz(res["outdeg"].values, color=plotting.SERIES[0],
                label=f"first sources (Gini {res['gini_exposure_outdegree']:.2f})")
+        n = len(res["outdeg"])
+        if n > top:
+            share = res[f"top{top}_share_exposure"]
+            ax.plot(1 - top / n, 1 - share, "o", color=plotting.SERIES[0], markersize=7,
+                    label=f"top {top} of {n} from here: {share:.0%} of exposed\n"
+                          "answers (credit: first to post the value)")
         if "item_exposures" in res:
             lorenz(res["item_exposures"].values, color=plotting.SERIES[1], lw=1.5, ls=":",
                    label=f"items (Gini {res['gini_item_exposures']:.2f}): one source each")
@@ -158,19 +166,35 @@ def figure(res: dict, chains: pd.DataFrame, path) -> str | None:
     return plotting.save(fig, path)
 
 
-def reach_figure(chains: pd.DataFrame, path) -> str | None:
+def reach_figure(chains: pd.DataFrame, path, cap: int = 20) -> str | None:
+    """Facts by how many other agents repeated them: 0 to ``cap`` - 1 as a line, ``cap`` or more pooled into one
+    marker labelled with its facts and their range."""
+    from matplotlib.ticker import MaxNLocator
     if chains.empty:
         return None
     plotting.setup()
     fig, ax = plt.subplots(figsize=(7, 3.4))
+    pooled = False
     for i, (lab, g) in enumerate([("task values", chains[chains["family"] != "url"]),
                                   ("URLs", chains[chains["family"] == "url"])]):
         if g.empty:
             continue
-        vc = (g["n_agents"] - 1).clip(upper=20).value_counts().sort_index()
+        rep = g["n_agents"] - 1
+        vc = rep[rep < cap].value_counts().sort_index()
         ax.plot(vc.index, vc.values, marker="o", color=plotting.SERIES[i], label=lab)
+        big = rep[rep >= cap]
+        if len(big):
+            pooled = True
+            ax.plot([cap], [len(big)], marker="D", ls="", color=plotting.SERIES[i])
+            ax.annotate(f"{len(big):,} facts, {cap}–{big.max():,}", (cap, len(big)), xytext=(8, 0),
+                        textcoords="offset points", va="center", fontsize=8, color=plotting.SERIES[i])
+    if pooled:
+        ax.set_xticks(range(0, cap + 1, 5), [*map(str, range(0, cap, 5)), f"{cap}+"])
+        ax.set_xlim(-0.8, cap + 5.5)
+    else:
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
     ax.set_yscale("log")
-    ax.set_xlabel("Other agents who repeated the fact (capped at 20)")
+    ax.set_xlabel("Other agents who repeated the fact" + (f" ({cap} or more pooled)" if pooled else ""))
     ax.set_ylabel("Facts (log)")
     ax.set_title("Reach: how far does an announced fact travel?")
     ax.legend()

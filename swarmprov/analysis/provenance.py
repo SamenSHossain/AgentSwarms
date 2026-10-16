@@ -88,7 +88,7 @@ def figure(ex: pd.DataFrame, res: dict, path, wall_clock: bool = True) -> str:
         ax2.set_ylim(0, 1.02)
         ax2.set_xticks(ep.index)
         ax2.set_xticklabels([f"R{e}" for e in ep.index])
-        ax2.yaxis.set_major_formatter(lambda v, _: f"{v:.0%}")
+        plotting.pct_axis(ax2)
         ax2.set_title("By round")
         ax2.legend(loc="lower right")
     fig.suptitle(f"{res['n_answers']} answers given, {res['n_independent']} with nothing public before the report",

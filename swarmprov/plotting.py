@@ -7,6 +7,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.dates  # noqa: E402,F401
 import matplotlib.pyplot as plt  # noqa: E402
+from matplotlib.ticker import MaxNLocator, PercentFormatter  # noqa: E402
 
 # Categorical slots in fixed order (validated reference palette, light mode).
 SERIES = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"]
@@ -29,6 +30,14 @@ def setup() -> None:
         "lines.linewidth": 2, "lines.markersize": 6, "font.size": 10,
         "figure.dpi": 110, "savefig.dpi": 150, "savefig.bbox": "tight",
     })
+
+
+def pct_axis(ax, axis: str = "y") -> None:
+    """A 0-1 share axis in percent: ticks on 1/2/2.5/5 steps, printed with the decimals the axis range needs, so a
+    tick at 0.025 reads 2.5%, not 2%."""
+    a = ax.yaxis if axis == "y" else ax.xaxis
+    a.set_major_locator(MaxNLocator(steps=[1, 2, 2.5, 5, 10]))
+    a.set_major_formatter(PercentFormatter(xmax=1, decimals=None))
 
 
 def save(fig, path) -> str:

@@ -91,8 +91,8 @@ def figure(res: dict, path, families_of: dict | None = None, top: int = 3) -> st
             ax.step(km["t"], 1 - km["survival"], where="post", color=plotting.SERIES[i],
                     label=f"{name} ({r['adopters']}/{r['at_risk']} agents)")
         ax.set_xlabel("Hours since the technique was first posted")
-        ax.yaxis.set_major_formatter(lambda v, _: f"{v:.0%}")
         ax.set_ylim(0, None)
+        plotting.pct_axis(ax)
         ax.set_title(title)
         ax.legend(loc="upper left")
     axes[0][0].set_ylabel("Share of at-risk agents who adopted")

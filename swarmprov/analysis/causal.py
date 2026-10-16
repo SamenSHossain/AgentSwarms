@@ -76,23 +76,36 @@ def estimate(ex: pd.DataFrame, min_switchers: int = MIN_SWITCHERS, wall_clock: b
     return out
 
 
-def figure(est: pd.DataFrame, path) -> str:
+def figure(est: pd.DataFrame, path, min_switchers: int = MIN_SWITCHERS) -> str:
+    """Every row of ``est``: the estimate and its 95% CI, or 'not identified' at zero with no bar.  Each label gives the
+    agents whose exposure status switches, the only ones that identify beta; an estimate from fewer than twice
+    ``min_switchers`` is grey."""
     plotting.setup()
-    e = est.dropna(subset=["beta"]) if "beta" in est else est.iloc[0:0]
-    fig, ax = plt.subplots(figsize=(8, 2.8))
-    labels = []
-    for i, r in enumerate(e.itertuples()):
-        c = plotting.SERIES[0] if r.treatment == "D_cons" else plotting.SERIES[1]
-        ax.errorbar(r.beta, i, xerr=[[r.beta - r.ci_lo], [r.ci_hi - r.beta]], fmt="o", color=c,
-                    capsize=3, lw=2, markersize=7)
-        ax.text(r.ci_hi + 0.01, i, f"{r.beta:+.2f}  (n={r.n})", va="center", fontsize=8, color=plotting.INK_2)
-        labels.append(f"{r.outcome_label}\n[{r.treatment_label}]")
+    fig, ax = plt.subplots(figsize=(8, 1.5 + 0.55 * len(est)))
+    for i, r in enumerate(est.itertuples()):
+        k = int(r.agents_with_D_variation)
+        c = (plotting.NEUTRAL if k < 2 * min_switchers else
+             plotting.SERIES[0] if r.treatment == "D_cons" else plotting.SERIES[1])
+        if pd.notna(r.beta):
+            ax.errorbar(r.beta, i, xerr=[[r.beta - r.ci_lo], [r.ci_hi - r.beta]], fmt="o", color=c,
+                        capsize=3, lw=2, markersize=7)
+            ax.text(r.ci_hi + 0.01, i, f"{r.beta:+.2f}  (n={r.n})", va="center", fontsize=8, color=plotting.INK_2)
+        else:
+            ax.text(0, i, f"not identified ({k} agents switch)" if pd.notna(r.note) else "not estimated",
+                    ha="center", va="center", fontsize=8, style="italic", color=plotting.INK_2,
+                    bbox={"boxstyle": "round,pad=0.2", "fc": plotting.SURFACE, "ec": "none"})
     ax.axvline(0, color=plotting.NEUTRAL, lw=1)
-    ax.set_yticks(range(len(labels)))
-    ax.set_yticklabels(labels, fontsize=8)
-    ax.invert_yaxis()
+    if est["beta"].isna().all():
+        ax.set_xlim(-1, 1)
+    ax.set_yticks(range(len(est)))
+    ax.set_yticklabels([f"{r.outcome_label}\n[{r.treatment_label}], {int(r.agents_with_D_variation)} switchers"
+                        for r in est.itertuples()], fontsize=8)
+    ax.set_ylim(len(est) - 0.5, -0.5)
     ax.grid(axis="y", visible=False)
     ax.set_xlabel("Effect of exposure on the outcome (share, -1..1); agent + item FE; 95% CI clustered by agent")
-    ax.set_title("Does availability cause copying?")
+    ax.set_title(f"Only agents whose exposure status switches identify an effect: under {min_switchers} switchers "
+                 f"a row is not identified,\nunder {2 * min_switchers} its estimate is grey (weakly identified)",
+                 loc="left", fontsize=9, fontweight="normal", color=plotting.INK_2)
+    fig.suptitle("Does availability cause copying?", x=0.01, ha="left", fontsize=13, fontweight="bold")
     fig.tight_layout()
     return plotting.save(fig, path)

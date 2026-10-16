@@ -34,6 +34,7 @@ from ..rules import norm_value
 # majority-bin width (hours), the share of carriers that counts as "late", and the fewest late carriers
 # that can overturn the first variant
 BIN_H, TAIL_SHARE, MIN_TAIL = 3.0, 1 / 3, 5
+SPARSE_BIN = 3   # the figure draws a bin with fewer new carriers than this faint
 
 
 def _status(first, winner, t50, n_tail: int, min_tail: int) -> str:
@@ -62,9 +63,9 @@ def _slot_stats(carriers: pd.DataFrame, slot: str, bin_h: float | None = BIN_H, 
     t0 = c["ts"].min()
     c = c.assign(h=(c["ts"] - t0).dt.total_seconds() / 3600)
     bins = np.arange(0, c["h"].max() + bin_h, bin_h) if bin_h else np.array([0.0, c["h"].max() + 1.0])
-    share = (c.assign(b=pd.cut(c["h"], bins=bins, include_lowest=True, labels=bins[:-1]))
-              .groupby(["b", "variant"], observed=False).size().unstack(fill_value=0))
-    frac = share.div(share.sum(axis=1).replace(0, np.nan), axis=0)
+    new = (c.assign(b=pd.cut(c["h"], bins=bins, include_lowest=True, labels=bins[:-1]))
+            .groupby(["b", "variant"], observed=False).size().unstack(fill_value=0))
+    frac = new.div(new.sum(axis=1).replace(0, np.nan), axis=0)
     w = frac.get(winner) if winner is not None else None
     t50 = None
     if w is not None:
@@ -83,7 +84,7 @@ def _slot_stats(carriers: pd.DataFrame, slot: str, bin_h: float | None = BIN_H, 
         "status": _status(first, winner, t50, n_tail, min_tail),
         "t_winner_first": t_first, "t_winner_majority": t50,
         "hours_to_overtake": (t50 - t_first).total_seconds() / 3600 if later else np.nan,
-        "share_by_bin": frac, "t0": t0, "carriers": c[["ts", "variant"]],
+        "share_by_bin": frac, "new_by_bin": new, "bin_edges_h": bins, "t0": t0, "carriers": c[["ts", "variant"]],
     }
 
 
@@ -248,29 +249,76 @@ def pick_featured(vslots: list[dict], sslots: list[dict], featured: list[tuple[s
     return chosen[:k]
 
 
+def axis_range(ts: pd.Series) -> tuple[pd.Timestamp, pd.Timestamp]:
+    """A slot's time axis, padded by 2%: from the first carrier, or from the first one past the earliest 3% when
+    those would take more than a third of the axis (a stray early post)."""
+    ts = ts.sort_values()
+    start, end = ts[ts >= ts.quantile(0.03)].iloc[0], ts.iloc[-1]
+    if start - ts.iloc[0] <= 0.5 * (end - start):
+        start = ts.iloc[0]
+    pad = max(0.02 * (end - start), pd.Timedelta(minutes=1))
+    return start - pad, end + pad
+
+
 def figure(slots: list[dict], path) -> str | None:
-    """Cumulative distinct carriers of each variant over wall time, one panel per slot."""
+    """One column per slot.  Top: cumulative distinct carriers of each variant over wall time; every carrier counts,
+    so a line ends at the variant's agents, and those left of a clipped axis (``axis_range``) are counted in the
+    legend, as are the winner and when its lasting majority began (a dashed line).  Bottom: the winner's share of the
+    new carriers in each majority bin (every variant's when there is no winner), empty bins left out and sparse ones
+    faint."""
+    from matplotlib.lines import Line2D
+    from matplotlib.ticker import MaxNLocator
     if not slots:
         return None
     plotting.setup()
     n = len(slots)
-    fig, axes = plt.subplots(1, n, figsize=(4.4 * n, 4.6), squeeze=False)
-    for ax, s in zip(axes[0], slots):
-        car = s["carriers"]
-        order = [v for v in s["variants"]][:3]
-        lo = car["ts"].quantile(0.03)
+    fig, axes = plt.subplots(2, n, figsize=(4.4 * n, 6.8), sharex="col", squeeze=False,
+                             gridspec_kw={"height_ratios": [2.6, 1]})
+    for ax, axb, s in zip(axes[0], axes[1], slots):
+        car, win, t50 = s["carriers"], s["winner"], s["t_winner_majority"]
+        order = s["variants"][:3]
+        if win is not None and win not in order:
+            order[-1] = win
+        left, right = axis_range(car["ts"])
+        edges = s["t0"] + pd.to_timedelta(s["bin_edges_h"], unit="h")
+        new = s["new_by_bin"].sum(axis=1).to_numpy()
+        dense, sparse = new >= SPARSE_BIN, (new > 0) & (new < SPARSE_BIN)
         for i, v in enumerate(order):
             t = car.loc[car["variant"] == v, "ts"].sort_values()
-            t = t[t >= lo]
-            if t.empty:
-                continue
             ax.step(list(t) + [car["ts"].max()], list(range(1, len(t) + 1)) + [len(t)], where="post",
-                    color=plotting.SERIES[i], label=f"{v} ({s['agents_per_variant'].get(v, len(t))} agents)")
+                    color=plotting.SERIES[i],
+                    label=f"{v} ({s['agents_per_variant'][v]} agents)" + (", winner" if v == win else ""))
+            if win is None or v == win:
+                share = s["share_by_bin"][v].to_numpy()
+                for keep, alpha in ((dense, 1.0), (sparse, 0.3)):
+                    axb.hlines(share[keep], edges[:-1][keep], edges[1:][keep], color=plotting.SERIES[i], lw=2.5,
+                               alpha=alpha)
+        if t50 is not None:
+            ax.axvline(t50, color=plotting.INK_2, lw=1, ls="--",
+                       label=f"winner's lasting majority of new carriers from {t50:%m-%d %H:%M}")
+            axb.axvline(t50, color=plotting.INK_2, lw=1, ls="--")
+        notes = ["no winner: the late carriers tie"] if win is None else (
+            [f"{win} never held a lasting majority of new carriers"] if t50 is None else [])
+        early = int((car["ts"] < left).sum())
+        if early:
+            notes.append(f"{early} earlier carrier{'s' * (early > 1)} before {left:%m-%d %H:%M}")
+        handles = ax.get_legend_handles_labels()[0] + [Line2D([], [], ls="", label=t) for t in notes]
+        if sparse.any():
+            handles.append(Line2D([], [], color=plotting.INK_2, lw=2.5, alpha=0.3,
+                                  label=f"share in a bin with fewer than {SPARSE_BIN} new carriers"))
+        axb.axhline(0.5, color=plotting.NEUTRAL, lw=1)
+        plotting.pct_axis(axb)
+        axb.set_ylim(0, 1.05)
+        axb.set_yticks([0, 0.5, 1])
+        ax.set_xlim(left, right)
+        ax.yaxis.set_major_locator(MaxNLocator(integer=True, steps=[1, 2, 5, 10]))
         ax.set_title(s["slot"].replace("datausa-", "").replace(" | ", "\n") + f"\n{s['status']}", fontsize=10)
-        ax.tick_params(axis="x", rotation=30)
-        ax.xaxis.set_major_formatter(plotting.matplotlib.dates.DateFormatter("%m-%d %H:%M"))
-        ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.38), fontsize=8, ncol=1)
+        axb.tick_params(axis="x", rotation=30)
+        axb.xaxis.set_major_locator(plotting.matplotlib.dates.AutoDateLocator(maxticks=6))
+        axb.xaxis.set_major_formatter(plotting.matplotlib.dates.DateFormatter("%m-%d %H:%M"))
+        axb.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, -0.62), fontsize=8, ncol=1)
     axes[0][0].set_ylabel("Agents carrying the value (cumulative)")
+    axes[1][0].set_ylabel(f"Share of new carriers\nper {BIN_H:g} h bin")
     fig.suptitle("Competing values: did a later value overturn the first?", x=0.01, ha="left",
                  fontsize=13, fontweight="bold")
     fig.tight_layout()
