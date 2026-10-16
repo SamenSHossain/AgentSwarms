@@ -114,11 +114,12 @@ def test_chat_adapter_reads_every_json_shape(tmp_path, name, body):
     assert len(a.load(f).events) == (1 if name == "one.jsonl" else 2)
 
 
-def test_chat_adapter_rejects_textless_input_and_directories(tmp_path):
+def test_chat_adapter_rejects_textless_input(tmp_path):
     f = tmp_path / "x.jsonl"
     f.write_text(json.dumps({"ts": 1, "author": "A", "foo": "bar"}) + "\n")
-    with pytest.raises(ValueError, match="no messages with text"):
+    with pytest.raises(ValueError, match="no messages with text found; the first record's keys are `ts`, `author`, `foo`"):
         ChatAdapter().load(f)
-    with pytest.raises(ValueError, match="directory"):
+    with pytest.raises(ValueError, match="no messages with text"):     # a directory of textless files
         ChatAdapter().load(tmp_path)
     assert not ChatAdapter().sniff(tmp_path)
+    assert not ChatAdapter().sniff(tmp_path / "missing")

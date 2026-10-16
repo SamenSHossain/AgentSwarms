@@ -6,12 +6,13 @@ from __future__ import annotations
 
 import json
 import time
+import warnings
 from pathlib import Path
 
 import pandas as pd
 
 from . import adapters, claims as claims_mod, exposure, graph, identity, remote, roster as roster_mod, rules, village
-from .adapters.base import read_capabilities
+from .adapters.base import check_fields, read_capabilities
 from .schema import RunDir, conform, empty
 
 AGENT_COLS = {"merged": "agent_merged", "strict": "agent_strict"}
@@ -26,22 +27,33 @@ def load_config(run: RunDir):
     prof = json.loads((run.path / "profile.json").read_text())
     cfg = adapters.get(prof["adapter"]).config()
     if prof.get("config_path"):
-        cfg = adapters.AdapterConfig.from_file(prof["config_path"], base=cfg)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")   # ingest logged them, and the report lists them
+            cfg = adapters.AdapterConfig.from_file(prof["config_path"], base=cfg)
     return cfg
 
 
 def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | None = None,
-           roster: str | Path | None = None) -> dict:
+           roster: str | Path | None = None, fields: dict | None = None) -> dict:
+    """``fields`` (canonical field -> source key) overrides the config file's ``fields``; both reach the chat adapter,
+    also while detecting."""
     source = str(path)
     if remote.is_remote(path):
         _log(f"fetch {path}")
         path = remote.resolve(path)
-    a = adapters.detect(path) if adapter == "auto" else adapters.get(adapter)
-    _log(f"ingest {path} with adapter '{a.name}'")
+    user = adapters.AdapterConfig.read_file(config) if config else {}
+    fields = check_fields({**(user.get("fields") or {}), **(fields or {})})
+    a = adapters.detect(path, fields) if adapter == "auto" else adapters.get(adapter, fields)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        cfg = adapters.AdapterConfig.from_dict(user, base=a.config())
+    cfg.fields = fields
+    warns = [str(w.message) for w in caught]
+    if fields and a.name != "chat":
+        warns.append(f"`fields` reach the chat adapter only; the `{a.name}` adapter reads its own schema and ignores them.")
+    _log(f"ingest {path} with adapter '{a.name}'" + (f", fields {fields}" if fields else ""))
     b = a.load(Path(path))
-    cfg = a.config()
-    if config:
-        cfg = adapters.AdapterConfig.from_file(config, base=cfg)
+    warns += b.notes.pop("warnings", [])
     if cfg.digest_as_posts and b.digest is not None and not len(b.events):
         _log(f"  no message table: using the {len(b.digest):,}-event digest parsed from the daily summaries as posts (derived text)")
         b.events = village.digest_to_events(b.digest)
@@ -74,18 +86,20 @@ def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | N
         "adapter": a.name, "config": cfg.name, "source": source,
         "roster": str(roster) if roster is not None else (source if b.roster is not None else None),
         "roster_notes": roster_notes,
-        "config_path": str(Path(config).resolve()) if config else None,
+        "config_path": str(Path(config).resolve()) if config else None, "fields": fields,
         "capabilities": b.capabilities.as_dict(),
         "clock": clock, "n_untimed": int(ev["ts"].isna().sum()),
         "n_events": len(ev), "n_authors": int(ev["author_raw"].nunique()),
         "first_ts": str(ev["ts"].min()) if has_ts else None, "last_ts": str(ev["ts"].max()) if has_ts else None,
         "events_per_day": ev["ts"].dt.strftime("%Y-%m-%d").value_counts().sort_index().to_dict() if has_ts else {},
-        "notes": b.notes,
+        "notes": b.notes, "warnings": warns,
     }
     (run.path / "profile.json").write_text(json.dumps(profile, indent=2, default=str))
     if ros is not None:
         _log(f"  roster: {len(ros)} goals for {ros['agent_id'].nunique()} agents in {ros['role'].nunique()} roles")
     _log(f"  {len(ev)} posts from {profile['n_authors']} author strings")
+    for w in warns:
+        _log(f"  warning: {w}")
     return profile
 
 
@@ -214,9 +228,9 @@ def build_graph(run: RunDir) -> None:
         _log(f"  [{name}] {len(edges)} edges, {len(chains)} fact chains")
 
 
-def run_all(path, out, adapter="auto", llm=None, config=None, roster=None) -> RunDir:
+def run_all(path, out, adapter="auto", llm=None, config=None, roster=None, fields=None) -> RunDir:
     run = RunDir(out)
-    ingest(path, run, adapter, config, roster)
+    ingest(path, run, adapter, config, roster, fields)
     extract(run, llm=llm)
     expose(run)
     build_graph(run)

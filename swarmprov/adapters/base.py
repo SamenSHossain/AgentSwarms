@@ -2,12 +2,35 @@
 
 from __future__ import annotations
 
+import dataclasses
+import difflib
+import json
 import re
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
 import pandas as pd
+
+# the chat adapter's canonical fields, each mappable to a source key with ``fields`` / ``--field``
+FIELD_NAMES = ("ts", "author", "author_alt", "text", "channel", "id", "parent")
+
+
+def did_you_mean(name: str, options) -> str:
+    m = difflib.get_close_matches(name, list(options), n=1)
+    return f" (did you mean `{m[0]}`?)" if m else ""
+
+
+def check_fields(mapping: dict) -> dict[str, str]:
+    """A ``fields`` mapping (canonical field -> source key; a dotted key reaches into nested objects), validated."""
+    bad = [f"`{k}`{did_you_mean(k, FIELD_NAMES)}" for k in mapping if k not in FIELD_NAMES]
+    if bad:
+        raise ValueError(f"unknown field {', '.join(bad)}; the fields are {', '.join(FIELD_NAMES)}")
+    empty = [k for k, v in mapping.items() if not isinstance(v, str) or not v.strip()]
+    if empty:
+        raise ValueError(f"field {', '.join(empty)} maps to no source key")
+    return {k: v.strip() for k, v in mapping.items()}
 
 
 @dataclass
@@ -95,6 +118,11 @@ class AdapterConfig:
     # with no primary message table, run the pipeline on the digest parsed from LLM-written daily
     # summaries (derived text: timing and names are second-hand, specific values unreliable)
     digest_as_posts: bool = False
+    # chat adapter: canonical field -> source key, e.g. {"author": "source", "parent": "reference.messageId"};
+    # a field left out is found through the built-in aliases
+    fields: dict[str, str] = field(default_factory=dict)
+    # a config key that is not a setting raises instead of being ignored with a warning
+    strict_config: bool = False
 
     @classmethod
     def from_dict(cls, d: dict, base: "AdapterConfig | None" = None) -> "AdapterConfig":
@@ -103,9 +131,21 @@ class AdapterConfig:
         {"name": "village", "families": {"fundraiser": "donat|fundrais"},
          "techniques": [{"name": "shared-doc", "pattern": "docs\\.google"}],
          "family_from_channel": false}
+
+        Only dataclass fields are settings: any other key warns with the nearest setting, or raises under
+        ``strict_config``.
         """
         cfg = base if base is not None else cls(name=d.get("name", "custom"))
+        known = [f.name for f in dataclasses.fields(cls)]
+        unknown = [k for k in d if k not in known]
+        if unknown and d.get("strict_config", cfg.strict_config):
+            raise ValueError("; ".join(f"config key `{k}` is not a setting{did_you_mean(k, known)}" for k in unknown))
+        for k in unknown:
+            warnings.warn(f"config key `{k}` is not a setting{did_you_mean(k, known)} and is ignored "
+                          "(`\"strict_config\": true` makes this an error)", stacklevel=2)
         for k, v in d.items():
+            if k not in known:
+                continue
             if k == "techniques":
                 v = [Technique(t["name"], t["pattern"], tuple(t.get("families", ())), t.get("description", ""))
                      for t in v]
@@ -115,21 +155,22 @@ class AdapterConfig:
                 v = tuple(v)
             elif k == "extra_items":
                 v = {f: list(items) for f, items in v.items()}
-            if hasattr(cfg, k):
-                setattr(cfg, k, v)
+            elif k == "fields":
+                v = check_fields(v)
+            setattr(cfg, k, v)
         return cfg
 
-    @classmethod
-    def from_file(cls, path, base: "AdapterConfig | None" = None) -> "AdapterConfig":
-        import json
-        from pathlib import Path
+    @staticmethod
+    def read_file(path) -> dict:
         p = Path(path)
         if p.suffix == ".toml":
             import tomllib
-            d = tomllib.loads(p.read_text())
-        else:
-            d = json.loads(p.read_text())
-        return cls.from_dict(d, base)
+            return tomllib.loads(p.read_text())
+        return json.loads(p.read_text())
+
+    @classmethod
+    def from_file(cls, path, base: "AdapterConfig | None" = None) -> "AdapterConfig":
+        return cls.from_dict(cls.read_file(path), base)
 
     def family_of_text(self, text: str) -> str:
         best, best_pos = "", None
@@ -138,6 +179,14 @@ class AdapterConfig:
             if m and (best_pos is None or m.start() < best_pos):
                 best, best_pos = fam, m.start()
         return best
+
+
+def config_snippet(**settings) -> str:
+    """A ready-to-paste ``--config`` JSON holding the given settings (``inspect`` writes ``fields``)."""
+    known = {f.name for f in dataclasses.fields(AdapterConfig)}
+    if set(settings) - known:
+        raise ValueError(f"not config settings: {sorted(set(settings) - known)}")
+    return json.dumps(settings, indent=2, ensure_ascii=False)
 
 
 @dataclass

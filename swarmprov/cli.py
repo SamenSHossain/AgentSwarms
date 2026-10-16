@@ -2,7 +2,9 @@
 
     swarmprov run      INPUT -o runs/wiki [--config cfg.json]   # all stages + report
     swarmprov run      chat.jsonl.gz -o runs/village --roster agent_goals.jsonl  # with a goal roster
-    swarmprov ingest   INPUT -o runs/wiki [--adapter wiki|chat|roster|auto]
+    swarmprov run      autogen.jsonl -o runs/agents --field author=source        # name a chat field's source key
+    swarmprov inspect  INPUT [--field author=source]  # what each adapter and chat field finds; suggests a mapping
+    swarmprov ingest   INPUT -o runs/wiki [--adapter auto|wiki|corpus|swarmtraces|village|roster|chat]
     swarmprov extract  runs/wiki [--llm claude-haiku-4-5]
     swarmprov expose   runs/wiki
     swarmprov graph    runs/wiki
@@ -21,6 +23,8 @@ import argparse
 import sys
 
 from . import pipeline
+from .adapters import ADAPTERS
+from .adapters.base import FIELD_NAMES, check_fields
 from .schema import RunDir
 
 
@@ -30,25 +34,50 @@ def _positive(v: str) -> int:
     return int(v)
 
 
+def _fields(v: str) -> dict[str, str]:
+    """``author=source``, or several at once: ``author=source,text=content``."""
+    pairs = [p.split("=", 1) for p in v.split(",") if p.strip()]
+    if not pairs or any(len(p) != 2 for p in pairs):
+        raise argparse.ArgumentTypeError(f"expected FIELD=KEY (e.g. author=source), got {v!r}")
+    try:
+        return check_fields({k.strip(): key for k, key in pairs})
+    except ValueError as e:
+        raise argparse.ArgumentTypeError(str(e)) from None
+
+
+def _add_fields(s: argparse.ArgumentParser) -> None:
+    s.add_argument("--field", type=_fields, action="append", default=[], metavar="FIELD=KEY",
+                   help=f"chat adapter: read FIELD ({', '.join(FIELD_NAMES)}) from the source's KEY (a dotted KEY such as "
+                        "author.name reaches into nested objects); repeatable, overrides the config's fields")
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="swarmprov", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
 
+    adapter = dict(choices=["auto", *ADAPTERS], default="auto")
     s = sub.add_parser("run", help="ingest -> extract -> expose -> graph -> report")
     s.add_argument("input")
     s.add_argument("-o", "--out", default="runs/latest")
-    s.add_argument("--adapter", default="auto")
+    s.add_argument("--adapter", **adapter)
     s.add_argument("--llm", default=None, help="model id for optional LLM extraction (needs ANTHROPIC_API_KEY)")
     s.add_argument("--config", default=None, help="JSON/TOML file overriding the adapter config (families, techniques, ...)")
     s.add_argument("--roster", default=None, help="agent-goal table (AI Village agent_goals) to attach: goals become families and cohorts")
+    _add_fields(s)
 
     s = sub.add_parser("ingest")
     s.add_argument("input")
     s.add_argument("-o", "--out", default="runs/latest")
-    s.add_argument("--adapter", default="auto")
+    s.add_argument("--adapter", **adapter)
     s.add_argument("--config", default=None)
     s.add_argument("--roster", default=None)
+    _add_fields(s)
+
+    s = sub.add_parser("inspect", help="each adapter's sniff, the chat fields found and their coverage; suggests a mapping")
+    s.add_argument("input")
+    s.add_argument("--config", default=None, help="take the fields from this config file")
+    _add_fields(s)
 
     s = sub.add_parser("extract")
     s.add_argument("run")
@@ -104,13 +133,17 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--seed", type=int, default=0)
 
     a = p.parse_args(argv)
+    fields = {k: v for d in getattr(a, "field", []) for k, v in d.items()}
     if a.cmd == "trace" and ((a.item is not None and a.agent is None)
                              or (a.family is not None and a.agent is None and not a.list)):
         p.error("trace: --item goes with --agent, --family with --agent or --list")
     if a.cmd == "run":
-        pipeline.run_all(a.input, a.out, a.adapter, a.llm, a.config, a.roster)
+        pipeline.run_all(a.input, a.out, a.adapter, a.llm, a.config, a.roster, fields)
     elif a.cmd == "ingest":
-        pipeline.ingest(a.input, RunDir(a.out), a.adapter, a.config, a.roster)
+        pipeline.ingest(a.input, RunDir(a.out), a.adapter, a.config, a.roster, fields)
+    elif a.cmd == "inspect":
+        from . import inspect
+        return inspect.inspect(a.input, a.config, fields)
     elif a.cmd == "extract":
         pipeline.extract(RunDir(a.run), llm=a.llm)
     elif a.cmd == "expose":

@@ -188,6 +188,13 @@ def _swarmtraces_block(prof: dict, st: dict, summary: dict) -> list[str]:
     return L
 
 
+def _warnings(prof: dict, summary: dict) -> list[str]:
+    """Ingest's warnings (a field not found, a config key ignored), also kept in ``summary.json``."""
+    if prof.get("warnings"):
+        summary["warnings"] = prof["warnings"]
+    return [f"**Warning:** {w}\n" for w in prof.get("warnings") or []]
+
+
 def _write(run: RunDir, L: list[str], summary: dict) -> str:
     text = "\n".join(L)
     (run.path / "report.md").write_text(text)
@@ -211,7 +218,7 @@ def build(run: RunDir, mapping: str = "merged") -> str:
         L = ["# Context report (no posts)\n",
              f"Source: `{prof['source']}` (adapter `{prof['adapter']}`) holds no posts, so there is no provenance to "
              "analyse. The tables below become task families, cohorts, channel lifecycle and audiences once a "
-             "message table sits next to them (or is attached with `--roster`).\n"]
+             "message table sits next to them (or is attached with `--roster`).\n"] + _warnings(prof, summary)
         L += _village_block(run, prof, summary)
         if run.has("roster"):
             L += _roster_block(run, prof, summary)
@@ -248,11 +255,7 @@ def build(run: RunDir, mapping: str = "merged") -> str:
     L.append("")
     explicit = bool(caps.get("has_explicit_author"))
     L.append(_identity_merges(run.read("agents"), explicit) + "\n")
-    if notes.get("n_no_author"):
-        k = notes["n_no_author"]
-        L.append(f"**Warning:** {k:,} post{'s name' if k > 1 else ' names'} no author (no author field was recognised), so "
-                 f"{'they are' if k > 1 else 'it is'} pooled as one agent, `unknown`, which can look like a hub or a relay "
-                 "source in A5.\n")
+    L += _warnings(prof, summary)
     if notes.get("clock_grades"):
         L.append((_needs_clock("Clock quality notes") if seq else _clock_note(notes, ex, events)) + "\n")
     rounds = agent_rounds(claims, agent_col) if len(claims) else pd.DataFrame()

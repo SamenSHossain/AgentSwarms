@@ -250,8 +250,11 @@ def test_a_dispute_in_untimed_rooms_is_skipped_for_want_of_order_not_reported_ab
 
 def test_missing_author_field_is_flagged(runs, tmp_path):
     p = tmp_path / "autogen.json"
-    p.write_text(json.dumps({"messages": [m | {"type": "TextMessage"} for m in _msgs("source")]}))
-    assert ChatAdapter().load(p).notes["n_no_author"] == 9          # AutoGen's "source" is not an author alias
+    p.write_text(json.dumps({"messages": [m | {"type": "TextMessage"} for m in _msgs("handle")]}))
+    b = ChatAdapter().load(p)                                       # "handle" is not an author alias
+    assert b.notes["n_no_author"] == 9
+    assert "The first record's keys are `handle`, `content`, `type`; name the author's key with `--field author=<key>`." \
+        in b.notes["warnings"][0]
     text = _report(runs["openai"])
     assert "**Warning:** 1 post names no author" in text and "so it is pooled" in text and "`unknown`" in text   # the system message
     assert "no author" not in _report(runs["rooms"])
