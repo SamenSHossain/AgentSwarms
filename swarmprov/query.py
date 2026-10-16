@@ -196,7 +196,7 @@ def answer_lineage(run: RunDir, claim_id: str | None = None, agent: str | None =
             "claim_id": r.claim_id, "agent": r.agent, "family": r.family, "item": r.item, "episode": r.episode,
             "value": value, "matched_value": target, "consensus_value": r.consensus_value,
             "report": _post(ev, r.report_event_id, r.item) or {"ts": r.t_report},
-            "D": int(r.D), "D_w60m": int(r.D_w60m), "D_visible": int(r.D_visible),
+            "D": int(r.D), "D_w60m": None if pd.isna(r.D_w60m) else int(r.D_w60m), "D_visible": int(r.D_visible),
             "first_public_copy": src,
             "first_visible_copy": _post(ev, r.src_visible_event_id, r.item)
             if r.src_visible_event_id != r.src_event_id else None,
@@ -297,6 +297,11 @@ def _n(k: int, word: str) -> str:
     return f"{k} {word}" + ("" if k == 1 else "s")
 
 
+def _gap(s, seq: bool = False) -> str:
+    """A time difference; under a sequence clock (positions 1 s apart) a count of messages, never seconds."""
+    return _n(int(round(s)), "message") if seq and s is not None and not math.isnan(s) else _dur(s)
+
+
 def _flags(kind: str, within: bool, more=()) -> str:
     f = (["cross-page hop: source unknown, attributed to originator"] if kind == "relay_xchannel" else []) + \
         ([f"direction unreliable: within the {CLOCK_RES_S:.0f} s clock resolution"] if within else []) + list(more)
@@ -307,7 +312,8 @@ def _post_line(p: dict) -> str:
     return f"{p['event_id']}, {_ts(p['ts'])}, {p['channel']}, by {p['author']}"
 
 
-def text_answers(answers: list[dict]) -> list[str]:
+def text_answers(answers: list[dict], seq: bool = False) -> list[str]:
+    """``seq``: the run has a sequence clock, so nothing is said in minutes or seconds."""
     L = []
     for a in answers:
         own = a["value"] is not None
@@ -319,13 +325,16 @@ def text_answers(answers: list[dict]) -> list[str]:
         if rep.get("excerpt"):
             L.append(f"    \"{rep['excerpt']}\"")
         yn = lambda v: "yes" if v else "no"
-        L.append(f"  public before the report: {yn(a['D'])} (D); at least 60 min before: {yn(a['D_w60m'])} (D_w60m); "
+        w60 = "needs a wall clock" if a["D_w60m"] is None else yn(a["D_w60m"])
+        L.append(f"  public before the report: {yn(a['D'])} (D); at least 60 min before: {w60} (D_w60m); "
                  f"a copy still visible at the report: {yn(a['D_visible'])} (D_visible)")
         s = a["first_public_copy"]
         if s:
             gone = (f"; page deleted {_ts(s['deleted_at'])} ({'before' if s['deleted_before_report'] else 'after'} "
                     "the report)") if s["deleted_at"] is not None else ""
-            L.append(f"  first public copy: {s['agent']}, post {_post_line(s)}; head start {_dur(s['head_start_s'])}{gone}")
+            head = (f"head start needs a wall clock ({_gap((rep['ts'] - s['ts']).total_seconds(), True)} earlier in the "
+                    "file)" if seq else f"head start {_dur(s['head_start_s'])}")
+            L.append(f"  first public copy: {s['agent']}, post {_post_line(s)}; {head}{gone}")
             L.append(f"    \"{s['excerpt']}\"")
             v = a["first_visible_copy"]
             if v:
@@ -338,7 +347,7 @@ def text_answers(answers: list[dict]) -> list[str]:
         if rp:
             late = ["parent post not before the report: not this answer's source"] if rp["after_report"] else []
             L.append(f"  inferred relay parent: {rp['agent']} ({rp['kind']}), parent post {rp['parent_event_id']} "
-                     f"({_ts(rp['parent_ts'])}), {_dur(rp['dt_s'])} before this agent's first post of the value "
+                     f"({_ts(rp['parent_ts'])}), {_gap(rp['dt_s'], seq)} before this agent's first post of the value "
                      f"({rp['carrier_event_id']}, {_ts(rp['carrier_ts'])}){_flags(rp['kind'], rp['within_clock_res'], late)}")
         elif a["path"]:
             L.append("  inferred relay parent: none (this agent originated the value)")
@@ -359,20 +368,20 @@ def text_answers(answers: list[dict]) -> list[str]:
     return L
 
 
-def text_facts(facts: list[dict], limit: int | None = None) -> list[str]:
+def text_facts(facts: list[dict], limit: int | None = None, seq: bool = False) -> list[str]:
     L = []
     for f in facts:
         L.append(f"fact {f['family']} | {f['item']} | {f['value']}: {_n(f['carriers'], 'carrier')}, {_n(len(f['hops']), 'hop')} "
-                 f"({f['n_relay']} same-page relay, {f['n_xchannel']} cross-page attributed to the originator, "
-                 f"{f['n_within_clock_res']} within the clock resolution), max depth {f['max_depth']}, "
-                 f"span {_dur(f['span_s'])}")
+                 f"({f['n_relay']} same-page relay, {f['n_xchannel']} cross-page attributed to the originator"
+                 + ("" if seq else f", {f['n_within_clock_res']} within the clock resolution") + f"), max depth {f['max_depth']}, "
+                 f"span {_gap(f['span_s'], seq)}")
         o = f["origin"]
         L.append(f"  origin: {o['agent']}" + (f", post {_post_line(o)}" if "event_id" in o else f", {_ts(o['ts'])}"))
         if o.get("excerpt"):
             L.append(f"    \"{o['excerpt']}\"")
         for h in f["hops"][:limit]:
             pad = "  " * (h["depth"] + 1)
-            L.append(f"{pad}[{h['depth']}] {h['src']} -> {h['dst']}  {h['kind']}  {_ts(h['ts'])}  +{_dur(h['dt_s'])}  "
+            L.append(f"{pad}[{h['depth']}] {h['src']} -> {h['dst']}  {h['kind']}  {_ts(h['ts'])}  +{_gap(h['dt_s'], seq)}  "
                      f"{h['channel']}  post {h['event_id']}{_flags(h['kind'], h['within_clock_res'])}")
             L.append(f"{pad}    \"{h['excerpt']}\"")
         if limit is not None and len(f["hops"]) > limit:
@@ -419,7 +428,7 @@ def text_list(res: dict, family: str | None) -> list[str]:
     return L
 
 
-def timeline(fact: dict, path, highlight: str | None = None) -> str:
+def timeline(fact: dict, path, highlight: str | None = None, seq: bool = False) -> str:
     """x = time, y = carriers in order of their first post; relay hops solid blue from the parent's post (small
     dot), cross-page hops grey."""
     from matplotlib.lines import Line2D
@@ -446,7 +455,7 @@ def timeline(fact: dict, path, highlight: str | None = None) -> str:
     ax.set_yticklabels([a.replace("$", r"\$") for a in order[::step]], fontsize=7)
     ax.invert_yaxis()
     ax.grid(axis="y", visible=False)
-    ax.set_xlabel("time (UTC)")
+    ax.set_xlabel("message position (2000-01-01 + i s)" if seq else "time (UTC)")
     ax.set_ylabel("carriers, in order of first post")
     ax.set_title(f"{fact['family']} | {fact['item']} | {fact['value']}".replace("$", r"\$")
                  + f": {fact['carriers']} carriers, max depth {fact['max_depth']}")
@@ -487,6 +496,9 @@ def trace(run_path: str, agent=None, item=None, family=None, answer=None, fact=N
               "up to `swarmprov graph`)")
         return 1
     print(f"mapping: {mapping} ({MAPPING_NOTE[mapping]})")
+    seq = json.loads((run.path / "profile.json").read_text()).get("clock") == "sequence"
+    if seq:
+        print("clock: message order, no wall clock (a post's time is its position, 2000-01-01 + i s; gaps are in messages)")
     if agent is not None or answer is not None:
         ex = _table(run, f"exposures_{mapping}")
         if agent is not None:
@@ -507,14 +519,14 @@ def trace(run_path: str, agent=None, item=None, family=None, answer=None, fact=N
         if not res and agent is not None:
             print(f"no answer by {agent} matches; its answers: {', '.join(sorted(ex.loc[ex['agent'] == agent, 'item'])) or 'none'}")
             return 1
-        mode, lines = "answer", text_answers(res)
+        mode, lines = "answer", text_answers(res, seq)
     elif fact is not None:
         parts = [p.strip() for p in fact.split("|", 2)]
         if len(parts) < 2:
             print("--fact takes 'family|item' or 'family|item|value'")
             return 1
         res = fact_lineage(run, parts[0], parts[1], parts[2] if len(parts) == 3 else None, mapping)
-        mode, lines = "fact", text_facts(res, limit)
+        mode, lines = "fact", text_facts(res, limit, seq)
     elif event is not None:
         res = event_view(run, event, mapping)
         mode, lines = "event", text_event(res) if res else []
@@ -527,7 +539,8 @@ def trace(run_path: str, agent=None, item=None, family=None, answer=None, fact=N
     print("\n".join(lines))
     if json_path:
         with open(json_path, "w") as fh:
-            json.dump(to_json({"mapping": mapping, "mode": mode, "result": res}), fh, indent=1, default=str)
+            json.dump(to_json({"mapping": mapping, "clock": "sequence" if seq else "wall", "mode": mode, "result": res}),
+                      fh, indent=1, default=str)
     if png_path:
         facts, highlight = (res if mode == "fact" else []), None
         if mode == "answer" and len(res) == 1 and res[0]["matched_value"] is not None:
@@ -536,5 +549,5 @@ def trace(run_path: str, agent=None, item=None, family=None, answer=None, fact=N
         if len(facts) != 1:
             print("--png draws one fact: pass --fact with a value, or pick a single answer")
             return 1
-        print(f"timeline: {timeline(facts[0], png_path, highlight)}")
+        print(f"timeline: {timeline(facts[0], png_path, highlight, seq)}")
     return 0

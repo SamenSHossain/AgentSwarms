@@ -35,8 +35,8 @@ MIN_SWITCHERS = 10  # agents whose exposure status varies across their rounds
 
 
 def estimate(ex: pd.DataFrame, min_switchers: int = MIN_SWITCHERS, wall_clock: bool = True) -> pd.DataFrame:
-    """Without a wall clock only the consensus outcome under ``D_cons`` is estimated: the latency outcomes
-    and the >= 1 h treatment need one."""
+    """Without a wall clock (a message-order run) only the consensus outcome under ``D_cons`` is estimated: the
+    >= 1 h treatment needs one, and the latency outcomes, though read from the post text, are left out with it."""
     try:
         import pyfixest as pf
     except ImportError:  # pragma: no cover

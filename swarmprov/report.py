@@ -202,7 +202,8 @@ def build(run: RunDir, mapping: str = "merged") -> str:
     cfg = load_config(run)
     caps = read_capabilities(prof)
     if not prof["n_events"]:
-        summary = {"profile": {k: prof[k] for k in ("adapter", "source", "n_events")}}
+        summary = {"profile": {k: prof[k] for k in ("adapter", "source", "n_events")},
+                   "funnel": _funnel_counts(*[pd.DataFrame()] * 4)}
         notes = prof.get("notes") or {}
         if notes.get("swarmtraces"):
             L = _swarmtraces_block(prof, notes["swarmtraces"], summary)
@@ -237,8 +238,12 @@ def build(run: RunDir, mapping: str = "merged") -> str:
              + f"Agent identity mapping: **{mapping}** (sensitivity under the other mapping below).\n")
     L.append("## Data capabilities\n")
     L.append("| capability | available | consequence |\n|---|---|---|")
+    n_untimed = prof.get("n_untimed") or 0
     for k, v in caps.items():
         yes, no = CONSEQUENCES.get(k, ("", ""))
+        if k == "has_wall_clock" and prof.get("first_ts") and n_untimed:   # too few timestamps for a clock, but real ones
+            no = (f"only the {prof['n_events'] - n_untimed:,} of {prof['n_events']:,} posts with a timestamp are ordered "
+                  "by real time")
         L.append(f"| {k} | {'yes' if v else 'no'} | {yes if v else no} |")
     L.append("")
     explicit = bool(caps.get("has_explicit_author"))
@@ -246,11 +251,13 @@ def build(run: RunDir, mapping: str = "merged") -> str:
     if notes.get("n_no_author"):
         k = notes["n_no_author"]
         L.append(f"**Warning:** {k:,} post{'s name' if k > 1 else ' names'} no author (no author field was recognised), so "
-                 "they are pooled as one agent, `unknown`, which can look like a hub or a relay source in A5.\n")
+                 f"{'they are' if k > 1 else 'it is'} pooled as one agent, `unknown`, which can look like a hub or a relay "
+                 "source in A5.\n")
     if notes.get("clock_grades"):
         L.append((_needs_clock("Clock quality notes") if seq else _clock_note(notes, ex, events)) + "\n")
     rounds = agent_rounds(claims, agent_col) if len(claims) else pd.DataFrame()
-    catch_all = identity.catch_all_family(cfg, run.has("roster") or run.has("eras"))
+    roster = run.has("roster") or run.has("eras")
+    catch_all = identity.catch_all_family(cfg, roster)
     catch_all = catch_all if catch_all and (events["family"] == catch_all).any() else None
     L += _funnel(events, tags, claims, rounds, mapping, catch_all, summary)
     L += _village_block(run, prof, summary)
@@ -290,7 +297,9 @@ def build(run: RunDir, mapping: str = "merged") -> str:
         if seq:
             L.append(_needs_clock("The ≥10 min and ≥1 h shares and the head start in hours") + "\n")
         if untimed:
-            L.append(f"{untimed:,} agent-rounds have no timestamp and are left out: nothing can be ordered against them.\n")
+            L.append(f"{untimed:,} agent-round{'s have' if untimed > 1 else ' has'} no timestamp and "
+                     f"{'are' if untimed > 1 else 'is'} left out: nothing can be ordered against "
+                     f"{'them' if untimed > 1 else 'it'}.\n")
         if "D_visible" in ex and caps.get("has_lifecycle") and seq:
             L.append(_needs_clock("Deletion-aware shares (D_visible)") + "\n")
         elif "D_visible" in ex and caps.get("has_lifecycle"):
@@ -304,7 +313,8 @@ def build(run: RunDir, mapping: str = "merged") -> str:
             L.append(f"\n_Sensitivity_: under the other identity mapping, {len(ex_alt):,} agent-rounds, "
                      f"{_pct(ex_alt['D'].mean())} exposed" + ("" if seq else f", {_pct(ex_alt['D_w60m'].mean())} exposed ≥1 h") + ".\n")
     else:
-        L += _skipped("A1", "needs agent-rounds (an agent's answer to an item in a task family); " + _a1_gap(claims, rounds))
+        L += _skipped("A1", "needs agent-rounds (an agent's answer to an item in a task family); "
+                      + _a1_gap(claims, rounds, _family_hint(cfg, roster)))
 
     # A2
     if len(ex) > 20:
@@ -317,7 +327,10 @@ def build(run: RunDir, mapping: str = "merged") -> str:
                  "agent FE absorb ability. Treatment `D_cons` = the consensus value for the item was public before the agent's report; "
                  "it is defined without reference to the agent's own answer, so a wrong answer cannot mechanically produce D=0. "
                  "Identifying assumption: an agent's place in the run order is unrelated to its ability. "
-                 + (_needs_clock("The latency outcome (an instant answer) and the ≥1 h treatment") if seq else
+                 + ("On a message-order run only the consensus outcome under `D_cons` is estimated: the ≥1 h treatment "
+                    "needs a wall clock, and the latency outcome (an instant answer, as the post states it) is left out "
+                    "with it, although A1's *instant* column and A5's *instant only* rows, read from the same text, are "
+                    "shown." if seq else
                     "Latency would be the discriminating outcome (a common cause explains the same answer, not a 1-second answer on a 14-second timer); "
                     "check `agents_with_D_variation` before reading it — when few agents switch exposure status the latency estimate is uninformative.")
                  + "\n")
@@ -333,7 +346,8 @@ def build(run: RunDir, mapping: str = "merged") -> str:
                                                        "agents_with_D_variation", "note"] if c in est_alt]],
                                   index=False, floatfmt="{:.3f}"))
     else:
-        L += _skipped("A2", f"needs more than 20 agent-rounds; this run has {len(ex):,}")
+        L += _skipped("A2", f"needs more than 20 {'timed ' if untimed else ''}agent-rounds; this run has {len(ex):,}"
+                      + (f" ({untimed:,} {'have' if untimed > 1 else 'has'} no timestamp)" if untimed else ""))
 
     # A3
     r3 = diffusion.analyze(tags, cfg.techniques, agent_col) if len(tags) and cfg.techniques else {}
@@ -363,7 +377,8 @@ def build(run: RunDir, mapping: str = "merged") -> str:
                       f"none of the {len(cfg.techniques)} configured techniques appears in a post with a timestamp")
 
     # A4
-    if len(mentions):
+    n_untimed_mn = int(mentions["ts"].isna().sum()) if len(mentions) else 0
+    if len(mentions) > n_untimed_mn:
         rule = {"bin_h": None} if seq else {}   # no hours: the whole run is one majority bin
         vs = errors.value_slots(mentions, agent_col, **rule)
         ss = errors.sequence_slots(claims, agent_col, **rule) if len(claims) else []
@@ -399,6 +414,8 @@ def build(run: RunDir, mapping: str = "merged") -> str:
                                       for r, s in zip(rows, feat)]}
         if refs:
             summary["A4"] |= {"references_unknown": unknown, "references_outside_table": outside}
+        if n_untimed_mn:
+            summary["A4"]["n_mentions_untimed"] = n_untimed_mn
         tail = f"{Fraction(errors.TAIL_SHARE).limit_denominator(10)}"
         keep, never, kept = (("holds the majority of all the slot's carriers", "does not hold that majority", "holds that majority")
                              if seq else ("kept that majority", "never kept the majority", "kept the majority"))
@@ -421,6 +438,9 @@ def build(run: RunDir, mapping: str = "merged") -> str:
         if seq:
             L.append(_needs_clock(f"The {errors.BIN_H:g}-hour majority bins, the time a winner took the majority and the hours "
                                   "to overtake") + "\n")
+        if n_untimed_mn:
+            L.append(f"{n_untimed_mn:,} of {len(mentions):,} item–value and URL mentions have no timestamp and are left out: "
+                     "a carrier counts from its first timed post.\n")
         if refs:
             L.append("Reference values are **analyst input** (config `reference_values`), not measured. They never change the "
                      "status; they only fill the outcome column. A held or overturned slot is judged on the variant left standing "
@@ -439,6 +459,11 @@ def build(run: RunDir, mapping: str = "merged") -> str:
         if outside:
             L.append("Reference values for disputed slots outside this table (no outcome shown): "
                      + ", ".join(f"`{k}`" for k in outside) + ".\n")
+    elif len(mentions):
+        k = mentions["event_id"].nunique()
+        L += _skipped("A4", f"needs posts with a timestamp; none of the {k:,} post{'s' * (k != 1)} with an item–value pair "
+                      "or URL has one" + (", and the file joins several message lists, so no order is invented for them"
+                                          if notes.get("clock") == "none" else ""))
     else:
         L += _skipped("A4", "needs item–value pairs or URLs in the posts; none was found")
 
@@ -481,8 +506,7 @@ def build(run: RunDir, mapping: str = "merged") -> str:
         else:
             L += _skipped("A6", "needs facts (an item–value pair or a URL) to follow; none was posted")
     else:
-        L += _skipped("A5", "needs provenance edges; no fact was carried by two agents, no answer was exposed and no post "
-                            "cites another agent")
+        L += _skipped("A5", _a5_gap(mentions, agent_col, ex, untimed, notes.get("clock") == "none"))
         L += _skipped("A6", "needs the provenance graph (see A5)")
 
     # Validation
@@ -567,34 +591,66 @@ def _when(prof: dict, notes: dict) -> str:
         return "no timestamps. "
     n = prof.get("n_untimed") or 0
     return (f"{prof['first_ts'][:16]} → {prof['last_ts'][:16]} UTC. "
-            + (f"{n:,} posts have no timestamp and take part in no time comparison. " if n else ""))
+            + (f"{n:,} post{'s have' if n > 1 else ' has'} no timestamp and take{'' if n > 1 else 's'} part in no time "
+               "comparison. " if n else ""))
 
 
-def _a1_gap(claims: pd.DataFrame, rounds: pd.DataFrame) -> str:
+def _family_hint(cfg, roster: bool) -> str:
+    """Why answer claims have no task family, and the setting that would give them one (``default_family`` only
+    where it applies: no families configured and no roster)."""
+    if cfg.families:
+        return ("none has a task family: their posts match no configured `families` pattern"
+                + (" and fall in no roster or shared goal" if roster else "") + " (widen the patterns, or use `--llm`)")
+    if roster:
+        return ("none has a task family: their posts fall in no roster or shared goal, and `default_family` does not "
+                "apply with a roster (set `families`, or use `--llm`)")
+    return "none has a task family (set `families` or `default_family`, or use `--llm`)"
+
+
+def _a1_gap(claims: pd.DataFrame, rounds: pd.DataFrame, family_hint: str) -> str:
     """Why no agent-round reached exposure, from the agent_rounds filter and exposure's timestamp guard."""
     a = claims[claims["event_type"] == "answer"] if len(claims) else claims
     if not len(a):
         return "no answer claims were extracted (see the funnel; set `families` and `extra_items`, or use `--llm`)"
     if not len(rounds):
         has_fam, has_item = a["family"].fillna("").astype(bool), a["item"].notna()
-        why = ("none has a task family (set `families` or `default_family`, or use `--llm`)" if not has_fam.any() else
+        why = (family_hint if not has_fam.any() else
                "none names an item (add `extra_items`, or use `--llm`)" if not has_item.any() else
                "none names both an item and a task family")
-        return f"{len(a):,} answer claims extracted, 0 agent-rounds: {why}"
+        return f"{len(a):,} answer claim{'s' * (len(a) != 1)} extracted, 0 agent-rounds: {why}"
     return f"none of the {len(rounds):,} agent-rounds has a timestamp, so nothing can be ordered against them"
+
+
+def _a5_gap(mentions: pd.DataFrame, agent_col: str, ex: pd.DataFrame, untimed: int, joined: bool) -> str:
+    """Why the provenance graph has no edge, from what each edge kind needs: relay edges a fact two agents carried
+    in timed posts, exposure edges an exposed answer, citation edges a post naming another agent."""
+    n_rep = int((mentions.groupby(["family", "item", "value_key"])[agent_col].nunique() > 1).sum()) if len(mentions) else 0
+    facts = ("no fact was carried by two agents" if not n_rep else
+             f"{n_rep:,} fact{'s were' if n_rep > 1 else ' was'} carried by two or more agents, but not in posts with a "
+             "timestamp (relay edges need an order" + ("; the file joins several message lists, so none is invented"
+                                                       if joined else "") + ")")
+    answers = ("no answer was exposed" if len(ex) else
+               f"none of the {untimed:,} agent-rounds has a timestamp to be exposed against" if untimed else
+               "there are no agent-rounds to expose")
+    return f"needs provenance edges; {facts}, {answers} and no post cites another agent"
+
+
+def _funnel_counts(events: pd.DataFrame, tags: pd.DataFrame, claims: pd.DataFrame, rounds: pd.DataFrame,
+                   catch_all: str | None = None) -> dict:
+    """``summary['funnel']`` (all zeros for a run with no posts)."""
+    a = claims[claims["event_type"] == "answer"] if len(claims) else pd.DataFrame(columns=["item", "value_norm", "family"])
+    return {"posts": len(events), "posts_with_family": int(events["family"].fillna("").astype(bool).sum()) if len(events) else 0,
+            "answer_posts": int(tags["is_answer"].fillna(False).astype(bool).sum()) if len(tags) else 0,
+            "answer_claims": len(a), "answer_claims_no_item": int(a["item"].isna().sum()),
+            "answer_claims_no_value": int(a["value_norm"].isna().sum()),
+            "answer_claims_no_family": int((a["family"].fillna("") == "").sum()),
+            "agent_rounds": len(rounds), "agent_rounds_untimed": int(rounds["t_report"].isna().sum()) if len(rounds) else 0,
+            "catch_all_family": catch_all}
 
 
 def _funnel(events, tags, claims, rounds, mapping: str, catch_all: str | None, summary: dict) -> list[str]:
     """Where posts dropped out on the way to an agent-round (also ``summary['funnel']``)."""
-    a = claims[claims["event_type"] == "answer"] if len(claims) else pd.DataFrame(columns=["item", "value_norm", "family"])
-    f = {"posts": len(events), "posts_with_family": int(events["family"].fillna("").astype(bool).sum()),
-         "answer_posts": int(tags["is_answer"].fillna(False).astype(bool).sum()) if len(tags) else 0,
-         "answer_claims": len(a), "answer_claims_no_item": int(a["item"].isna().sum()),
-         "answer_claims_no_value": int(a["value_norm"].isna().sum()),
-         "answer_claims_no_family": int((a["family"].fillna("") == "").sum()),
-         "agent_rounds": len(rounds), "agent_rounds_untimed": int(rounds["t_report"].isna().sum()) if len(rounds) else 0,
-         "catch_all_family": catch_all}
-    summary["funnel"] = f
+    f = summary["funnel"] = _funnel_counts(events, tags, claims, rounds, catch_all)
     c = {k: f"{v:,}" for k, v in f.items() if isinstance(v, int)}
     rows = [("posts", c["posts"], "posts"),
             ("with a task family", c["posts_with_family"],
@@ -603,7 +659,8 @@ def _funnel(events, tags, claims, rounds, mapping: str, catch_all: str | None, s
             ("answer claims", c["answer_claims"], f"claims: {c['answer_claims_no_item']} name no item, "
              f"{c['answer_claims_no_value']} no value, {c['answer_claims_no_family']} no task family"),
             ("agent-rounds", c["agent_rounds"], f"(agent, family, item) under the {mapping} mapping, from claims with an "
-             "item and a family" + (f"; {c['agent_rounds_untimed']} have no timestamp" if f["agent_rounds_untimed"] else ""))]
+             "item and a family" + (f"; {c['agent_rounds_untimed']} {'have' if f['agent_rounds_untimed'] > 1 else 'has'} "
+                                    "no timestamp" if f["agent_rounds_untimed"] else ""))]
     return ["## Pipeline funnel\n",
             "Where the posts went on the way to an answer. The rows count posts, claims and agent-rounds, so they need not "
             "shrink from one row to the next: a post can carry several answer claims, and an agent's repeated reports of "
@@ -617,9 +674,11 @@ def _depth_sentence(r5: dict, r6: dict, edges: pd.DataFrame) -> str:
     urls = r6.get("urls") or {}
     if not urls.get("repeated"):
         return "No task value or URL was carried by two or more agents.\n"
-    hops = int((edges["kind"].isin(["relay", "relay_xchannel"]) & (edges["family"] == "url")).sum())
-    return (f"No task value was carried by two or more agents, but {urls['repeated']:,} URLs were, over {hops:,} relay "
-            f"hops ({urls['mean_hops_repeated']:.1f} deep on average, at most {urls['max_hops']}).\n")
+    url = edges[edges["family"] == "url"]
+    relay, xch = int((url["kind"] == "relay").sum()), int((url["kind"] == "relay_xchannel").sum())
+    return (f"No task value was carried by two or more agents, but {urls['repeated']:,} URLs were, over {relay + xch:,} hops "
+            f"({relay:,} same-page relay, {xch:,} cross-page attributed to the originator; "
+            f"{urls['mean_hops_repeated']:.1f} deep on average, at most {urls['max_hops']}).\n")
 
 
 def _hub_headline(r5: dict) -> str:

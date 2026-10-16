@@ -70,14 +70,15 @@ FREEFORM = [("a1", "Found the dataset at https://data.example.org/oecd.csv"),
             ("a2", "Using https://data.example.org/oecd.csv as the source"),
             ("a3", "Also see https://data.example.org/oecd.csv for the raw table"),
             ("a4", "Docs: https://docs.example.org/api and https://data.example.org/oecd.csv"),
-            ("a5", "https://docs.example.org/api is the reference")]
+            ("a5", "https://docs.example.org/api is the reference", "other-page")]   # a cross-page hop
 TECH = [{"name": "jina-proxy", "pattern": r"r\.jina\.ai"}]
 
 
 def _chat_run(d, name, posts, cfg):
     t0 = pd.Timestamp("2026-05-04T10:00:00Z")
     (d / f"{name}.jsonl").write_text("\n".join(json.dumps({"timestamp": (t0 + pd.Timedelta(minutes=i)).isoformat(),
-                                                           "author": a, "text": t}) for i, (a, t) in enumerate(posts)))
+                                                           "author": a, "text": t} | ({"channel": ch[0]} if ch else {}))
+                                                for i, (a, t, *ch) in enumerate(posts)))
     (d / f"{name}.json").write_text(json.dumps(cfg))
     from swarmprov import pipeline
     return pipeline.run_all(d / f"{name}.jsonl", d / name, adapter="chat", config=str(d / f"{name}.json"))
@@ -121,7 +122,9 @@ def test_configured_families_leave_unmatched_posts_familyless_and_say_why_a1_is_
     assert set(run.read("events")["family"]) == {""} and len(run.read("exposures_merged")) == 0
     text = _text(run)
     assert "## A1. Provenance split\n\n_Skipped: needs agent-rounds (an agent's answer to an item in a task family); " \
-           "5 answer claims extracted, 0 agent-rounds: none has a task family" in text
+           "5 answer claims extracted, 0 agent-rounds: none has a task family: their posts match no configured " \
+           "`families` pattern (widen the patterns, or use `--llm`)._" in text
+    assert "default_family" not in text            # it does not apply once families are configured
     f = json.loads((run.path / "summary.json").read_text())["funnel"]
     assert (f["posts"], f["posts_with_family"], f["answer_claims"], f["answer_claims_no_family"], f["agent_rounds"]) == (5, 0, 5, 5, 0)
     assert f["catch_all_family"] is None and "Catch-all" not in text
@@ -135,8 +138,40 @@ def test_freeform_chat_explains_every_skipped_section_and_counts_url_chains(fami
            "no answer claims were extracted" in text
     assert "## A2. Does availability cause copying?\n\n_Skipped: needs more than 20 agent-rounds; this run has 0._" in text
     assert "## A3. Technique diffusion\n\n_Skipped: needs configured techniques" in text
-    assert "No task value was carried by two or more agents, but 2 URLs were, over 4 relay hops" in text
+    assert "No task value was carried by two or more agents, but 2 URLs were, over 4 hops (3 same-page relay, 1 " \
+           "cross-page attributed to the originator;" in text
     assert "No fact was carried" not in text
+
+
+def test_a1_skip_names_what_kept_claims_from_agent_rounds():
+    from swarmprov import report
+    from swarmprov.adapters.base import AdapterConfig
+
+    def answers(*pairs):
+        return pd.DataFrame({"event_type": "answer", "family": [f for f, _ in pairs], "item": [i for _, i in pairs]})
+    hint, none = report._family_hint(AdapterConfig(name="chat"), roster=False), pd.DataFrame()
+    assert hint == "none has a task family (set `families` or `default_family`, or use `--llm`)"
+    pred = answers(("f", "Poland")).assign(event_type="prediction")
+    assert report._a1_gap(pred, none, hint).startswith("no answer claims were extracted")
+    assert report._a1_gap(answers(("", "Poland")), none, hint) == f"1 answer claim extracted, 0 agent-rounds: {hint}"
+    assert report._a1_gap(answers(("f", None), ("f", None)), none, hint) == \
+        "2 answer claims extracted, 0 agent-rounds: none names an item (add `extra_items`, or use `--llm`)"
+    assert report._a1_gap(answers(("f", None), ("", "Poland")), none, hint) == \
+        "2 answer claims extracted, 0 agent-rounds: none names both an item and a task family"
+    assert report._a1_gap(answers(("f", "Poland")), pd.DataFrame({"t_report": [pd.NaT] * 2}), hint) == \
+        "none of the 2 agent-rounds has a timestamp, so nothing can be ordered against them"
+
+
+def test_a1_skip_suggests_default_family_only_where_it_applies():
+    from swarmprov import report
+    from swarmprov.adapters.base import AdapterConfig
+    gdp = AdapterConfig(name="chat", families={"gdp": "GDP"}, default_family="misc")
+    for cfg, roster, says in ((gdp, False, "their posts match no configured `families` pattern (widen the patterns"),
+                              (gdp, True, "match no configured `families` pattern and fall in no roster or shared goal"),
+                              (AdapterConfig(name="chat"), True, "`default_family` does not apply with a roster (set "
+                                                                 "`families`, or use `--llm`)")):
+        hint = report._family_hint(cfg, roster)
+        assert says in hint and "set `families` or `default_family`" not in hint, (cfg.families, roster)
 
 
 def test_post_families_apply_the_default_only_without_families_or_roster():

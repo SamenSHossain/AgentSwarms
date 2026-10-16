@@ -177,12 +177,13 @@ def expose(run: RunDir) -> None:
     cons = claims_mod.consensus(cl, mn) if len(cl) else {}
     channels = run.read("channels") if run.has("channels") else None
     directory = run.read("directory") if run.has("directory") else None
+    wall = json.loads((run.path / "profile.json").read_text()).get("clock") != "sequence"
     for name, col in AGENT_COLS.items():
         rounds = claims_mod.agent_rounds(cl, col) if len(cl) else pd.DataFrame()
         aud = village.audience(_lists(channels), agents, col, directory) if channels is not None else None
         if aud:
             _log(f"  [{name}] {len(aud)} restricted channels limit who could read a mention")
-        ex = exposure.build(rounds, mn, cons, col, audience=aud) if len(rounds) else pd.DataFrame()
+        ex = exposure.build(rounds, mn, cons, col, audience=aud, wall_clock=wall) if len(rounds) else pd.DataFrame()
         if len(rounds) and rounds["t_report"].isna().any():
             _log(f"  [{name}] {int(rounds['t_report'].isna().sum())} agent-rounds have no timestamp: left out of exposure")
         run.write(f"exposures_{name}", ex if len(ex) else empty("exposures"))

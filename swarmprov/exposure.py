@@ -32,6 +32,9 @@ Each time is kept with the post behind it: ``report_event_id`` (the report),
 latest), ``src_visible_event_id`` (the first copy still visible) and ``self_event_id``
 (the agent's own earlier post).  Copies posted in the same second are taken in
 event_id order, so the chosen post does not depend on row order.
+
+Under a sequence clock (``wall_clock=False``: times are message positions) ``gap_s``,
+``D_w10m``, ``D_w60m`` and ``D_cons_w60m`` are NA, since positions are not seconds.
 """
 
 from __future__ import annotations
@@ -49,7 +52,7 @@ def match_key(value_norm, consensus) -> str | None:
 
 
 def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: str,
-          audience: dict[str, set[str]] | None = None) -> pd.DataFrame:
+          audience: dict[str, set[str]] | None = None, wall_clock: bool = True) -> pd.DataFrame:
     """``audience`` maps a restricted channel to the agent labels that could read it;
     a mention there counts as public only for those agents (channels absent from
     the map are public to all).  A round whose report has no timestamp is dropped:
@@ -134,4 +137,6 @@ def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: s
     out = pd.DataFrame(rows)
     if len(out):
         out["item_fe"] = out["family"] + "|" + out["item"]
+        if not wall_clock:
+            out[["gap_s", "D_w10m", "D_w60m", "D_cons_w60m"]] = np.nan
     return out

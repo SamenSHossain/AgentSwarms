@@ -9,9 +9,9 @@ Framework logs (OpenAI message lists, AutoGen, LangGraph state) often carry no
 timestamps.  When fewer than 90% of the messages have one and the file is a
 single message list, the whole file switches to a *sequence clock*: message i is
 posted at ``SEQUENCE_EPOCH + i`` seconds, and the real timestamps are discarded
-rather than mixed in.  A ``{room: [...]}`` file concatenates lists whose relative
-order is unknown, so it keeps its missing timestamps and the time-based analyses
-skip those posts.
+rather than mixed in.  A ``{room: [...]}`` file with two rooms or more concatenates
+lists whose relative order is unknown, so it keeps its missing timestamps and the
+time-based analyses skip those posts.
 """
 
 from __future__ import annotations
@@ -41,6 +41,7 @@ ALIASES = {
 WRAPPER_KEYS = ("messages", "events", "transcript", "items", "data")
 EPOCH_RE = re.compile(r"^\d{9,13}(\.\d+)?$")   # Slack's "1777885200.000100"; shorter digit runs are ids, not times
 SEQUENCE_EPOCH = pd.Timestamp("2000-01-01", tz="UTC")
+EPOCH_RANGE = (pd.Timestamp("1990-01-01", tz="UTC"), pd.Timestamp("2100-01-01", tz="UTC"))   # a time outside it is no time
 MIN_TIMED = 0.9   # share of messages that must carry a timestamp for the file to have a wall clock
 
 
@@ -72,9 +73,19 @@ def _read_any(path: Path):
 
 
 def _is_document(obj) -> bool:
-    """One message list: an array, or a wrapper object around one (a whole transcript on one JSONL line,
-    and the only shape whose file position is an order)."""
+    """A whole transcript on one JSONL line: an array, or a wrapper object around one."""
     return isinstance(obj, list) or (isinstance(obj, dict) and any(isinstance(obj.get(k), list) for k in WRAPPER_KEYS))
+
+
+def _n_lists(obj) -> int:
+    """How many message lists ``_flatten`` joins; with one, file position is an order."""
+    if isinstance(obj, list):
+        return int(any(isinstance(m, dict) for m in obj))
+    if not isinstance(obj, dict):
+        return 0
+    if any(isinstance(obj.get(k), list) for k in WRAPPER_KEYS):
+        return _n_lists(next(obj[k] for k in WRAPPER_KEYS if isinstance(obj.get(k), list)))
+    return sum(_n_lists(v) for v in obj.values())
 
 
 def _flatten(obj, channel: str = "") -> list[dict]:
@@ -112,15 +123,19 @@ def _pick(m: dict, field: str, mapping: dict) -> object:
 
 
 def _to_ts(v) -> pd.Timestamp:
-    if v is None:
+    """ISO text, an epoch number or an epoch string (seconds, or milliseconds above 1e11).  A result outside
+    ``EPOCH_RANGE`` (a mis-scaled number, a 1970 placeholder) is NaT."""
+    try:
+        if isinstance(v, str) and EPOCH_RE.match(v.strip()):
+            d = Decimal(v.strip())   # exact: a float would turn Slack's .000100 into .000099897
+            t = pd.to_datetime(int(d * (10**3 if d > 10**11 else 10**6)), unit="us", utc=True, errors="coerce")
+        elif isinstance(v, (int, float)):
+            t = pd.to_datetime(v, unit="ms" if v > 1e11 else "s", utc=True, errors="coerce")
+        else:
+            t = pd.to_datetime(v, utc=True, errors="coerce") if v is not None else pd.NaT
+    except (OverflowError, ValueError):   # a number past any datetime
         return pd.NaT
-    if isinstance(v, str) and EPOCH_RE.match(v.strip()):
-        d = Decimal(v.strip())   # exact: a float would turn Slack's .000100 into .000099897
-        return pd.to_datetime(int(d * (10**3 if d > 10**11 else 10**6)), unit="us", utc=True, errors="coerce")
-    if isinstance(v, (int, float)):
-        unit = "ms" if v > 1e11 else "s"
-        return pd.to_datetime(v, unit=unit, utc=True, errors="coerce")
-    return pd.to_datetime(v, utc=True, errors="coerce")
+    return t if isinstance(t, pd.Timestamp) and EPOCH_RANGE[0] <= t < EPOCH_RANGE[1] else pd.NaT
 
 
 def _site(path: Path) -> str:
@@ -181,7 +196,7 @@ class ChatAdapter(Adapter):
         ev = pd.DataFrame(rows)
         n_timed = int(ev["ts"].notna().sum())
         has_ts = n_timed >= MIN_TIMED * len(ev)
-        clock = "wall" if has_ts else ("sequence" if _is_document(doc) else "none")
+        clock = "wall" if has_ts else ("sequence" if _n_lists(doc) == 1 else "none")
         if clock == "sequence":
             ev["ts"] = SEQUENCE_EPOCH + pd.to_timedelta(pos, unit="s")
         caps = Capabilities(has_wall_clock=bool(has_ts), has_order=clock != "none", has_explicit_author=True,
