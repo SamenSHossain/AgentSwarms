@@ -100,6 +100,8 @@ def run_crosssite(wiki_run: str | Path, corpus_path: str | Path, out: str | Path
         "coverage": {k: v for k, v in (cov or {}).items() if not isinstance(v, pd.DataFrame)},
     }, indent=2, default=str))
     print(f"[swarmprov] wrote {run.path / 'report.md'}")
+    from .html import build_html
+    build_html(run)
     return run
 
 

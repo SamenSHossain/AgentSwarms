@@ -223,7 +223,8 @@ def test_report_states_the_intervals(synth_run):
     lo, hi = a1["share_exposed_ci"]
     assert f"{a1['share_exposed']:.0%} (95% CI {lo * 100:.0f}–{hi:.0%}) of answers were already public" in text
     assert f"Median head start: {a1['median_gap_h']:.1f} h ({a1['median_gap_h_ci'][0]:.1f}–" in text
-    assert text.count("95% CI ") == 1 and "resamples of whole **items**" in text   # the cluster unit, named once
+    a1_text = text[text.index("## A1."):text.index("## A2.")]
+    assert a1_text.count("95% CI ") == 1 and "resamples of whole **items**" in text   # the cluster unit, named once
     assert "not identity-mapping or extraction error" in text and "| exposed (95% CI) |" in text
     a5 = s["A5"]
     assert "Leaving out any one item moves the share between " in text and len(a5["top10_share_exposure_loo"]) == 2
@@ -247,7 +248,8 @@ def test_report_boot_zero_drops_the_bootstrap_but_keeps_greenwood(synth_run, tmp
     run.write("tags", tags.assign(techniques=np.where(hit, "instant-copy", "")))
     assert cli.main(["report", str(run.path), "--boot", "0"]) == 0
     text, s = (run.path / "report.md").read_text(), json.loads((run.path / "summary.json").read_text())
-    assert "95% CI" not in text.split("## A2")[0] and "bootstrap" not in s["A1"] and "share_exposed_ci" not in s["A1"]
+    assert "95% CI" not in text[text.index("## A1."):text.index("## A2")] and "95% CI" not in s["headline"][0]
+    assert "bootstrap" not in s["A1"] and "share_exposed_ci" not in s["A1"]
     assert "| exposed |" in text and "mean_repeaters_lo" not in s["A6"]["task values"]
     a3 = s["A3"][0]
     assert a3["median_hours_to_adopt_lo"] < a3["median_hours_to_adopt"] < a3["median_hours_to_adopt_hi"]

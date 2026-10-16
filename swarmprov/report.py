@@ -257,11 +257,14 @@ def _warnings(prof: dict, summary: dict) -> list[str]:
 
 
 def _write(run: RunDir, L: list[str], summary: dict, mapping: str) -> str:
-    """``report.md`` and ``summary.json``, or ``report_strict.md`` and ``summary_strict.json`` beside them."""
+    """``report.md``, ``summary.json`` and ``report.html``, or ``report_strict.md``, ``summary_strict.json`` and
+    ``report_strict.html`` beside them."""
     text, sfx = "\n".join(L), suffix(mapping)
     (run.path / f"report{sfx}.md").write_text(text)
     (run.path / f"summary{sfx}.json").write_text(json.dumps(_json_safe(summary), indent=2, default=str, allow_nan=False))
     print(f"[swarmprov] wrote {run.path / f'report{sfx}.md'}")
+    from .html import build_html
+    build_html(run, mapping)
     return text
 
 
@@ -428,7 +431,7 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
         L += _instant_block(provenance.instant_sweep(lat, k_cfg=cfg.instant_threshold_s), summary)
     else:
         L += _skipped("A1", "needs agent-rounds (an agent's answer to an item in a task family); "
-                      + _a1_gap(claims, rounds, _family_hint(cfg, roster)))
+                      + _a1_gap(claims, rounds, _family_hint(cfg, roster)), summary)
 
     # A4's value slots come first: A2 warns where the consensus it scores against is not A4's winner
     n_untimed_mn = int(mentions["ts"].isna().sum()) if len(mentions) else 0
@@ -490,7 +493,7 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
               + "\n"] if seq else _dose_block(run.figure("a2_dose.png", mapping), ex, ex_alt, est, summary)
     else:
         L += _skipped("A2", f"needs more than 20 {'timed ' if untimed else ''}agent-rounds; this run has {len(ex):,}"
-                      + (f" ({untimed:,} {'have' if untimed > 1 else 'has'} no timestamp)" if untimed else ""))
+                      + (f" ({untimed:,} {'have' if untimed > 1 else 'has'} no timestamp)" if untimed else ""), summary)
 
     # A3
     r3 = diffusion.analyze(tags, cfg.techniques, agent_col) if len(tags) and cfg.techniques else {}
@@ -562,7 +565,7 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
                              "needs configured techniques (config `techniques`: a name and a regex each; `swarmprov suggest "
                              "RUN` proposes URL ones from the posts, and `auto_techniques` mines them at extract)")
                       if not cfg.techniques else
-                      f"none of the {len(cfg.techniques)} configured techniques appears in a post with a timestamp")
+                      f"none of the {len(cfg.techniques)} configured techniques appears in a post with a timestamp", summary)
 
     # A4
     if timed_mn:
@@ -664,9 +667,9 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
         k = mentions["event_id"].nunique()
         L += _skipped("A4", f"needs posts with a timestamp; none of the {k:,} post{'s' * (k != 1)} with an item–value pair "
                       "or URL has one" + (", and the file joins several message lists, so no order is invented for them"
-                                          if notes.get("clock") == "none" else ""))
+                                          if notes.get("clock") == "none" else ""), summary)
     else:
-        L += _skipped("A4", "needs item–value pairs or URLs in the posts; none was found")
+        L += _skipped("A4", "needs item–value pairs or URLs in the posts; none was found", summary)
 
     # A5 / A6
     r6 = structure.reach(chains, boot=boot, mentions=mentions, agent_col=agent_col)
@@ -714,7 +717,7 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
                  + "):\n")
         L.append(md_table(r5["top_brokers"].rename("betweenness").to_frame(), floatfmt="{:.3f}"))
     else:
-        L += _skipped("A5", _a5_gap(mentions, agent_col, ex, untimed, notes.get("clock") == "none", threading))
+        L += _skipped("A5", _a5_gap(mentions, agent_col, ex, untimed, notes.get("clock") == "none", threading), summary)
     L += _agents_block(profiles, mapping, summary)
     if r5 and r6:
         figs["reach"] = structure.reach_figure(chains, run.figure("a6_reach.png", mapping))
@@ -738,7 +741,7 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
             L.append(_needs_clock("Relay-window sweeps (a window W in minutes and hours)") + "\n")
     else:
         L += _skipped("A6", "needs facts (an item–value pair or a URL) to follow; none was posted" if r5 else
-                      "needs the provenance graph (see A5)")
+                      "needs the provenance graph (see A5)", summary)
 
     # Validation
     L.append("## Validation\n")
@@ -807,7 +810,176 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
              + ("- **Derived text.** The posts are an LLM's daily digest of what agents did (one line per event, Pacific time), "
                 "not the agents' own messages: who-did-what-when and technique mentions are plausible, the provenance of specific "
                 "values is not, and anything the digest's author chose to omit is invisible.\n" if caps.get("derived_text") else ""))
+    L[2:2] = _headline(run, summary, mapping)
     return _write(run, L, summary, mapping)
+
+
+def _headline(run: RunDir, summary: dict, mapping: str) -> list[str]:
+    """The key findings block for the top of the report, also written alone to ``headline.md``
+    (``headline_strict.md``) and kept as ``summary['headline']``, one string per bullet."""
+    block = key_findings(_json_safe(summary))
+    if block:
+        summary["headline"] = [b[2:] for b in block if b.startswith("- ")]
+        (run.path / f"headline{suffix(mapping)}.md").write_text("\n".join(block))
+    return block
+
+
+def key_findings(summary: dict) -> list[str]:
+    """The report's opening block, ``## Key findings``: one bullet per analysis that ran (or the line saying why it
+    did not), each naming the definition it rests on.  Every number is formatted from ``summary`` (as written to
+    ``summary.json``), never recomputed, so the block, ``headline.md`` and whatever quotes them cannot drift from the
+    report.  [] for a report with no posts."""
+    if not (summary.get("profile") or {}).get("n_events"):
+        return []
+    seq, skipped = summary["profile"].get("clock") == "sequence", summary.get("skipped") or {}
+    make = {"A1": _kf_a1, "A2": _kf_a2, "A3": _kf_a3, "A4": _kf_a4, "A5": _kf_a5, "A6": _kf_a6}
+    bullets = []
+    for sec, f in make.items():
+        text = f(summary[sec], summary, seq) if summary.get(sec) else None
+        if text is None and sec in skipped:
+            text = f"skipped: {skipped[sec]}."
+        if text:
+            name = SECTIONS[sec]
+            bullets.append(f"**{name}**{'' if name.endswith('?') else ':'} {text}")
+    return ["## Key findings\n", *(f"- {b}" for b in bullets), ""] if bullets else []
+
+
+def _kf_a1(a: dict, s: dict, seq: bool) -> str:
+    def ci(k: str, hours: bool = False, first: bool = False) -> str:
+        lo_hi = a.get(f"{k}_ci")
+        level = f"{a['bootstrap']['level']:.0%} CI " if first and a.get("bootstrap") else ""
+        return f" ({level}{_span(*lo_hi, hours=hours)})" if lo_hi else ""
+    out = (f"{_pct(a['share_exposed'])}{ci('share_exposed', first=True)} of {a['n_answers']:,} answers by "
+           f"{a['n_agents']:,} agents were already public before the agent reported them (another agent had posted the "
+           "same item and value" + ("; with no wall clock, before means earlier in the file)" if seq else ")"))
+    if not seq and a.get("share_exposed_60m") is not None:
+        out += f", {_pct(a['share_exposed_60m'])}{ci('share_exposed_60m')} at least an hour before"
+        if a.get("median_gap_h") is not None:
+            out += f", with a median head start of {a['median_gap_h']:.1f} h{ci('median_gap_h', hours=True)}"
+    out += f"; at most {a['n_independent']:,} were independent lookups"
+    if a.get("n_independent_visible") is not None:
+        out += (f" ({a['n_independent_visible']:,} under `D_visible`, which counts a copy deleted before the report as "
+                "never public)")
+    return out + ". These are floors: only the posts this run captured are searched, so a copy anywhere else is invisible."
+
+
+def _a2_identified(rows: list[dict]) -> tuple[list[dict], list[dict]]:
+    """A2's headline rows (the extra ``y_winner`` row aside) and those identified: an estimate on at least twice
+    ``causal.MIN_SWITCHERS`` agents that switch exposure status whose 95% CI excludes 0."""
+    main = [r for r in rows if r["outcome"] not in causal.OPTIONAL]
+    return main, [r for r in main if r.get("beta") is not None and r.get("ci_lo") is not None
+                  and r["agents_with_D_variation"] >= 2 * causal.MIN_SWITCHERS and (r["ci_lo"] > 0 or r["ci_hi"] < 0)]
+
+
+def _kf_a2(rows: list[dict], s: dict, seq: bool) -> str | None:
+    main, hit = _a2_identified(rows)
+    if not main:
+        return None
+
+    def switch(rs: list[dict]) -> str:
+        k = sorted({r["agents_with_D_variation"] for r in rs})
+        return f"{k[0]:,}" + (f"–{k[-1]:,}" if len(k) > 1 else "")
+    fe = "two-way fixed effects (`Y ~ D_cons | agent + item`, SEs clustered by agent)"
+    if not hit:
+        return (f"Its effect is not identified ({switch(main)} agents switch exposure status): no estimate from {fe} "
+                "rests on enough switching agents with a 95% CI that excludes 0.")
+    by = {}
+    for r in hit:   # an outcome's identified treatments, in the table's order
+        by.setdefault(r["outcome"], []).append(r)
+    rest = [r for r in main if r["outcome"] not in by]
+    others = ", ".join(f"`{o}`" for o in dict.fromkeys(r["outcome"] for r in rest))
+
+    def cell(rs: list[dict]) -> str:
+        r = rs[0]
+        return (f"`{r['outcome']}` under `{r['treatment']}` {r['beta']:+.2f} (95% CI {r['ci_lo']:+.2f} to "
+                f"{r['ci_hi']:+.2f}, {r['agents_with_D_variation']:,} agents switch"
+                + "".join(f"; also under `{x['treatment']}`" for x in rs[1:]) + ")")
+    return (f"Identified, from {fe}, where enough agents switch exposure status and the 95% CI excludes 0: "
+            + "; ".join(map(cell, by.values()))
+            + (f". Not identified for {others} ({switch(rest)} agents switch)" if rest else "") + ".")
+
+
+def _kf_a3(rows: list[dict], s: dict, seq: bool) -> str:
+    top = sorted(rows, key=lambda r: -(r["adoption_share"] if r["adoption_share"] is not None else -1))
+    at_risk = ("active after its first post" if not (s.get("funnel") or {}).get("posts_with_family") else
+               "active in its task families after its first post")
+    out = (f"adoption share = the share of the agents at risk ({at_risk}) that went on to use it: " + ", ".join(
+        f"`{r['technique']}`{' (mined)' if r.get('mined') else ''} {_pct(r['adoption_share'])} "
+        f"({r['adopters']:,} of {r['at_risk']:,})" for r in top[:5]) + ("; lower for the rest" if len(top) > 5 else ""))
+    hits = [r["technique"] for r in rows if (c := r.get("contagion")) and not c.get("excluded") and c.get("n_adopters")
+            and c["n_adopters"] >= diffusion.MIN_ADOPTERS and c["share_on_carrying"] > c["baseline"]
+            and c.get("p_holm", c["p"]) < diffusion.ALPHA]
+    if hits:
+        out += (". Consistent with contagion (adoptions landed on a page that already carried the technique more often "
+                "than the adopters' own posts did, after Holm's correction; posting on a page is not reading it): "
+                + ", ".join(f"`{t}`" for t in hits))
+    return out + "."
+
+
+def _kf_a4(a: dict, s: dict, seq: bool) -> str:
+    feat = [r for r in a["rows"] if r.get("featured")]
+    if not feat:
+        return "no slot carried competing values."
+    rule = a["rule"]
+    tail = "third" if abs(rule["tail_share"] - 1 / 3) < 1e-9 else _pct(rule["tail_share"])
+    keep = "holds the majority of all the slot's carriers" if seq else "kept the majority of new carriers"
+
+    def leads(r: dict) -> str:
+        n = sorted(r["tail counts"].values(), reverse=True)
+        return (f"`{r['winner']}` leads the late carriers {' to '.join(map(str, n))}" if len(n) > 1 else
+                f"all {n[0]} late carriers carry `{r['winner']}`")
+
+    def slot(r: dict) -> str:
+        st, first, win, h = r["status"], r["first variant"], r["winner"], r.get("hours to overtake")
+        if st == "held":
+            out = f"`{first}` held"
+        elif st == "overturned":
+            out = f"`{first}` → `{win}`, overturned" + ("" if h is None else " as soon as it appeared" if h == 0 else
+                                                         f" {h:.1f} h after it appeared")
+        elif r["tie"]:
+            out = f"contested: the late carriers tie {' to '.join(map(str, r['tail counts'].values()))}"
+        elif r["first seen tie"]:
+            out = f"contested: two variants were first seen at the same moment, and {leads(r)}"
+        elif st == "contested":
+            out = f"`{first}` first, {leads(r)} but {'does not hold' if seq else 'never kept'} the majority of " \
+                  f"{'all the slot' + chr(39) + 's' if seq else 'new'} carriers: contested"
+        else:
+            out = f"`{first}` first, {leads(r)}, fewer than {rule['min_tail']}: {st}"
+        return f"{r['slot']}: {out}" + (f" (against the analyst's reference value: {r['outcome']})" if r.get("outcome") else "")
+    return (f"winner = the most common variant among the last {tail} of a slot's carriers; overturned = a later winner "
+            f"that {keep}. " + "; ".join(map(slot, feat)) + ".")
+
+
+def _kf_a5(a: dict, s: dict, seq: bool) -> str:
+    rows = {r["rule"]: r for r in a.get("attribution") or [] if r["answers"] == "all exposed" and r["n"]}
+    if not rows:
+        return (f"{a['n_nodes']:,} agents linked by {a['n_relay_edges']:,} same-page relay hops; no answer had a first "
+                "public source, so there is no hub concentration to report.")
+    shares = [r["top10_share"] for r in rows.values()]
+    whole = _pct(min(shares)) if _pct(min(shares)) == _pct(max(shares)) else _span(min(shares), max(shares))
+    parts = []
+    if (f := rows.get("first source")) is not None:
+        loo = a.get("top10_share_exposure_loo")
+        parts.append(f"{_pct(f['top10_share'])} credited to the first agent to post the value (out-degree Gini "
+                     f"{f['gini']:.2f}" + (f"; leaving out any one item moves it between {_pct(loo[0])} and {_pct(loo[1])}"
+                                          if loo and loo[0] is not None else "") + ")")
+    if (r := rows.get("latest source")) is not None:
+        parts.append(f"{_pct(r['top10_share'])} to the latest earlier carrier")
+    if (r := rows.get("same-page relay parent")) is not None:
+        parts.append(f"{_pct(r['top10_share'])} of the {r['n']:,} with a same-page relay parent")
+    n = max(r["n"] for r in rows.values())
+    return (f"the top 10 sources supplied {whole} of {n:,} exposed answers, depending on who is credited (nothing "
+            "records who read whom, so each rule credits one source per answer): " + ", ".join(parts) + ".")
+
+
+def _kf_a6(a: dict, s: dict, seq: bool) -> str | None:
+    def fact(r: dict, what: str) -> str:
+        return (f"{r['repeated']:,} of {r['facts']:,} {what} were repeated by other agents"
+                + (f", travelling {r['mean_hops_repeated']:.1f} hops on average and at most {r['max_hops']:,}"
+                   if r["repeated"] and r.get("mean_hops_repeated") is not None else ""))
+    parts = [fact(a[k], w) for k, w in (("task values", "task values"), ("urls", "URLs")) if a.get(k)]
+    return ("; ".join(parts) + " (a hop links a carrier to an inferred source: plausible paths, not proven ones).") \
+        if parts else None
 
 
 def _integrity(chk: pd.DataFrame, summary: dict, mapping: str) -> list[str]:
@@ -1103,7 +1275,10 @@ def _instant_block(sw: dict, summary: dict) -> list[str]:
                if differ else "") + "\n", md_table(row, index=False)]
 
 
-def _skipped(section: str, reason: str) -> list[str]:
+def _skipped(section: str, reason: str, summary: dict) -> list[str]:
+    """A section that cannot run keeps its heading and says why in one line (also ``summary['skipped']``, which the
+    key findings repeat)."""
+    summary.setdefault("skipped", {})[section] = reason
     return [f"## {SECTIONS[section]}\n", f"_Skipped: {reason}._\n"]
 
 
@@ -1208,7 +1383,7 @@ def _agents_block(p: pd.DataFrame, mapping: str, summary: dict) -> list[str]:
     suppliers were themselves exposed (also ``summary['agents']``)."""
     ans = p[p["n_answers"] > 0]
     if not len(ans):
-        return _skipped("agents", "needs agent-rounds (see A1)")
+        return _skipped("agents", "needs agent-rounds (see A1)", summary)
     k3 = agents_mod.MIN_ROUNDS
     free, src = ans[ans["n_exposed"] == 0], p[p["answers_supplied"] > 0]
     s = summary["agents"] = {

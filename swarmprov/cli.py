@@ -9,6 +9,7 @@
     swarmprov expose   runs/wiki
     swarmprov graph    runs/wiki
     swarmprov report   runs/wiki [--mapping merged|strict] [--boot 1000]   # strict: report_strict.md beside report.md
+    swarmprov html     runs/wiki                          # report.html again: one offline page with a fact explorer
     swarmprov sample-gold runs/wiki [-n 120]
     swarmprov validate runs/wiki gold.jsonl
     swarmprov run      data/raw -o runs/wiki --gold validation/   # also score the extractor on each label file
@@ -165,6 +166,11 @@ def main(argv: list[str] | None = None) -> int:
                    help="bootstrap resamples behind the confidence intervals (seeded; default: the config's "
                         "bootstrap_reps, 1000); 0 leaves the intervals out")
 
+    s = sub.add_parser("html", help="render a run's report as one self-contained report.html (the report builds it too)")
+    s.add_argument("run")
+    s.add_argument("--mapping", choices=["merged", "strict"], default="merged",
+                   help="whose report to render (strict: report_strict.md -> report_strict.html)")
+
     s = sub.add_parser("sample-gold", help="write a stratified sample of posts to hand-label")
     s.add_argument("run")
     s.add_argument("-n", type=int, default=120)
@@ -295,6 +301,9 @@ def main(argv: list[str] | None = None) -> int:
     elif a.cmd == "report":
         from . import report
         report.build(RunDir(a.run), mapping=a.mapping, boot=a.boot)
+    elif a.cmd == "html":
+        from . import html
+        return html.main(a.run, a.mapping)
     elif a.cmd == "sample-gold":
         from . import validate
         validate.sample(RunDir(a.run), a.n, a.seed, a.exclude, a.name)

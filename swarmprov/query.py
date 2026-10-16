@@ -79,14 +79,15 @@ def _variants(c: pd.DataFrame) -> list[dict]:
 def _tree(edges: pd.DataFrame, ev: pd.DataFrame, origin: str, around: str) -> list[dict]:
     """A fact's relay hops depth-first from the originator, children in time order."""
     hops = []
-    for e in edges.itertuples(index=False):
-        dst = ev.loc[e.event_id] if e.event_id in ev.index else None
-        ts = dst["ts"] if dst is not None else pd.NaT
+    known = ev.index.get_indexer(edges["event_id"]) >= 0
+    dst = ev.reindex(edges["event_id"])   # each hop's post, in one lookup
+    for e, k, ts, ch, text in zip(edges.itertuples(index=False), known, dst["ts"], dst["channel"], dst["text"]):
+        ts = ts if k else pd.NaT
         hops.append({"src": e.src, "dst": e.dst, "kind": e.kind, "ts": ts,
                      "src_ts": ts - pd.Timedelta(seconds=e.dt_s) if pd.notna(ts) else pd.NaT, "dt_s": e.dt_s,
-                     "within_clock_res": bool(e.within_clock_res), "channel": dst["channel"] if dst is not None else None,
+                     "within_clock_res": bool(e.within_clock_res), "channel": ch if k else None,
                      "event_id": e.event_id, "src_event_id": e.src_event_id,
-                     "excerpt": excerpt(dst["text"], around) if dst is not None else ""})
+                     "excerpt": excerpt(text, around) if k else ""})
     hops.sort(key=lambda h: (h["ts"], h["event_id"]))
     children: dict[str, list[dict]] = {}
     for h in hops:
@@ -99,18 +100,26 @@ def _tree(edges: pd.DataFrame, ev: pd.DataFrame, origin: str, around: str) -> li
     return out
 
 
-def fact_lineage(run: RunDir, family: str, item: str, value: str | None = None, mapping: str = "merged") -> list[dict]:
+def lineage_tables(run: RunDir, mapping: str = "merged") -> dict:
+    """The tables ``fact_lineage`` reads, loaded once for a caller that traces many facts (the HTML explorer)."""
+    return {"chains": _table(run, f"chains_{mapping}"), "edges": run.read(f"edges_{mapping}"), "events": _events(run),
+            # what relay_edges reads, in its order
+            "mentions": public(run.read("mentions")).sort_values(["ts", "event_id"], kind="stable")}
+
+
+def fact_lineage(run: RunDir, family: str, item: str, value: str | None = None, mapping: str = "merged",
+                 tables: dict | None = None) -> list[dict]:
     """Origin and relay hops of a fact (family, item, value), or of every value of the item.
-    Values match on value_key, so '9.90', '9.9' and '9.9%' are one fact."""
-    chains = _table(run, f"chains_{mapping}")
+    Values match on value_key, so '9.90', '9.9' and '9.9%' are one fact.  ``tables``: ``lineage_tables``."""
+    chains = tables["chains"] if tables else _table(run, f"chains_{mapping}")
     c = chains[_is(chains["family"], family) & _is(chains["item"], item)]
     if value is not None:
         keys = {str(value).strip(), value_key(norm_value(str(value))), value_key(str(value).strip())}
         c = c[c["value_key"].isin(keys)]
     if not len(c):
         return []
-    edges, ev = run.read(f"edges_{mapping}"), _events(run)
-    mn = public(run.read("mentions")).sort_values(["ts", "event_id"], kind="stable")   # what relay_edges reads, in its order
+    t = tables or lineage_tables(run, mapping)
+    edges, ev, mn = t["edges"], t["events"], t["mentions"]
     out = []
     for f in c.sort_values(["n_agents", "t0"], ascending=[False, True]).itertuples(index=False):
         first = mn[(mn["family"] == f.family) & (mn["item"] == f.item) & (mn["value_key"] == f.value_key)]

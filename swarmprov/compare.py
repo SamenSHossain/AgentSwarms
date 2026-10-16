@@ -42,6 +42,8 @@ KEYS = {"A2": ("outcome", "treatment"), "A2_dose.rows": ("outcome", "term"), "A2
 AGENT_ROWS = {"agents.top_suppliers", "agents.top_no_prior_copy", "A5.origins.no answer round observed, top sources"}
 CLAIM_FIELDS = ("item", "value_norm", "episode", "family", "event_type")
 FLAGS = ("D", "D_w60m", "D_visible", "D_cons", "y_instant", "y_consensus")
+# summary sections left out: the mapping is a setup field, and the key findings restate values compared elsewhere
+SKIP = {"mapping", "headline"}
 
 
 def _flatten(obj, labels: dict | None = None, path: str = "", pattern: str = "", row: str | None = None):
@@ -81,10 +83,9 @@ def summary_diff(sa: dict, sb: dict, tol: float = TOL, labels_a: dict | None = N
     """Sections only in one summary, keyed rows only in one, and every shared value that differs (numbers beyond
     ``tol`` relative); ``largest_within_tol`` is the biggest difference the tolerance hid.  ``labels_*`` rename
     one side's agents in the top-sources rows (see ``_flatten``)."""
-    out = {"sections_only_a": sorted(set(sa) - set(sb) - {"mapping"}),
-           "sections_only_b": sorted(set(sb) - set(sa) - {"mapping"}),
+    out = {"sections_only_a": sorted(set(sa) - set(sb) - SKIP), "sections_only_b": sorted(set(sb) - set(sa) - SKIP),
            "rows_only_a": [], "rows_only_b": [], "changed": [], "n_compared": 0, "largest_within_tol": None}
-    shared = sorted(set(sa) & set(sb) - {"mapping"})
+    shared = sorted(set(sa) & set(sb) - SKIP)
     fa = {p: (v, r) for p, v, r in _flatten({k: sa[k] for k in shared}, labels_a) if not p.endswith(".mapping")}
     fb = {p: (v, r) for p, v, r in _flatten({k: sb[k] for k in shared}, labels_b) if not p.endswith(".mapping")}
     rows_a, rows_b = {r for _, r in fa.values() if r}, {r for _, r in fb.values() if r}

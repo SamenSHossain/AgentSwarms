@@ -199,6 +199,7 @@ class RunDir:
         graphs = [f"provenance_{m}.{x}" for m in ("merged", "strict") for x in ("graphml", "json")]
         scores = [f.name for f in self.path.glob("validation*.json")]   # they score the claims of the earlier run
         reports = [f"{f}{suffix(m)}.{x}" for m in ("merged", "strict")
-                   for f, x in (("report", "md"), ("summary", "json"), ("checks", "json"))]
+                   for f, x in (("report", "md"), ("report", "html"), ("headline", "md"), ("summary", "json"),
+                                ("checks", "json"))]
         for f in ("items.json", "agent_aliases.csv", "truth_validation.json", MINED_FILE, *reports, *graphs, *scores):
             (self.path / f).unlink(missing_ok=True)
