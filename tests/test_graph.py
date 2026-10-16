@@ -254,6 +254,20 @@ def test_report_agents_section_and_supply_figure(synth_run, monkeypatch, tmp_pat
     assert f"supplied {s['A5']['top10_share_exposure']:.0%} of" in titles[0] and "first-source rule" in titles[0]
 
 
+def test_report_computes_the_profiles_a_run_lacks(synth_strict, tmp_path):
+    """A run from before the graph stage wrote ``agent_profiles_*``: the report computes the profiles (and leaves
+    the run's tables as they were), and its text and Agents section are what the stored table gives."""
+    from swarmprov import report
+    shutil.copytree(synth_strict.path, tmp_path / "run")
+    run = RunDir(tmp_path / "run")
+    (run.path / "agent_profiles_strict.parquet").unlink()
+    report.build(run, mapping="strict", boot=0)
+    assert not run.has("agent_profiles_strict")
+    assert (run.path / "report_strict.md").read_text() == (synth_strict.path / "report_strict.md").read_text()
+    a, b = (json.loads((r.path / "summary_strict.json").read_text())["agents"] for r in (run, synth_strict))
+    assert a == b and a["n_answering"] == 60
+
+
 def test_supply_layout_does_not_depend_on_the_hash_seed():
     """A subgraph view iterates a set of node names, so a seeded layout must fix the node order itself."""
     import subprocess

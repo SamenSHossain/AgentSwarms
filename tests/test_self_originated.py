@@ -62,7 +62,7 @@ def test_report_counts_them_apart(chat):
             "by the agent itself before any other copy)") in s["headline"][0]
     first = {r["rule"]: r for r in a5["attribution"] if r["answers"] == "all exposed"}["first source"]
     assert first["n"] == a5["n_exposure_edges"] == 2 and a5["n_self_originated"] == 3
-    assert a5["origins"]["self_originated"] == {"merged": 3}
+    assert a5["origins"]["self_originated"] == {"merged": 3, "strict": 3}   # the mappings group the authors alike
     assert sum(a5["origins"]["by_mapping"]["merged"]["first source"].values()) == 2
     assert "(3 more, first posted by the answering agent itself, are credited to nobody)" in s["headline"][4]
     md = (chat.path / "report.md").read_text()

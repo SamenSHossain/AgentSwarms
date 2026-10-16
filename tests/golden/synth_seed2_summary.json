@@ -788,10 +788,25 @@
       "dissent": 0,
       "relayed": 189
      }
+    },
+    "strict": {
+     "first source": {
+      "computed": 242,
+      "no answer round observed": 0,
+      "dissent": 0,
+      "relayed": 0
+     },
+     "latest source": {
+      "computed": 53,
+      "no answer round observed": 0,
+      "dissent": 0,
+      "relayed": 189
+     }
     }
    },
    "self_originated": {
-    "merged": 0
+    "merged": 0,
+    "strict": 0
    },
    "mapping": "merged",
    "roots": {

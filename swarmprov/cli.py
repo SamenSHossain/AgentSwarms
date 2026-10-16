@@ -236,8 +236,8 @@ def _parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("synth", help="generate a synthetic swarm transcript with known provenance")
     s.add_argument("-o", "--out", default="data/synth/transcript.jsonl")
-    s.add_argument("--agents", type=int, default=60)
-    s.add_argument("--copy-rate", type=float, default=0.7)
+    s.add_argument("--agents", type=_positive, default=60)
+    s.add_argument("--copy-rate", type=_share, default=0.7)
     s.add_argument("--copy-from", choices=["latest", "first", "random"], default="latest",
                    help="which earlier post a copying agent takes its value from")
     s.add_argument("--seed", type=int, default=0)

@@ -174,4 +174,6 @@ def test_a_one_to_one_run_relabels_its_strict_tables_and_reports_one_line(synth_
     assert "under the other identity mapping" not in text and "Sensitivity (other identity mapping)" not in text
     assert "credit every answer; answers in brackets" in text   # the origins table has one mapping's columns
     s = json.loads((run.path / "summary.json").read_text())
-    assert "other_mapping" not in s["A2_dose"] and set(s["A5"]["origins"]["by_mapping"]) == {"merged"}
+    assert "other_mapping" not in s["A2_dose"]
+    by = s["A5"]["origins"]["by_mapping"]   # computed once, kept under both names as a two-mapping run keeps them
+    assert list(by) == ["merged", "strict"] and by["strict"] == by["merged"]

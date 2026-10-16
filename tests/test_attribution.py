@@ -238,8 +238,9 @@ def test_report_shows_the_attribution_and_origins(synth_run):
         assert s in a5, s
     s = json.loads((run.path / "summary.json").read_text())["A5"]
     o = s["origins"]
-    # one mapping: the strict one groups the seed-2 authors the same way (test_identity)
-    assert len(s["attribution"]) == 6 and set(o["by_mapping"]) == {"merged"} and o["mapping"] == "merged"
+    # the strict mapping groups the seed-2 authors the same way (test_identity): its counts are the merged ones
+    assert len(s["attribution"]) == 6 and list(o["by_mapping"]) == ["merged", "strict"] and o["mapping"] == "merged"
+    assert o["by_mapping"]["strict"] == o["by_mapping"]["merged"] and o["self_originated"] == {"merged": 0, "strict": 0}
     assert o["by_mapping"]["merged"]["first source"]["no answer round observed"] == 0
     assert sum(o["by_mapping"]["merged"]["first source"].values()) == s["n_exposure_edges"]
     assert set(o["roots"]["latest source"]) == set(origins.LABELS[:3]) | {origins.POSTED_FIRST, origins.CUT}

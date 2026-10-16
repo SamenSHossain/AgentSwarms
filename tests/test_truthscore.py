@@ -96,7 +96,7 @@ def test_bad_scenario_options_are_usage_errors_and_autogen_takes_no_deletions_or
         with pytest.raises(ValueError, match="autogen format"):
             synth.write(tmp_path / "ag" / "autogen.jsonl", n_agents=4, fmt="autogen", **opt)
     for argv in (["--format", "autogen", "--boards", "2"], ["--delete-rate", "2"], ["--alias-rate", "-0.1"],
-                 ["--confound", "x"], ["--technique", "two words"]):
+                 ["--confound", "x"], ["--technique", "two words"], ["--copy-rate", "1.5"], ["--agents", "0"]):
         with pytest.raises(SystemExit) as e:
             cli.main(["synth", "-o", str(tmp_path / "x" / "t.jsonl"), "--agents", "4", *argv])
         assert e.value.code == 2 and "error:" in capsys.readouterr().err

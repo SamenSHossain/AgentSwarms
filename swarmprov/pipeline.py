@@ -227,10 +227,11 @@ def expose(run: RunDir) -> None:
     directory = run.read("directory") if run.has("directory") else None
     wall = json.loads((run.path / "profile.json").read_text()).get("clock") != "sequence"
     same = identity.one_to_one(agents)
+    built = {}
     for name, col in AGENT_COLS.items():
         if name == "strict" and same is not None:
             _log("  [strict] the same agents as merged under their strict labels")
-            ex = _relabel(ex, same, ("agent", "src_agent", "src_latest"))
+            ex = _relabel(built["merged"], same, ("agent", "src_agent", "src_latest"))
             run.write("exposures_strict", ex if len(ex) else empty("exposures"))
             continue
         rounds = claims_mod.agent_rounds(cl, col) if len(cl) else pd.DataFrame()
@@ -240,7 +241,7 @@ def expose(run: RunDir) -> None:
         # A4's overturned value slots, the ones y_winner scores (the report finds the same slots from the same mentions)
         slots = errors.value_slots(claims_mod.public(mn), col, **errors.slot_rule(not wall)) if len(rounds) else []
         winners = {(s["family"], s["item"]): s["winner"] for s in slots if s["status"] == "overturned"}
-        ex = exposure.build(rounds, mn, cons, col, audience=aud, wall_clock=wall, winners=winners) \
+        ex = built[name] = exposure.build(rounds, mn, cons, col, audience=aud, wall_clock=wall, winners=winners) \
             if len(rounds) else pd.DataFrame()
         if len(rounds) and rounds["t_report"].isna().any():
             _log(f"  [{name}] {int(rounds['t_report'].isna().sum())} agent-rounds have no timestamp: left out of exposure")
@@ -266,12 +267,15 @@ def build_graph(run: RunDir) -> None:
     pub = claims_mod.public(mn)   # a tool result or task message relays nothing: no other agent saw it
     posters = agents[agents["author_raw"].isin(claims_mod.public(events)["author_raw"])]   # citable; never `task`
     same = identity.one_to_one(agents)
+    trees = {}
     for name, col in AGENT_COLS.items():
         ex = run.read(f"exposures_{name}")
         if name == "strict" and same is not None:   # the merged relay trees under the strict labels
+            rel, chains = trees["merged"]
             rel, chains = _relabel(rel, same, ("src", "dst")), _relabel(chains, same, ("originator",))
         else:
             rel, chains = graph.relay_edges(pub, col, res) if len(pub) else (pd.DataFrame(), pd.DataFrame())
+            trees[name] = rel, chains
         parts = [rel, graph.exposure_edges(ex) if len(ex) else pd.DataFrame(),
                  graph.citation_edges(tags, posters, col, cfg.cohort_regex)]
         note = ""

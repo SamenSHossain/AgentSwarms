@@ -822,7 +822,8 @@ def _a5(c: _Ctx) -> list[str]:
         L.append(f"![supply network](figures/{run.figure('a7_supply_network.png', mapping).name})\n")
         L += _attribution_block(r5, summary)
         exs = ((mapping, ex),) if c.same else ((mapping, ex), (c.alt, c.ex_alt))
-        lines, first = _origins_block({m: e for m, e in exs if len(e) and credited(e).any()}, mapping, summary)
+        lines, first = _origins_block({m: e for m, e in exs if len(e) and credited(e).any()}, mapping, summary,
+                                      c.alt if c.same else None)
         L += lines
         top = top.join(origins.by_source(first, ex)[["items", "origin"]])
     L.append("Top first-sources (answers they were first public source for"
@@ -1757,10 +1758,13 @@ def _attribution_block(r5: dict, summary: dict) -> list[str]:
     return L
 
 
-def _origins_block(exs: dict[str, pd.DataFrame], mapping: str, summary: dict) -> tuple[list[str], pd.DataFrame]:
+def _origins_block(exs: dict[str, pd.DataFrame], mapping: str, summary: dict,
+                   same_as: str | None = None) -> tuple[list[str], pd.DataFrame]:
     """Origin of each exposed answer's source under the first- and latest-source rules and both mappings, the
     roots relayed sources lead to, and the sources with no answer round observed (for audit).  Also returns the
-    first-source origins under ``mapping`` for the top-sources table."""
+    first-source origins under ``mapping`` for the top-sources table.  ``same_as`` names a mapping that groups the
+    authors as ``mapping`` does: the summary repeats its counts under that name, so both mappings' summaries keep
+    the same keys."""
     tr = {(rule, m): origins.trace_root(e, col) for rule, col in (("first source", "src_agent"), ("latest source", "src_latest"))
           for m, e in exs.items()}
     own = {m: int(((e["D"] == 1) & (e["self_originated"] == 1)).sum()) for m, e in exs.items()}
@@ -1777,10 +1781,11 @@ def _origins_block(exs: dict[str, pd.DataFrame], mapping: str, summary: dict) ->
     first = tr[("first source", mapping)]
     audit = origins.by_source(first[first["origin"] == "no answer round observed"], exs[mapping])
     audit = audit[["answers", "items", "answer rounds (any item)"]].head(10)
+    names = {m: m for m in exs} | ({same_as: mapping} if same_as else {})
     summary["A5"]["origins"] = {
-        "by_mapping": {m: {r: tr[(r, m)]["origin"].value_counts().reindex(origins.LABELS, fill_value=0).to_dict()
-                           for r in rules} for m in exs},
-        "self_originated": own,
+        "by_mapping": {m: {r: tr[(r, src)]["origin"].value_counts().reindex(origins.LABELS, fill_value=0).to_dict()
+                           for r in rules} for m, src in names.items()},
+        "self_originated": {m: own[src] for m, src in names.items()},
         "mapping": mapping, "roots": roots.to_dict(), "max depth": {r: int(tr[(r, mapping)]["depth"].max()) for r in rules},
         "no answer round observed, top sources": audit.reset_index().to_dict("records")}
     L = ["**Where did copied answers come from?** Each exposed answer's credited source (under the two rules that credit "
