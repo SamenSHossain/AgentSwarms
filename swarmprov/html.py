@@ -88,12 +88,13 @@ def _figure(alt: str, src: str, base: Path) -> str:
 
 def _palette(png: bytes) -> bytes:
     """A figure re-encoded with a 256-colour palette (Pillow, which matplotlib requires): about a third of the bytes
-    and as sharp, since a figure has few colours.  The file as it is when that is no smaller or not a readable image."""
+    and as sharp, since a figure has few colours.  The file as it is when that is no smaller or it cannot be
+    re-encoded, whatever Pillow raises (a broken chunk is a SyntaxError): such a figure only loses its compression."""
     try:
         with Image.open(io.BytesIO(png)) as im:
             out = io.BytesIO()
-            im.convert("RGBA").quantize(256, method=Image.Quantize.FASTOCTREE).save(out, "PNG")
-    except (OSError, ValueError, Image.DecompressionBombError):
+            im.convert("RGBA").quantize(256, method=2).save(out, "PNG")   # FASTOCTREE; Image.Quantize needs Pillow 9.1
+    except Exception:
         return png
     return min(png, out.getvalue(), key=len)
 
@@ -169,7 +170,8 @@ def _only(df: pd.DataFrame, facts: pd.DataFrame, value: str) -> pd.DataFrame:
 def explorer_data(run: RunDir, mapping: str = "merged", summary: dict | None = None) -> dict | None:
     """The fact explorer's data, or None for a run without the graph tables: the task facts (at most ``MAX_FACTS``)
     and URL facts (``MAX_URLS``) carried by two or more agents, most carriers first, until they take ``MAX_BYTES``
-    (``left_out`` counts the rest), and A4's featured slots in full, each fact's hops from ``query.fact_lineage``, the
+    (``picked``: how many of each kind were picked and how many there are; ``left_out``: the picked facts not in the
+    page, a slot's own included), and A4's featured slots in full, each fact's hops from ``query.fact_lineage``, the
     posts they cite once per item (excerpt and page), and each agent's links (``_people``)."""
     need = (f"chains_{mapping}", f"edges_{mapping}", "events", "mentions")
     if not all(run.has(n) for n in need):
@@ -180,7 +182,8 @@ def explorer_data(run: RunDir, mapping: str = "merged", summary: dict | None = N
     feat = [r for r in ((summary or {}).get("A4") or {}).get("rows", []) if r.get("featured")]
     disputes = run.read(f"disputes_{mapping}") if feat and run.has(f"disputes_{mapping}") else pd.DataFrame()
     slot_rows = disputes[disputes["slot"].isin([r["slot"] for r in feat])] if len(disputes) else disputes
-    picked = pd.concat([rep[rep["family"] != "url"].head(MAX_FACTS), rep[rep["family"] == "url"].head(MAX_URLS)])
+    task, url = rep[rep["family"] != "url"], rep[rep["family"] == "url"]
+    picked = pd.concat([task.head(MAX_FACTS), url.head(MAX_URLS)])
     on_slots = ch.merge(slot_rows.loc[slot_rows["kind"] == "value", ["family", "item"]].drop_duplicates(),
                         on=["family", "item"]) if len(slot_rows) else ch.iloc[:0]
     # fact_lineage reads only its fact's rows: the tables shrink to the facts traced here, grouped by fact once
@@ -226,12 +229,10 @@ def explorer_data(run: RunDir, mapping: str = "merged", summary: dict | None = N
                                 for h in f["hops"]]})
             size += len(_script_json(facts[-1]).encode())
         return index[key]
-    traced = 0
     for r in picked.itertuples(index=False):
         if size > MAX_BYTES:
             break
         add(lineage(r.family, r.item, r.value_key), "url" if r.family == "url" else "task")
-        traced += 1
     slots = []
     for r in feat:
         g = slot_rows[slot_rows["slot"] == r["slot"]].sort_values(["t_first", "agent"]) if len(slot_rows) else slot_rows
@@ -247,10 +248,14 @@ def explorer_data(run: RunDir, mapping: str = "merged", summary: dict | None = N
                       "winner": r.get("winner"), "outcome": r.get("outcome"), "variants": variants})
     people = _people(run, mapping, edges, a, set(agents))
     prof = run.profile() if (run.path / "profile.json").exists() else {}
+    keys = zip(picked["family"], picked["item"], picked["value_key"])
     return json_safe({"clock": prof.get("clock") or "wall", "res": CLOCK_RES_S, "mapping": mapping,
                           "agents": list(agents), "channels": list(chans),
                           "posts": [[e, x, c] for (e, _), (_, x, c) in posts.items()],
-                          "facts": facts, "slots": slots, "people": people, "left_out": len(picked) - traced})
+                          "facts": facts, "slots": slots, "people": people,
+                          "picked": {"task": [min(MAX_FACTS, len(task)), len(task)],
+                                     "url": [min(MAX_URLS, len(url)), len(url)]},
+                          "left_out": sum(k not in index for k in keys)})
 
 
 def _people(run: RunDir, mapping: str, edges: pd.DataFrame, a, named: set) -> dict:
@@ -322,6 +327,24 @@ def tiles(summary: dict) -> list[tuple[str, str, str]]:
     return out
 
 
+def picked_sentence(picked: dict, left: int) -> str:
+    """What the explorer lists when it is not every fact two or more agents carried: how many of each kind it picks,
+    of how many, and how many of those the byte cap leaves out."""
+    (a, n_a), (b, n_b) = picked["task"], picked["url"]
+    if a == n_a and b == n_b and not left:
+        return ""
+
+    def part(k: int, n: int, what: str) -> str:
+        if n == 1:
+            return f"the one {what}"
+        return f"all {n:,} {what}s" if k == n else f"the {k:,} most carried of the {n:,} {what}s"
+    kinds = " and ".join(part(k, n, w) for k, n, w in [(a, n_a, "task value"), (b, n_b, "URL")] if n)
+    order = "most carried first" + (", task values before URLs" if a and b else "")
+    cut = (f", and traces them {order}, until their hops and posts take {MAX_BYTES / 1e6:g} MB of the page: "
+           f"{left:,} of the {a + b:,} {'is' if left == 1 else 'are'} left out") if left else ""
+    return f" The explorer picks {kinds} that two or more agents carried{cut}."
+
+
 def build_html(run: RunDir, mapping: str = "merged") -> Path | None:
     """``report.html`` (``report_strict.html``) beside the report it renders, or None when there is none."""
     sfx, t0 = suffix(mapping), time.perf_counter()
@@ -338,10 +361,7 @@ def build_html(run: RunDir, mapping: str = "merged") -> Path | None:
     if summary.get("A1") or summary.get("A5"):
         data = explorer_data(run, mapping, summary)
         if data and (data["facts"] or data["slots"]):
-            n = data["left_out"]
-            cut = (f" Facts are traced most carried first (task values, then URLs) until their hops and posts take "
-                   f"{MAX_BYTES / 1e6:g} MB of the page; {n:,} more are left out.") if n else ""
-            explorer = EXPLORER.format(caveat=CAVEAT, cut=cut)
+            explorer = EXPLORER.format(caveat=CAVEAT, cut=picked_sentence(data["picked"], data["left_out"]))
         else:
             why = NO_TABLES if data is None else "no value was posted by two or more agents and A4 features no slot"
             print(f"[swarmprov] {run.path}: no fact explorer ({why})")

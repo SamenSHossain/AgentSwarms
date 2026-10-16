@@ -9,6 +9,7 @@ import re
 import shutil
 import subprocess
 import sys
+import types
 from pathlib import Path
 
 import numpy as np
@@ -142,31 +143,58 @@ def test_each_fact_is_traced_from_its_own_rows(synth_run, monkeypatch):
 
 def test_the_explorer_stops_tracing_past_its_byte_cap(synth_run, tmp_path, monkeypatch):
     """Past ``MAX_BYTES`` of facts and posts no further fact is traced (most carried first); the featured slots stay
-    whole, and the page says how many facts are left out."""
+    whole, and the page says how many of the picked facts are not in it, counting those a slot brings in as in it."""
     d = tmp_path / "run"
     shutil.copytree(synth_run[0].path, d)
     run, s = RunDir(d), json.loads((d / "summary.json").read_text())
     full = html.explorer_data(run, summary=s)
     monkeypatch.setattr(html, "MAX_BYTES", 3_000)
     cut = html.explorer_data(run, summary=s)
-    url = run.read("chains_merged").query("n_agents > 1")["family"] == "url"
-    picked = min(html.MAX_FACTS, int((~url).sum())) + min(html.MAX_URLS, int(url.sum()))
-    kept = picked - cut["left_out"]   # the facts traced before the slots' own
-    assert full["left_out"] == 0 and 1 <= kept < picked and cut["facts"][:kept] == full["facts"][:kept]
+    ch = run.read("chains_merged").query("n_agents > 1")
+    n_task, n_url = int((ch["family"] != "url").sum()), int((ch["family"] == "url").sum())
+    (a, _), (b, _) = cut["picked"]["task"], cut["picked"]["url"]
+    assert cut["picked"] == full["picked"] == {"task": [min(html.MAX_FACTS, n_task), n_task],
+                                               "url": [min(html.MAX_URLS, n_url), n_url]}
 
     def used(facts):   # their JSON and that of the posts they cite, as the page holds them
         cited = {k for f in facts for k in [f["o"][2], *(h[6] for h in f["h"])] if k >= 0}
         return sum(len(html._script_json(x).encode()) for x in [*facts, *(cut["posts"][k] for k in cited)])
-    assert used(cut["facts"][:kept - 1]) <= 3_000 < used(cut["facts"][:kept])
+    kept = next(i for i in range(1, len(cut["facts"]) + 1) if used(cut["facts"][:i]) > 3_000)
+    assert full["left_out"] == 0 and 1 <= kept < a + b and cut["facts"][:kept] == full["facts"][:kept]
+    slot_facts = {v["fact"] for x in cut["slots"] for v in x["variants"] if v["fact"] is not None}
+    assert set(range(kept, len(cut["facts"]))) <= slot_facts   # past the cap, only the slots' own
+
+    def key(f):
+        return f["family"], f["item"], f["value"]
+    picked, shown = {key(f) for f in full["facts"][:a + b]}, {key(f) for f in cut["facts"]}
+    assert picked & {key(f) for f in cut["facts"][kept:]}   # a slot brings in a picked fact past the cap
+    assert cut["left_out"] == len(picked - shown) < a + b - kept
     variants = [[(v["value"], v["fact"] is None, len(v["c"])) for v in x["variants"]] for x in full["slots"]]
     assert [[(v["value"], v["fact"] is None, len(v["c"])) for v in x["variants"]] for x in cut["slots"]] == variants
     text = html.build_html(run).read_text()
-    assert f"until their hops and posts take 0.003 MB of the page; {cut['left_out']:,} more are left out." in text
+    assert n_url == 0 and (f"The explorer picks all {a} task values that two or more agents carried, and traces them "
+                           f"most carried first, until their hops and posts take 0.003 MB of the page: "
+                           f"{cut['left_out']} of the {a} are left out.") in text
 
 
-def test_figures_are_inlined_with_a_palette(tmp_path):
+def test_the_picked_sentence_counts_each_kind():
+    assert html.picked_sentence({"task": [5, 5], "url": [0, 0]}, 0) == ""   # every shared fact is in the page
+    assert html.picked_sentence({"task": [200, 784], "url": [3, 1065]}, 136) == (
+        " The explorer picks the 200 most carried of the 784 task values and the 3 most carried of the 1,065 URLs that"
+        " two or more agents carried, and traces them most carried first, task values before URLs, until their hops and"
+        " posts take 1 MB of the page: 136 of the 203 are left out.")
+    assert html.picked_sentence({"task": [159, 159], "url": [3, 5373]}, 0) \
+        == " The explorer picks all 159 task values and the 3 most carried of the 5,373 URLs that two or more agents carried."
+    assert html.picked_sentence({"task": [1, 1], "url": [1, 1]}, 1) == (
+        " The explorer picks the one task value and the one URL that two or more agents carried, and traces them most"
+        " carried first, task values before URLs, until their hops and posts take 1 MB of the page: 1 of the 2 is left"
+        " out.")
+
+
+def test_figures_are_inlined_with_a_palette(tmp_path, monkeypatch):
     """A figure goes into the page re-encoded with a 256-colour palette: well under the file's bytes, the same size
-    and nearly the same pixels."""
+    and nearly the same pixels, with a Pillow older than 9.1 too (no ``Image.Quantize``); a file Pillow cannot
+    read goes in as it is."""
     from swarmprov.plotting import plt
     (tmp_path / "figures").mkdir()
     fig, ax = plt.subplots(figsize=(6, 3))
@@ -181,7 +209,11 @@ def test_figures_are_inlined_with_a_palette(tmp_path):
     with Image.open(io.BytesIO(png)) as q, Image.open(io.BytesIO(raw)) as o:
         assert q.mode == "P" and q.size == o.size and len(png) < 0.6 * len(raw)
         assert np.abs(np.asarray(q.convert("RGBA"), float) - np.asarray(o.convert("RGBA"), float)).mean() < 1
-    assert html._palette(b"not a png") == b"not a png" and html._palette(PNG) == PNG   # nothing smaller to write
+    assert html._palette(PNG) == PNG   # nothing smaller to write
+    for bad in (b"not a png", raw[:-100] + bytes(100), raw[:len(raw) // 2]):   # a zeroed chunk is a SyntaxError
+        assert html._palette(bad) == bad
+    monkeypatch.setattr(html, "Image", types.SimpleNamespace(**{k: v for k, v in vars(Image).items() if k != "Quantize"}))
+    assert html._palette(raw) == png   # Pillow 9.0 has the method, under an older name
 
 
 def test_explorer_posts_once_per_item_and_short(page):
