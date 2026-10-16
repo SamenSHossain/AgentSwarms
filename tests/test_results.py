@@ -1,21 +1,25 @@
 """The committed results/ directories: every figure a report links is there (and none it does not link), the
 collectors' 143-surface inventory is cited only where it describes the source, each key-findings block and the wiki's
 report.html are what the current code writes from them, and every number the README and docs/DATA.md quote from a run
-(the headline table, the wiki results table, the integrity line, the cross-site and corpus text, DATA.md's cross-site
-table) is formatted from the committed summary.json files, the cross-site report and its technique_spread.csv.  Every
-relative link between the docs resolves, anchors included."""
+(the scale of the wiki dump, the headline table, the wiki results table, the validation table, the integrity line, the
+cross-site and corpus text, the roster's size, DATA.md's cross-site table) is formatted from the committed results:
+the summary.json and profile.json files, the cross-site report and its technique_spread.csv, and the roster.  Only
+the held-out split's scores from before the fixes are history no run writes.  Every relative link between the docs
+resolves, anchors included."""
 
 import itertools
 import json
 import math
 import re
+import shutil
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
-from swarmprov import html, report
+from swarmprov import checks, html, report
 from swarmprov.analysis import causal, origins
+from swarmprov.schema import RunDir
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "results"
@@ -25,6 +29,7 @@ DOCS = [ROOT / p for p in ("README.md", "docs/USAGE.md", "docs/METHODS.md", "doc
                             "tests/README.md", "results/README.md")]
 REPORTS = sorted(RESULTS.glob("*/report.md"))
 LINK = re.compile(r"\]\(([^)]+\.png)\)")
+FX_DATA = re.compile(r'<script type="application/json" id="fx-data">(.*?)</script>', re.S)
 MD_LINK = re.compile(r"\[([^\]]*)\]\(([^)\s]+)\)")
 NUMBER = re.compile(r"\d+(?:,\d{3})*(?:\.\d+)?")
 NAME = re.compile(r"\b(?=\w*[A-Za-z])(?=\w*\d)\w+")   # Mar30, sector61, G5, p90: digits inside a name
@@ -51,21 +56,22 @@ def test_every_figure_link_resolves_and_every_figure_is_linked(path):
     assert figures == links
 
 
-def test_the_committed_wiki_page_renders_the_committed_report_with_its_explorer():
-    """results/openai-wiki keeps its run's report.html, fact explorer included, for readers without the dump: it is
-    under 3 MB and its body is the committed report.md as html.md_to_html renders it, so the two are regenerated
-    together."""
+def test_the_committed_wiki_page_is_what_the_current_code_writes(synth_run, tmp_path, monkeypatch):
+    """results/openai-wiki keeps its run's report.html, fact explorer included, for readers without the dump.  It is
+    under 3 MB, and html.build_html given the committed report, summary and figures and the page's own explorer data
+    writes it byte for byte: its style, script, tiles, explorer text and body are the current code's.  The explorer
+    data needs the graph tables, which results/ does not hold, so it is checked to have the fields explorer_data writes
+    now (on the synthetic run)."""
     d = RESULTS / "openai-wiki"
     page = (d / "report.html").read_text(encoding="utf-8")
     assert len(page.encode()) < 3_000_000
-    data = json.loads(re.search(r'<script type="application/json" id="fx-data">(.*?)</script>', page, re.S).group(1))
+    data = json.loads(FX_DATA.search(page).group(1))
+    run, _ = synth_run
+    assert set(data) == set(html.explorer_data(run, summary=json.loads((run.path / "summary.json").read_text())))
     assert len(data["facts"]) >= 100 and data["slots"]
-    body = page.split("<main>", 1)[1].split("</main>", 1)[0]
-    start = body.index('<section id="fact-explorer">')
-    end = body.index('<div id="ag-card" class="card"></div></div></section>', start) + len(
-        '<div id="ag-card" class="card"></div></div></section>')
-    text = (d / "report.md").read_text(encoding="utf-8").partition("\n\n")[2].partition("\n\n")[2]   # title, source
-    assert body[:start] + body[end:] == html.md_to_html(text, d)
+    shutil.copytree(d, tmp_path / "w", ignore=shutil.ignore_patterns("*.csv", "report.html"))
+    monkeypatch.setattr(html, "explorer_data", lambda *a: data)
+    assert html.build_html(RunDir(tmp_path / "w")).read_text(encoding="utf-8") == page
 
 
 def test_the_coverage_inventory_is_cited_only_where_it_describes_the_source():
@@ -191,16 +197,21 @@ def test_readme_headline_quotes_the_committed_summaries():
 
 
 def test_readme_a2_wording_follows_the_reading_rule():
-    """The headline's A2 row says what report.a2_identified reads from the committed rows: "Not identified for most
-    rows" while most headline rows are weakly or not identified and none is identified, "no effect detected" for a
-    row with enough switchers whose CI covers 0, and the results table states causal.reading's thresholds."""
+    """The headline's A2 row says what report.a2_identified reads from the committed rows: "Not or only weakly
+    identified for most rows" while most headline rows are one or the other (some of each) and none is identified,
+    "no effect detected" for a row with enough switchers whose CI covers 0; the results table states
+    causal.reading's thresholds and that the key findings, which say "Not identified for most rows", fold the
+    weakly identified rows in."""
     s = _summary("openai-wiki")
     main, by = report.a2_identified(s["A2"])
     unread = by[causal.WEAK] + by[causal.NOT_IDENTIFIED]
     row = _table("## What it found")["Does availability *cause* copying?"]
-    assert not by[causal.IDENTIFIED] and 2 * len(unread) > len(main) and row.startswith("**Not identified for most rows**")
+    assert not by[causal.IDENTIFIED] and by[causal.WEAK] and by[causal.NOT_IDENTIFIED] and 2 * len(unread) > len(main)
+    assert row.startswith("**Not or only weakly identified for most rows**")
     assert bool(by[causal.NO_EFFECT]) == ("no effect is detected" in row)
     rule = _table("## Results on the OpenAI wiki swarm")["**A2 Does availability cause copying?**"]
+    assert "Not identified for most rows" in "\n".join(report.key_findings(s)) and \
+        "The report's key findings count a weakly identified row as not identified." in rule
     k = causal.MIN_SWITCHERS
     assert [causal.reading(n, -1, 1) for n in (k - 1, k, 2 * k - 1, 2 * k)] == [
         causal.NOT_IDENTIFIED, causal.WEAK, causal.WEAK, causal.NO_EFFECT] and causal.reading(2 * k, 0.1, 1) == \
@@ -293,12 +304,41 @@ def test_readme_results_table_quotes_the_committed_summaries():
 
 def test_readme_integrity_line_is_what_check_prints():
     integ = _summary("openai-wiki")["integrity"]
-    n_err = sum(f["severity"] == "error" for f in integ["failing"])
-    n_warn = len(integ["failing"]) - n_err
-    line = (f"{integ['n_pass']} of {integ['n_checks']} checks pass: {n_err} error{'s' * (n_err != 1)}, "
-            f"{n_warn} warning{'s' * (n_warn != 1)}")
+    line = checks.summary_line(integ["n_checks"], integ["n_pass"], sum(f["severity"] == "error" for f in integ["failing"]))
     para = next(p for p in README.split("\n\n") if p.startswith("That section opens with an integrity line"))
     assert f"*{line}*" in para
+
+
+def _scores(v: dict) -> list[str]:
+    """A validation split's row: posts, answer-post precision / recall, then item, value, round and latency accuracy."""
+    f = v["fields"]
+    return [f"{v['n']}", f"{f['answer_post']['precision']:.2f} / {f['answer_post']['recall']:.2f}",
+            *(f"{f[k]['accuracy']:.2f}" for k in ("item", "value", "episode", "latency_class"))]
+
+
+def test_readme_validation_table_quotes_the_committed_summary():
+    """The dev and untouched-test rows are the Quick start run's scores; the held-out row's scores are its first,
+    from before the fixes it prompted (history), and the text gives what it scores now."""
+    v = _summary("openai-wiki")["validation"]
+    rows = {k: [c.strip().replace("*", "") for c in cells.split(" | ")] for k, cells in _table("### Validation").items()}
+    dev, held, test = (rows[k] for k in ("dev (used for tuning)", "held-out, scored **before** fixes, then used for tuning",
+                                         "**untouched test** (labelled after the last extractor change)"))
+    assert dev == _scores(v["validation_dev"])
+    *scores, latency = _scores(v["validation_test"])
+    assert test == [*scores, f"{latency} (n={v['validation_test']['fields']['latency_class']['support']})"]   # a small n
+    assert held[0] == f"{v['validation_heldout']['n']}"
+    now = v["validation_heldout"]["fields"]
+    assert all(x == 1.0 for f in now.values() for k, x in f.items() if k != "support") and \
+        "the held-out split, tuned on since, now scores 1.00 on every field" in README
+
+
+def test_readme_scale_numbers_quote_their_sources():
+    """The wiki dump's revisions and posts (the committed profile.json) and the roster's goal assignments (its rows)."""
+    prof = json.loads((RESULTS / "openai-wiki" / "profile.json").read_text())
+    assert f"(the German message board: {prof['notes']['n_revisions']:,} wiki revisions, which become " \
+           f"{prof['n_events']:,} posts;" in README
+    goals = sum(map(bool, (ROOT / "data" / "village" / "agent_goals.jsonl").read_text(encoding="utf-8").splitlines()))
+    assert _table("## Repository layout")["`data/village/`"] == f"AI Village roster ({goals} goal assignments)"
 
 
 def _crosssite_expected(s: dict, cross: dict, corpus: dict) -> dict[str, list]:
@@ -373,6 +413,8 @@ def test_data_md_quotes_the_committed_crosssite_spread_and_a1():
     spread = pd.read_csv(RESULTS / "crosssite" / "technique_spread.csv", parse_dates=["first_seen"])
     rows = _table("## Cross-site technique spread", DATA)
     assert set(rows) == set(HOSTS)
+    section = DATA.split("## Cross-site technique spread", 1)[1].split("\n---\n", 1)[0]
+    assert sum("|" in line for line in section.splitlines()) == len(rows) + 2   # one table, nothing left of an older one
     for host, cells in rows.items():
         first, then = (c.strip() for c in cells.split(" | "))
         t = spread[spread["technique"] == HOSTS[host]].sort_values(["first_seen", "site"])

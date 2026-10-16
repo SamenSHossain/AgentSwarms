@@ -12,7 +12,7 @@
 | Who supplied it? | **It depends on who gets the credit.** The top 10 sources supplied 20–74% of the 1,019 exposed answers credited to a source: 74% credited to the first agent to post the value, 20% to the latest earlier carrier, 21% of the 218 that have a same-page relay parent; first-source credit mostly measures who first posted on an item (on 52 of 61 items one agent was first source of every exposed answer). |
 | How fast did tricks spread? | The blob-hostname sandbox bypass reached **23% of at-risk OECD agents (17 of 73), a median 0.8 h after its first post**; the `markdown.new` fetch proxy reached 6 other sites within 7 h of its first post, while every task-level trick stayed on one wiki. |
 | Did errors win? | The cracked-seed forecast **"Maryland" was carried by 30 agents before the observed "Montana" (11) appeared**, and Montana overturned it as soon as it appeared (11 of the last 14 carriers). Hungary stays **contested**: `9.90` kept 69 agents to 17 for the live `9.91`, which led the late carriers only 16 to 13 and never held a lasting majority. |
-| Does availability *cause* copying? | **Not identified for most rows**: the answer was public before almost every report, so most rows have only 3–17 agents that switch exposure status; where 37 do, no effect is detected (95% CI −0.34 to 0.11). On a synthetic swarm with known copying the same estimator recovers the true effect (0.70 vs 0.70), so the null is the data, not the method. |
+| Does availability *cause* copying? | **Not or only weakly identified for most rows**: the answer was public before almost every report, so most rows have only 3–17 agents that switch exposure status; where 37 do, no effect is detected (95% CI −0.34 to 0.11). On a synthetic swarm with known copying the same estimator recovers the true effect (0.70 vs 0.70), so the null is the data, not the method. |
 
 ## Quick start
 
@@ -81,10 +81,10 @@ The headline above has the main numbers. The full report, with every table and f
 | | finding |
 |---|---|
 | **A1 Provenance** | The share falls with the head start required: 21% of answers had been public a day before the report, none of datausa-sector61-state's at 6 h but 64% of oecd-equity's at 24 h, so the threshold separates races from archives. 171 answers were preceded by a deleted copy, and for 150 of them another copy was still visible. In 19% of rounds the agent had posted the answer itself before reporting it. |
-| **A2 Does availability cause copying?** | The tool reports *not identified* when fewer than 10 agents switch exposure status and *weakly identified* when fewer than 20 do; with 20 or more it reads *identified* where the 95% CI excludes zero and *no effect detected* where it covers zero. |
+| **A2 Does availability cause copying?** | The tool reports *not identified* when fewer than 10 agents switch exposure status and *weakly identified* when fewer than 20 do; with 20 or more it reads *identified* where the 95% CI excludes zero and *no effect detected* where it covers zero. The report's key findings count a weakly identified row as not identified. |
 | **A3 Diffusion** | The *live-tooltip value* the blob bypass enabled reached 35 of 74 (47%); Kaplan–Meier median 5.7 h (Greenwood 95% CI 4.8–8.5 h). Heartbeat beacons spread slowly across the whole swarm (96 of 1,113 agents, median 81 h among adopters). Seed-crack and `clock.wait` adoptions landed on a page that already carried them more often than the adopters' own baseline (45% and 37% against 30%, after Holm's correction): consistent with contagion, not proof. |
 | **A4 Errors** | Of the 16 disputed slots, 9 were overturned, 3 held and 4 contested: Hungary, a 2–2 tie, one on 4 late carriers and one whose two values were first posted in the same second. The live values overturned the rounded ones within the first 3-hour bin: 16.38 for Poland (21 of 28 late carriers), 14.59 for the Slovak Republic (31 of 35). On 6 of the 13 value slots the consensus, which A2's `y_consensus` scores against, is not the later majority. |
-| **A5 Structure** | Credited to the first source, 46 agents supplied someone's answer (out-degree Gini 0.68, against 0.56 for the 61 items' exposure counts alone); to the latest earlier carrier, 325. On instant answers only, the top 10 supplied 17–80%. Of the answers credited to a first source, 21% came from one that had computed the value itself, 63% from one with no answer round observed on the item (67% under strict), 7% from one that answered a different value and 9% from one that had posted the value before any other agent. |
+| **A5 Structure** | Credited to the first source, 46 agents supplied someone's answer (out-degree Gini 0.68, against 0.56 for the 61 items' exposure counts alone); to the latest earlier carrier, 325. On instant answers only, the top 10 supplied 17–80%. Of the answers credited to a first source, 21% came from one that had computed the value itself, 63% from one with no answer round observed on the item (67% under strict), 7% from one that answered a different value and 9% from one that posted the value first but reported it only after another agent repeated it (self-originated). |
 | **A6 Reach** | Of 365 task values, 159 were repeated by other agents (mean 3.6 repeaters, 95% CI 2.7–4.7, p90 10), and of 23,560 URLs, 5,373. A repeated value travelled 2.0 hops on average, at most 10, when a carrier's parent may have posted at any time before it, but 1.3 when the parent must have posted within the hour (949 of 1,331 carriers then have none): most of the depth rests on hops longer than an hour. |
 
 ### Cross-site results (wiki run + corpus, [`results/crosssite/report.md`](results/crosssite/report.md))
@@ -185,12 +185,12 @@ All source-specific knowledge lives in one adapter plus an `AdapterConfig`, whic
 
 - **Public is not read.** The dump has no page views, so exposure is inferred from what was public, and a copy on a surface the collectors missed is invisible: exposure is a floor and the independent count a ceiling.
 - **The unit of authorship** is the paragraph a revision added, and its author the trailing `-- Signature`, not the account that saved the page.
-- **`D_cons`, the causal treatment,** asks whether the *consensus* value was public, whatever the agent answered: the agent's own value ties wrong answers to "unexposed" and gave a spurious +0.43 effect.
+- **`D_cons`, the causal treatment,** asks whether the *consensus* value was public, whatever the agent answered: the agent's own value ties wrong answers to "unexposed" and gave a spurious positive effect.
 - **Attribution is a range**: nothing records whom an agent copied, so A5 credits each exposed answer three ways and reports all three. Relay edges are plausible paths, not proven ones.
 - **A4 status and A3 contagion are conventions**: a later value must keep a lasting majority of new carriers to overturn, and an adoption on a page that carried the technique is consistent with contagion, never proof.
 - **Intervals cover sampling noise across items only**, not identity or extraction error, and the synthetic scorecard holds under the simulation's own model only.
 - **Agent-written text is data**: ingest strips control characters from names, `report.html` escapes all text and the console prints escapes.
-- **The headline is generated** from `summary.json`, and `tests/test_results.py` ties every number this README quotes to the committed summaries.
+- **The headline is generated** from `summary.json`, and `tests/test_results.py` ties every number this README quotes from a run to the committed results (only the held-out split's scores from before the fixes are history no run writes).
 
 ## Repository layout
 
@@ -199,7 +199,7 @@ All source-specific knowledge lives in one adapter plus an `AdapterConfig`, whic
 | `swarmprov/adapters/` | Adapter interface + implementations (wiki, chat with framework roles in `framework.py`, corpus, swarmtraces, roster, village) |
 | `swarmprov/` | Core modules: the stages (`pipeline`, `exposure`, `graph`, `report`, `html`), extraction (`segment`, `rules`, `claims`, `identity`, `extract_llm`) and the commands around them (`query` for `trace` and `agent`, `checks`, `compare`, `suggest`, `synth`, `truthscore`, `export`, `inspect`, `validate`) |
 | `swarmprov/analysis/` | A1–A6 analyses: provenance, causal, diffusion, errors, structure, origins, agents (per-agent profiles), uncertainty (bootstrap and Greenwood intervals), crosssite |
-| `tests/` | 643 tests (≈5.5 min with the wiki dump present); [tests/README.md](tests/README.md) says what each file checks |
+| `tests/` | The test suite (≈6 min with the wiki dump present); [tests/README.md](tests/README.md) says what each file checks |
 | `validation/` | Labels (event ids) for dev, held-out, and test splits |
 | `results/` | Committed reports ([results/README.md](results/README.md)) |
 | `data/village/` | AI Village roster (33 goal assignments) |

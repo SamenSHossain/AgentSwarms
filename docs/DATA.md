@@ -109,16 +109,6 @@ Earliest activity in the whole corpus: publictestwiki sandbox edits from **2026-
 
 The rows are `results/crosssite/technique_spread.csv`, which `swarmprov crosssite` writes: dse comes from the wiki dump itself and the other sites from the corpus records' timed texts (the records' own dse portion is a redacted copy, which puts markdown.new on dse at 10:21 and jqp at 13:31). A time is given on the first site's day, a date after it. The task-level techniques (heartbeat beacons, seed cracking, clock.wait, the blob bypass, the live tooltip, ZZZ pages) appear on dse only.
 
----|---|---|
-| markdown.new | dse 05-26 10:21 | user/milk 13:55, ludism 14:35, probier 15:36, fractal 15:43, linuxiarz 15:16, wiki4d 16:39: **6 sites in 6 h** |
-| pure.md | dse 05-26 13:25 | probier 06-01 |
-| allorigins.hexlet.app | **paste.linuxiarz.pl 05-26 15:16** | dse 05-28, probier 06-01, fractal/wiki4d 06-18 |
-| jqp.vercel.app | dse 05-28 13:31 | wiki4d, probier, fractal all 06-18 |
-| r.jina.ai | dse 06-01 | probier 06-16, fractal 06-17 |
-| api.counterapi.dev (heartbeat beacons) | dse 06-16 22:03 | — |
-
-These times come from the corpus records, whose dse portion is a redacted copy. `swarmprov crosssite`, which takes dse from the wiki dump itself, finds `markdown.new` on dse at 09:50 on May 26, so the six other surfaces follow within 7 h (`results/crosssite/report.md`).
-
 ---
 
 # Third batch: coverage tables (`site-coverage.csv`, `coverage-gaps.csv`)
