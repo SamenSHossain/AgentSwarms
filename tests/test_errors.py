@@ -205,6 +205,13 @@ def test_every_disputed_slot_is_in_the_table(fourteen_slots):
     assert sum(line.startswith("| all \\| ") for line in text.splitlines()) == 14
 
 
+def test_no_status_line_without_a_disputed_slot(synth_null):
+    a4 = json.loads((synth_null[0].path / "summary.json").read_text())["A4"]
+    text = (synth_null[0].path / "report.md").read_text().split("## A4")[1].split("## A5")[0]
+    assert bool(re.search(r"All \d+ disputed slots? (are|is) in the table", text)) is bool(a4["rows"]) is False
+    assert sum(a4["status_counts"].values()) == len(a4["rows"])
+
+
 def _true_values(truth):
     return truth[truth["correct"]].drop_duplicates(["family", "item"]).set_index(["family", "item"])["value"]
 

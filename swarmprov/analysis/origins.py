@@ -83,10 +83,11 @@ def trace_root(ex: pd.DataFrame, src_col: str = "src_agent") -> pd.DataFrame:
 
 def by_source(og: pd.DataFrame, ex: pd.DataFrame) -> pd.DataFrame:
     """Per source: answers supplied, items, the origins of those answers and the answer rounds it
-    has in the run on any item (none suggests a publisher; some suggests a miss on this item)."""
+    has in the run on any item (none suggests a publisher; some suggests a miss on this item); most answers first,
+    ties by source."""
     g = og.groupby("source")
     out = pd.DataFrame({"answers": g.size(),
                         "items": og.drop_duplicates(["source", "family", "item"]).groupby("source").size(),
                         "origin": g["origin"].agg(lambda s: ", ".join(f"{k} {v}" for k, v in s.value_counts().items())),
                         "answer rounds (any item)": ex.groupby("agent").size().reindex(g.size().index).fillna(0).astype(int)})
-    return out.sort_values("answers", ascending=False)
+    return out.sort_index().sort_values("answers", ascending=False, kind="stable")

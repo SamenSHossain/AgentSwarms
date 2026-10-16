@@ -769,8 +769,9 @@ def _a4(c: _Ctx) -> list[str]:
         L.append(_variant_note(vs, c.split, c.n_split_rounds, c.n_split_zero, c.prov, c.mapping))
     if fig:
         L.append(f"![errors](figures/{c.run.figure('a4_errors.png', c.mapping).name})\n")
-    L.append(f"All {len(slots):,} disputed slots are in the table: " + ", ".join(
-        f"{status[k]:,} {k}" for k in errors.STATUSES if status[k]) + ".\n")
+    if slots:
+        L.append(f"All {len(slots):,} disputed slot{'s are' if len(slots) != 1 else ' is'} in the table: " + ", ".join(
+            f"{status[k]:,} {k}" for k in errors.STATUSES if status[k]) + ".\n")
     L.append(md_table(pd.DataFrame(rows), index=False, floatfmt="{:.1f}"))
     if unknown:
         L.append("Reference values that name no item or disputed slot in this run (a mistyped `family|item` key, or an item "

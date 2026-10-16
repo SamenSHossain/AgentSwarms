@@ -110,6 +110,14 @@ def test_item_null_and_single_source_items():
     assert r["gini_item_exposures"] == pytest.approx(structure.gini([3, 1]))
 
 
+def test_sources_with_equal_answers_are_listed_by_name():
+    """Most answers first, ties by name, however many there are (an unstable sort reorders long runs of ties)."""
+    names = [f"s{i:02d}" for i in range(40)]
+    og = pd.DataFrame({"source": [n for n in names for _ in range(2)] + ["top"] * 3, "family": "f", "item": "x",
+                       "origin": "computed"})
+    assert origins.by_source(og, pd.DataFrame({"agent": names})).index.tolist() == ["top", *names]
+
+
 def _ex(rows):
     """Exposure rows, ``self_originated`` from their times as exposure sets it."""
     cols = {"claim_id": None, "family": "f", "item": "x", "value_norm": "9.9", "consensus_value": "9.9", "D": 1,
