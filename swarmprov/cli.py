@@ -49,6 +49,16 @@ def _count(v: str) -> int:
     return int(v)
 
 
+def _hours(v: str) -> float:
+    try:
+        h = float(v)
+    except ValueError:
+        h = float("nan")
+    if not 0 < h < float("inf"):
+        raise argparse.ArgumentTypeError(f"expected a positive, finite number of hours, got {v!r}")
+    return h
+
+
 def _fields(v: str) -> dict[str, str]:
     """``author=source``, or several at once: ``author=source,text=content``.  Only a comma before another
     ``FIELD=`` separates, so a key may hold one (``author=Last, First``)."""
@@ -187,7 +197,7 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--copy-from", choices=["latest", "first", "random"], default="latest",
                    help="which earlier post a copying agent takes its value from")
     s.add_argument("--seed", type=int, default=0)
-    s.add_argument("--copy-ramp-h", type=float, default=None, metavar="H",
+    s.add_argument("--copy-ramp-h", type=_hours, default=None, metavar="H",
                    help="copy probability grows linearly with the hours the answer has been public, reaching "
                         "--copy-rate at H hours (default: constant)")
     s.add_argument("--format", choices=["chat", "autogen"], default="chat",

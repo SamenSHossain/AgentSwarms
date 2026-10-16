@@ -90,7 +90,8 @@ HEAD_BINS = {"<1h": 1, "1-6h": 6, "6-24h": 24, ">24h": np.inf}   # label -> uppe
 DOSE_REF = "<1h"
 SLOPE = "log1p(head h)"
 MIN_DOSE_SD = 0.25    # pooled within-agent SD of log1p(head start in hours)
-MIN_BIN_AGENTS = 10   # agents with rounds in two or more bins; per bin, agents with a round in it and in another
+MIN_BIN_AGENTS = 10   # agents with rounds in two or more bins
+MIN_INFORMATIVE = 10  # per term, agents whose outcome varies and whose head start (slope) or bin (a bin) does too
 
 
 def _dose_sample(ex: pd.DataFrame, key: str) -> pd.DataFrame:
@@ -118,24 +119,52 @@ def _fit(df: pd.DataFrame, formula: str) -> pd.DataFrame:
         return pf.feols(f"{formula} | agent + item_fe", data=df, vcov={"CRV1": "agent"}).tidy()
 
 
-def estimate_dose(ex: pd.DataFrame, min_sd: float = MIN_DOSE_SD, min_bin_agents: int = MIN_BIN_AGENTS) -> pd.DataFrame:
+def _leave_one_out(df: pd.DataFrame, y: str) -> dict:
+    """The slope on ``log_head`` refitted without each agent in turn (its range), and the share of its clustered
+    variance the two agents with the largest scores carry.  Exact and without refitting: agent effects drop out by
+    demeaning within agent, which leaving an agent out does not change, and item effects enter as dummies."""
+    g = pd.factorize(df["agent"])[0]
+    X = np.column_stack([df["log_head"], pd.get_dummies(df["item_fe"])]).astype(float)
+    Y = df[y].to_numpy(float)
+    n = np.bincount(g)
+    X -= np.stack([np.bincount(g, col) for col in X.T], 1)[g] / n[g, None]
+    Y -= (np.bincount(g, Y) / n)[g]
+    A, c = X.T @ X, X.T @ Y
+    inv = np.linalg.pinv(A, hermitian=True)
+    e = Y - X @ (inv @ c)
+    rows = [np.flatnonzero(g == k) for k in range(len(n))]
+    score = np.array([inv[0] @ (X[r].T @ e[r]) for r in rows]) ** 2
+    loo = [(np.linalg.pinv(A - X[r].T @ X[r], hermitian=True) @ (c - X[r].T @ Y[r]))[0] for r in rows]
+    return {"loo_lo": min(loo), "loo_hi": max(loo), "var_share_top2": np.sort(score)[-2:].sum() / score.sum()}
+
+
+def estimate_dose(ex: pd.DataFrame, min_sd: float = MIN_DOSE_SD, min_bin_agents: int = MIN_BIN_AGENTS,
+                  min_informative: int = MIN_INFORMATIVE) -> pd.DataFrame:
     """Per outcome of ``DOSE_OUTCOMES``, on the exposed rounds: the slope on log1p(head start h) and each ``HEAD_BINS``
     coefficient against ``DOSE_REF``, agent + item FE, SEs clustered by agent.  One row per (outcome, term), with the
-    term's rounds, mean outcome and ``agents_spanning`` (for the slope, agents whose head start varies; for a bin,
-    agents with a round in it and in another bin).  An outcome under ``min_sd`` or ``min_bin_agents`` is not identified;
-    so is a bin with fewer than ``min_bin_agents`` spanning agents, and every bin when the reference is."""
-    rows = []
+    term's rounds, mean outcome, ``agents_spanning`` (for the slope, agents whose head start varies; for a bin, agents
+    with a round in it and in another bin) and ``agents_informative`` (those of them whose outcome varies too).  An
+    outcome under ``min_sd`` or ``min_bin_agents`` is not identified; so is a term with fewer than ``min_informative``
+    informative agents, and every bin when the reference is.  An estimate informed by fewer than twice that (a bin: in
+    it or in the reference) is noted weak.  The slope carries its leave-one-agent-out range (``loo_lo``, ``loo_hi``) and
+    the share of its clustered variance its two largest agents carry (``var_share_top2``)."""
+    rows, weak = [], 2 * min_informative
     for key in DOSE_OUTCOMES:
         y = key.split("|")[0]
         df = _dose_sample(ex, key)
+        varies = df.groupby("agent")[y].nunique() > 1
+        moves = df.groupby("agent")["log_head"].nunique() > 1
         multi = df[df.groupby("agent")["head_bin"].transform("nunique") >= 2]
         base = {"outcome": key, "outcome_label": OUTCOMES[key][0], "n": len(df), "agents": df["agent"].nunique(),
                 "items": df["item_fe"].nunique(), "within_sd": _within_sd(df), "bin_agents": multi["agent"].nunique()}
-        terms = {SLOPE: {"n_term": len(df), "mean_y": df[y].mean(),
-                         "agents_spanning": int((df.groupby("agent")["log_head"].nunique() > 1).sum())}}
-        terms |= {b: {"n_term": int((df["head_bin"] == b).sum()), "mean_y": df.loc[df["head_bin"] == b, y].mean(),
-                      "agents_spanning": multi.loc[multi["head_bin"] == b, "agent"].nunique()} for b in HEAD_BINS}
-        note = (f"not identified: only {len(df)} exposed rounds" if len(df) <= 20 else
+        terms = {SLOPE: {"n_term": len(df), "mean_y": df[y].mean(), "agents_spanning": int(moves.sum()),
+                         "agents_informative": int((moves & varies).sum())}}
+        for b in HEAD_BINS:
+            span = multi.loc[multi["head_bin"] == b, "agent"].unique()
+            terms[b] = {"n_term": int((df["head_bin"] == b).sum()), "mean_y": df.loc[df["head_bin"] == b, y].mean(),
+                        "agents_spanning": len(span), "agents_informative": int(varies.reindex(span).sum())}
+        note = (f"not identified: only {len(df)} exposed rounds after dropping single-round agents and items"
+                if len(df) <= 20 else
                 f"not identified: within-agent SD of the log head start is {base['within_sd']:.2f} (< {min_sd})"
                 if base["within_sd"] < min_sd else
                 f"not identified: only {base['bin_agents']} agents have rounds in two or more head-start bins"
@@ -144,35 +173,53 @@ def estimate_dose(ex: pd.DataFrame, min_sd: float = MIN_DOSE_SD, min_bin_agents:
             for v in terms.values():
                 v["note"] = note
         else:
-            for b in HEAD_BINS:
-                if terms[b]["agents_spanning"] < min_bin_agents:
-                    terms[b]["note"] = (f"not identified: only {terms[b]['agents_spanning']} agents have a round here "
-                                        "and in another bin")
-            ref_ok = "note" not in terms[DOSE_REF]
-            for b in HEAD_BINS:
-                if not ref_ok and b != DOSE_REF and "note" not in terms[b]:
-                    terms[b]["note"] = (f"not identified: only {terms[DOSE_REF]['agents_spanning']} agents span the "
-                                        f"{DOSE_REF} reference bin")
-            fits = [(f"{y} ~ log_head", {"log_head": SLOPE})]
-            if ref_ok:
-                fits.append((f"{y} ~ i(head_bin, ref='{DOSE_REF}')",
-                             {f"head_bin::{b}": b for b in HEAD_BINS if b != DOSE_REF and "note" not in terms[b]}))
+            for term, v in terms.items():
+                s, k = v["agents_spanning"], v["agents_informative"]
+                if k < min_informative:
+                    vary = "varies" if k == 1 else "vary"
+                    v["note"] = (f"not identified: only {k} of the {s} agents whose head start varies also {vary} in "
+                                 "the outcome" if term == SLOPE else
+                                 f"not identified: only {s} agents have a round here and in another bin"
+                                 if s < min_informative else
+                                 f"not identified: only {k} of the {s} agents with a round here and in another bin "
+                                 f"{vary} in the outcome")
+            if "note" in terms[DOSE_REF]:
+                for b in HEAD_BINS:
+                    terms[b].setdefault("note", f"not identified: the {DOSE_REF} reference bin is not")
+            fits = [(f"{y} ~ log_head", {"log_head": SLOPE}),
+                    (f"{y} ~ i(head_bin, ref='{DOSE_REF}')", {f"head_bin::{b}": b for b in HEAD_BINS if b != DOSE_REF})]
             for formula, names in fits:
+                names = {n: term for n, term in names.items() if "note" not in terms[term]}
+                if not names:
+                    continue
                 try:
                     t = _fit(df, formula)
                 except Exception as e:  # singular designs etc.
-                    base["error"] = str(e)[:120]
+                    for term in names.values():
+                        terms[term]["note"] = f"not estimated: {str(e)[:120]}"
                     continue
                 for name, term in names.items():
                     if name not in t.index:   # pyfixest drops a term the fixed effects absorb
                         terms[term]["note"] = "not estimated: collinear with the agent and item fixed effects"
-                        continue
-                    r = t.loc[name]
-                    terms[term].update(beta=r["Estimate"], se=r["Std. Error"], p=r["Pr(>|t|)"], ci_lo=r["2.5%"],
-                                       ci_hi=r["97.5%"])
+                    elif not t.loc[name, "Std. Error"] > 1e-6:   # within pyfixest's demeaning tolerance: an exact fit
+                        terms[term]["note"] = "not estimated: the model fits the outcome exactly"
+                    else:
+                        r = t.loc[name]
+                        terms[term].update(beta=r["Estimate"], se=r["Std. Error"], p=r["Pr(>|t|)"], ci_lo=r["2.5%"],
+                                           ci_hi=r["97.5%"])
+            if "beta" in terms[SLOPE]:
+                terms[SLOPE] |= _leave_one_out(df, y)
+            k_ref = terms[DOSE_REF]["agents_informative"]
+            for term, v in terms.items():
+                k = v["agents_informative"]
+                if "beta" in v and term == SLOPE and k < weak:
+                    v["note"] = f"weak: only {k} agents inform it (< {weak})"
+                elif "beta" in v and term != SLOPE and min(k, k_ref) < weak:
+                    v["note"] = (f"shape only: {k} agents inform it (< {weak})" if k <= k_ref else
+                                 f"shape only: {k_ref} agents inform the {DOSE_REF} reference (< {weak})")
         rows += [base | {"term": term} | v for term, v in terms.items()]
     out = pd.DataFrame(rows)
-    for c in ("beta", "se", "p", "ci_lo", "ci_hi", "note"):
+    for c in ("beta", "se", "p", "ci_lo", "ci_hi", "loo_lo", "loo_hi", "var_share_top2", "note"):
         if c not in out:
             out[c] = np.nan
     return out
@@ -226,14 +273,15 @@ def figure(est: pd.DataFrame, path, min_switchers: int = MIN_SWITCHERS) -> str:
     return plotting.save(fig, path)
 
 
-def dose_figure(dose: pd.DataFrame, path, min_bin_agents: int = MIN_BIN_AGENTS) -> str:
+def dose_figure(dose: pd.DataFrame, path, min_informative: int = MIN_INFORMATIVE) -> str:
     """One panel per outcome of ``dose``: each head-start bin's effect against ``DOSE_REF`` with its 95% CI (the
-    reference hollow at zero), 'not identified' at zero with no bar where a bin is.  As in ``figure``, an estimate
-    spanned by fewer than twice ``min_bin_agents`` agents is grey; each panel's title gives the slope and each bin's
-    label its rounds and spanning agents."""
+    reference hollow at zero), 'not identified' at zero with no bar where a bin is.  As in ``figure``, a weak estimate
+    (one ``estimate_dose`` gives a note: fewer than twice ``min_informative`` agents inform it or the reference) is
+    grey; each panel's title gives the slope and its leave-one-agent-out range, each bin's label its rounds and
+    informative agents."""
     plotting.setup()
     outs = list(dict.fromkeys(dose["outcome"]))
-    fig, axes = plt.subplots(1, len(outs), figsize=(4.8 * len(outs), 4.6), sharey=True, squeeze=False)
+    fig, axes = plt.subplots(1, len(outs), figsize=(4.8 * len(outs), 4.9), sharey=True, squeeze=False)
     for k, (ax, key) in enumerate(zip(axes[0], outs)):
         d = dose[dose["outcome"] == key].set_index("term")
         for i, b in enumerate(HEAD_BINS):
@@ -243,7 +291,7 @@ def dose_figure(dose: pd.DataFrame, path, min_bin_agents: int = MIN_BIN_AGENTS) 
                 ax.annotate("reference", (i, 0), xytext=(0, -10), textcoords="offset points", ha="center", va="top",
                             fontsize=8, color=plotting.INK_2)
             elif pd.notna(r["beta"]):
-                c = plotting.NEUTRAL if r["agents_spanning"] < 2 * min_bin_agents else plotting.SERIES[k]
+                c = plotting.NEUTRAL if pd.notna(r["note"]) else plotting.SERIES[k]
                 ax.errorbar(i, r["beta"], yerr=[[r["beta"] - r["ci_lo"]], [r["ci_hi"] - r["beta"]]], fmt="o", color=c,
                             capsize=3, lw=2, markersize=7)
                 ax.annotate(f"{r['beta']:+.2f}", (i, r["beta"]), xytext=(8, 0), textcoords="offset points",
@@ -252,15 +300,16 @@ def dose_figure(dose: pd.DataFrame, path, min_bin_agents: int = MIN_BIN_AGENTS) 
                 ax.text(i, 0, "not\nidentified", ha="center", va="center", fontsize=8, style="italic",
                         color=plotting.INK_2, bbox={"boxstyle": "round,pad=0.2", "fc": plotting.SURFACE, "ec": "none"})
         s = d.loc[SLOPE]
-        slope = (f"slope {s['beta']:+.3f} per log1p(h), 95% CI {s['ci_lo']:+.3f} to {s['ci_hi']:+.3f}"
+        slope = (f"slope {s['beta']:+.3f} per log1p(h), 95% CI {s['ci_lo']:+.3f} to {s['ci_hi']:+.3f}\n"
+                 f"leaving one agent out: {s['loo_lo']:+.3f} to {s['loo_hi']:+.3f}"
                  if pd.notna(s["beta"]) else "slope not identified")
         label = OUTCOMES[key][0][0].lower() + OUTCOMES[key][0][1:]
         ax.set_title(f"{key}: {label}\n{slope}" + (f"\n({DOSE_OUTCOMES[key]})" if DOSE_OUTCOMES.get(key) else ""),
                      loc="left", fontsize=9, fontweight="normal", color=plotting.INK)
         ax.axhline(0, color=plotting.NEUTRAL, lw=1)
         ax.set_xticks(range(len(HEAD_BINS)))
-        ax.set_xticklabels([f"{b}\n{int(d.loc[b, 'n_term'])} rounds\n{int(d.loc[b, 'agents_spanning'])} agents"
-                            for b in HEAD_BINS], fontsize=8)
+        ax.set_xticklabels([f"{b}\n{int(d.loc[b, 'n_term'])} rounds\n{int(k)} agent{'s' * (k != 1)}"
+                            for b, k in d.loc[list(HEAD_BINS), "agents_informative"].items()], fontsize=8)
         ax.set_xlim(-0.6, len(HEAD_BINS) - 0.4)
         ax.grid(axis="x", visible=False)
         ax.set_xlabel("How long the consensus had been public before the report")
@@ -269,8 +318,9 @@ def dose_figure(dose: pd.DataFrame, path, min_bin_agents: int = MIN_BIN_AGENTS) 
     axes[0][0].set_ylabel(f"Effect on the outcome vs {DOSE_REF} (share)")
     fig.suptitle("Exploratory: dose response among exposed rounds", x=0.01, ha="left", fontsize=13, fontweight="bold")
     fig.text(0.01, 0.91, "Given the answer was public, does reuse grow with how long it had been? Agent + item FE, "
-             f"95% CI clustered by agent. A bin is\nnot identified when fewer than {min_bin_agents} agents have a round "
-             f"in it and in another bin, grey under {2 * min_bin_agents}. Whether exposure itself matters is not "
-             "estimated here.", ha="left", va="top", fontsize=9, color=plotting.INK_2)
-    fig.tight_layout(rect=(0, 0, 1, 0.86))
+             "95% CI clustered by agent. The agents under each bin\nhave a round in it and in another bin and an "
+             f"outcome that varies: under {min_informative} the bin is not identified, and its estimate is grey when "
+             f"it or the reference has\nunder {2 * min_informative}. Whether exposure itself matters is not estimated "
+             "here.", ha="left", va="top", fontsize=9, color=plotting.INK_2)
+    fig.tight_layout(rect=(0, 0, 1, 0.83))
     return plotting.save(fig, path)

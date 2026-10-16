@@ -190,27 +190,33 @@ def test_a2_draws_every_row_and_says_which_are_not_identified(drawn):
 
 
 def test_a2_dose_draws_each_bin_against_the_reference(drawn):
-    def row(outcome, term, beta=np.nan, spanning=30, note=np.nan, n=50):
+    def row(outcome, term, beta=np.nan, informative=30, note=np.nan, n=50):
         return {"outcome": outcome, "term": term, "beta": beta, "ci_lo": beta - 0.1, "ci_hi": beta + 0.1,
-                "n_term": n, "agents_spanning": spanning, "note": note}
+                "loo_lo": beta - 0.05, "loo_hi": beta + 0.02, "n_term": n, "agents_informative": informative,
+                "note": note}
     dose = pd.DataFrame([
-        row("y_instant|known", causal.SLOPE, 0.12), row("y_instant|known", "<1h", n=20, spanning=25),
-        row("y_instant|known", "1-6h", 0.3), row("y_instant|known", "6-24h", 0.4, spanning=12),
-        row("y_instant|known", ">24h", spanning=6, note="not identified: only 6 agents have a round here and in another bin"),
+        row("y_instant|known", causal.SLOPE, 0.12), row("y_instant|known", "<1h", n=20, informative=25),
+        row("y_instant|known", "1-6h", 0.3), row("y_instant|known", "6-24h", 0.4, informative=12,
+                                                 note="shape only: 12 agents inform it (< 20)"),
+        row("y_instant|known", ">24h", informative=1, note="not identified: only 6 agents have a round here and in "
+                                                           "another bin"),
         *[row("y_instant", t, note="not identified: only 8 agents have rounds in two or more head-start bins")
           for t in [causal.SLOPE, *causal.HEAD_BINS]]])
     causal.dose_figure(dose, "a2_dose.png")
     fig = drawn[0]
     known, inst = fig.axes
     bars = {round(c.lines[0].get_ydata()[0], 3): c.lines[0].get_color() for c in known.containers}
-    assert bars == {0.3: plotting.SERIES[0], 0.4: plotting.NEUTRAL}          # 12 spanning agents (under 20) is grey
+    assert bars == {0.3: plotting.SERIES[0], 0.4: plotting.NEUTRAL}          # the shape-only bin is grey
     hollow = [ln for ln in known.lines if ln.get_markerfacecolor() == plotting.SURFACE]
     assert len(hollow) == 1 and hollow[0].get_xdata()[0] == 0 and hollow[0].get_ydata()[0] == 0   # the reference
     assert [t.get_text() for t in known.texts if "identified" in t.get_text()] == ["not\nidentified"]
-    assert "slope +0.120 per log1p(h), 95% CI +0.020 to +0.220" in known.get_title("left")
-    assert [t.get_text() for t in known.get_xticklabels()][-1] == ">24h\n50 rounds\n6 agents"
+    assert "slope +0.120 per log1p(h), 95% CI +0.020 to +0.220\nleaving one agent out: +0.070 to +0.140" in \
+        known.get_title("left")
+    assert [t.get_text() for t in known.get_xticklabels()][-2:] == ["6-24h\n50 rounds\n12 agents",
+                                                                    ">24h\n50 rounds\n1 agent"]
     assert not inst.containers and sum("identified" in t.get_text() for t in inst.texts) == 4   # the reference too
     assert "slope not identified" in inst.get_title("left") and "(biased: " in inst.get_title("left")
+    assert "an outcome that varies: under 10 the bin is not identified" in fig.texts[-1].get_text()
 
 
 def test_a5_lorenz_marks_where_the_top_sources_begin(drawn):

@@ -63,8 +63,8 @@ TASK = "Work through the questions you are given in order and post each answer o
 def _check(copy_from, copy_ramp_h, delete_rate, technique, n_boards, alias_rate, confound) -> None:
     if copy_from not in COPY_FROM:
         raise ValueError(f"copy_from must be one of {COPY_FROM}")
-    if copy_ramp_h is not None and not copy_ramp_h > 0:
-        raise ValueError("copy_ramp_h must be a positive number of hours")
+    if copy_ramp_h is not None and not 0 < copy_ramp_h < float("inf"):
+        raise ValueError("copy_ramp_h must be a positive, finite number of hours")
     for name, v in (("delete_rate", delete_rate), ("alias_rate", alias_rate), ("confound", confound)):
         if not 0 <= v <= 1:
             raise ValueError(f"{name} must be a share between 0 and 1")

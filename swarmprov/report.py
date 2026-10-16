@@ -955,47 +955,70 @@ def _dose_block(run: RunDir, ex: pd.DataFrame, ex_alt: pd.DataFrame, est: pd.Dat
     alt = causal.estimate_dose(ex_alt) if len(ex_alt) > 20 else pd.DataFrame()
     summary["A2_dose"] = {"label": "exploratory: dose response among exposed rounds", "ref": causal.DOSE_REF,
                           "min_within_sd": causal.MIN_DOSE_SD, "min_bin_agents": causal.MIN_BIN_AGENTS,
-                          "rows": dose.to_dict("records"), "stated_latency_slope": lat,
-                          "other_mapping": alt.to_dict("records")}
+                          "min_informative": causal.MIN_INFORMATIVE, "rows": dose.to_dict("records"),
+                          "stated_latency_slope": lat, "other_mapping": alt.to_dict("records")}
     first = next(iter(causal.DOSE_OUTCOMES))
     sw = est.set_index(["outcome", "treatment"])["agents_with_D_variation"].get((first, "D_cons"))
     per = dose.drop_duplicates("outcome").set_index("outcome")
-    vary = int(dose.loc[(dose["outcome"] == first) & (dose["term"] == causal.SLOPE), "agents_spanning"].iloc[0])
+    slopes = dose[dose["term"] == causal.SLOPE].set_index("outcome")
+    inf = int(slopes.loc[first, "agents_informative"])
     bias = "".join(
         f" `{k}` is shown but {c}, so how often agents state a latency at all enters its slope"
         + (f"; here, within an agent, the share of rounds stating one changes by {lat['beta']:+.3f} per unit of "
            f"log1p(hours) (SE {lat['se']:.3f}), which pushes its slope {'down' if lat['beta'] < 0 else 'up'}." if lat else
            "; here every exposed round states one, so the two rows agree." if per.loc[k, "n"] == per.loc[first, "n"]
-           else ".") for k, c in causal.DOSE_OUTCOMES.items() if c)
-    m, k2 = causal.MIN_BIN_AGENTS, 2 * causal.MIN_BIN_AGENTS
+           else ".")
+        + (f" `{first}` avoids that scoring but keeps only the rounds that state a latency, and whether a round states "
+           "one comes after the head start and " + ("moves with it, as just measured, so its sample is" if lat else
+                                                     "can move with it, so its sample may be")
+           + " selected on the dose: it is the less biased read, not an unbiased one."
+           if per.loc[k, "n"] != per.loc[first, "n"] else "") for k, c in causal.DOSE_OUTCOMES.items() if c)
+    m, k2 = causal.MIN_INFORMATIVE, 2 * causal.MIN_INFORMATIVE
     L = ["**Exploratory: dose response among exposed rounds.** A narrower question than the table above, asked of the "
          "exposed rounds only (`D_cons` = 1): given the consensus value was public, does instant reuse grow with how "
          "long it had been public? The dose is the consensus value's head start over the report, as `log1p(hours)` "
-         f"(the slope) and in bins against a head start under 1 h, with agent + item FE and SEs clustered by agent. "
-         f"Within an agent it varies across items where exposure barely does: on `{first}`, {vary:,} agents' head "
-         "starts vary" + (f", against {int(sw):,} agents whose exposure status switches" if sw is not None else "")
-         + ". So it identifies only this intensive margin; whether exposure itself matters stays as identified as the "
-         "table above says. Identifying assumption: within an agent, how long before its report others had posted the "
-         "consensus value is unrelated to its item-specific propensity to answer instantly.\n",
-         f"The head start runs to the report, an upper bound on arrival, so a late report gets a longer one; read "
-         f"`{first}`." + bias + " An outcome is identified when the within-agent SD of log1p(head start in hours) is "
-         f"at least {causal.MIN_DOSE_SD} (a spread of about {np.expm1(causal.MIN_DOSE_SD):.0%} in 1 + hours) and at "
-         f"least {m} agents have rounds in two or more bins; a bin needs {m} agents with a round in it and in another "
-         f"bin, and so does the {causal.DOSE_REF} reference, else its row reads *not identified*. A bin's interval rests "
-         f"on those agents and runs narrow when they are few (under {k2}, grey in the figure): read such bins as the "
-         "shape and the slope as the test. *beta* is the change in the share answering instantly per unit of "
+         "(the slope) and in bins against a head start under 1 h, with agent + item FE and SEs clustered by agent. "
+         "Within an agent the head start varies across items" + (" where exposure barely does" if sw is not None and
+                                                                  inf > sw else "")
+         + f": on `{first}`, {inf:,} agents vary in both the head start and the outcome (the agents that inform the "
+         "slope)" + (f", against {int(sw):,} whose exposure status switches (those that identify the table above)"
+                     if sw is not None else "")
+         + ". It identifies only this intensive margin and says nothing about whether exposure itself matters (the "
+         "extensive margin), which this block leaves unidentified; the table above is A2's estimate of that. "
+         "Identifying assumption: within an agent, how long before its report others had posted the consensus value "
+         "is unrelated to its item-specific propensity to answer instantly.\n",
+         "Both outcomes measure the head start to the report, an upper bound on arrival, so a late report gets a "
+         "longer one whichever is read." + bias + " An outcome is identified when the within-agent SD of "
+         f"log1p(head start in hours) is at least {causal.MIN_DOSE_SD} (a spread of about "
+         f"{np.expm1(causal.MIN_DOSE_SD):.0%} in 1 + hours) and at least {causal.MIN_BIN_AGENTS} agents have rounds in "
+         f"two or more bins. Each term then needs {m} agents that inform it, else it reads *not identified*: for the "
+         "slope, agents whose head start and outcome both vary; for a bin, agents with a round in it and in another bin "
+         "whose outcome varies (an agent that answers all its exposed rounds the same way moves an estimate only "
+         f"through the item effects). Every bin is measured against the {causal.DOSE_REF} reference, which needs them "
+         f"too. An estimate informed by fewer than {k2} (a bin: in it or in the reference) rests on so few agents that "
+         "its interval runs narrow and its p-value overstates the evidence: its note reads *weak* (the slope) or *shape "
+         "only* (a bin), and it is grey in the figure. Read the bins as the shape and the slope as the test, with its "
+         "leave-one-agent-out range below. *beta* is the change in the share answering instantly per unit of "
          "log1p(hours) (a 2.7-fold longer 1 + hours) for the slope, or against the reference for a bin; *mean y* is "
          "the raw share; *agents spanning* counts the agents whose head start varies (slope) or that have a round in "
-         "the bin and in another.\n",
+         "the bin and in another, and *agents informative* those of them whose outcome varies too.\n",
          f"![dose response](figures/{fig.name})\n"]
-    tbl = dose.rename(columns={"n_term": "rounds", "mean_y": "mean y", "agents_spanning": "agents spanning"})
+    tbl = dose.rename(columns={"n_term": "rounds", "mean_y": "mean y", "agents_spanning": "agents spanning",
+                               "agents_informative": "agents informative"})
     tbl["term"] = tbl["term"].replace({causal.DOSE_REF: f"{causal.DOSE_REF} (reference)"})
-    L.append(md_table(tbl[["outcome", "term", "beta", "se", "p", "rounds", "mean y", "agents spanning", "note"]],
-                      index=False, floatfmt="{:.3f}"))
-    L.append("Samples: " + "; ".join(
-        f"`{r.outcome}` {r.n:,} exposed rounds from {r.agents:,} agents on {r.items:,} items, within-agent SD "
-        f"{r.within_sd:.2f}, {r.bin_agents:,} agents in two or more bins" for r in per.reset_index().itertuples())
-             + ".\n")
+    L.append(md_table(tbl[["outcome", "term", "beta", "se", "p", "rounds", "mean y", "agents spanning",
+                           "agents informative", "note"]], index=False, floatfmt="{:.3f}"))
+    L.append("Samples (exposed rounds after dropping single-round agents and items): " + "; ".join(
+        f"`{r.outcome}` {r.n:,} rounds from {r.agents:,} agents on {r.items:,} items, within-agent SD "
+        f"{r.within_sd:.2f}, {r.bin_agents:,} agents in two or more bins, "
+        f"{int(slopes.loc[r.outcome, 'agents_informative']):,} informing the slope"
+        for r in per.reset_index().itertuples()) + ".\n")
+    loo = slopes[slopes["loo_lo"].notna()]
+    if len(loo):
+        L.append("_Leave one agent out_: dropping one agent at a time moves the slope " + "; ".join(
+            f"on `{o}` from {r.beta:+.3f} to between {r.loo_lo:+.3f} and {r.loo_hi:+.3f}, with "
+            f"{r.var_share_top2:.0%} of its clustered variance from two agents"
+            + (" (its SE rests mostly on them)" if r.var_share_top2 > 0.5 else "") for o, r in loo.iterrows()) + ".\n")
     if len(alt):
         sl = alt[alt["term"] == causal.SLOPE]
         L.append("_Sensitivity (other identity mapping)_: the slope is " + " and ".join(

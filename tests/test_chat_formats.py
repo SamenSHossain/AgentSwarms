@@ -133,7 +133,8 @@ def test_sequence_clock_suppresses_every_hour_based_number(runs):
     assert "window_sensitivity" not in json.loads((run.path / "summary.json").read_text()).get("A6", {})
     assert run.read("edges_merged").query("kind == 'relay'")["within_clock_res"].isna().all()
     ex = run.read("exposures_merged")                       # positions are not seconds: no gap, no threshold flag
-    assert ex[["gap_s", "D_w10m", "D_w60m", "D_cons_w60m"]].isna().all().all() and ex["D"].notna().all()
+    assert ex[["gap_s", "D_w10m", "D_w60m", "D_cons_w60m", "gap_cons_s"]].isna().all().all() and ex["D"].notna().all()
+    assert (ex["D_cons"] == 1).any() and (ex["t_cons"].notna() == (ex["D_cons"] == 1)).all()   # kept as a position
 
 
 def test_sequence_clock_keeps_a4_status_and_a3_counts_without_hours(runs):
