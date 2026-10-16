@@ -354,7 +354,8 @@ def _context(run: RunDir, mapping: str, cfg, boot: int, prof: dict) -> _Ctx:
     seq = prof.get("clock") == "sequence"   # posts ordered by message position: nothing measured in hours
     summary = {"mapping": mapping, "profile": {
         k: pd.Timestamp(prof[k]).isoformat() if k.endswith("_ts") and prof.get(k) else prof.get(k)
-        for k in ("adapter", "n_events", "n_authors", "first_ts", "last_ts", "clock")}}
+        for k in ("adapter", "n_events", "n_authors", "first_ts", "last_ts", "clock")}
+        | ({"llm": prof["llm"]} if prof.get("llm") else {})}
     # the framework pseudo-authors, when they wrote no agent's post: the task and unattributed tool output
     posts = public(events)
     pseudo = [a for a in ("task", "tool") if a in set(events["author_raw"]) - set(posts["author_raw"])]
@@ -374,8 +375,12 @@ def _context(run: RunDir, mapping: str, cfg, boot: int, prof: dict) -> _Ctx:
 def _header(c: _Ctx) -> list[str]:
     """Title, source, the data capabilities, identity merges, ingest's warnings and the clock notes."""
     prof, notes = c.prof, c.notes
+    llm = prof.get("llm")
     L = ["# Copied or computed? — provenance report\n",
-         f"Source: `{prof['source']}` (adapter `{prof['adapter']}`), {prof['n_events']:,} posts from "
+         f"Source: `{prof['source']}` (adapter `{prof['adapter']}`"
+         + (f"; LLM extraction with `{llm['model']}` on {llm['candidates']:,} candidate posts: {llm['calls']:,} calls, "
+            f"{llm['failed']:,} failed, {llm['cached']:,} from the cache" if llm else "")
+         + f"), {prof['n_events']:,} posts from "
          f"{prof['n_authors'] - len(c.pseudo):,} author strings" + (f" plus {' and '.join(f'`{a}`' for a in c.pseudo)}"
                                                                       if c.pseudo else "") + ", " + _when(prof, notes)
          + f"Agent identity mapping: **{c.mapping}** (sensitivity under the other mapping below).\n",
@@ -432,7 +437,8 @@ def _a1(c: _Ctx) -> list[str]:
     ex, seq, run, mapping, summary = c.ex, c.seq, c.run, c.mapping, c.summary
     if not len(ex):
         return _skipped("A1", "needs agent-rounds (an agent's answer to an item in a task family); "
-                        + _a1_gap(c.claims, c.rounds, _family_hint(c.cfg, c.roster)), summary)
+                        + _a1_gap(c.claims, c.rounds, _family_hint(c.cfg, c.roster, bool(c.prof.get("llm"))),
+                                  bool(c.prof.get("llm"))), summary)
     r1 = provenance.summarize(ex, wall_clock=not seq, boot=c.boot)
     provenance.figure(ex, r1, run.figure("a1_provenance.png", mapping), wall_clock=not seq)
     a = summary["A1"] = {k: v for k, v in r1.items() if not isinstance(v, pd.DataFrame)} | (
@@ -1483,27 +1489,29 @@ def _when(prof: dict, notes: dict) -> str:
                "comparison. " if n else ""))
 
 
-def _family_hint(cfg, roster: bool) -> str:
+def _family_hint(cfg, roster: bool, llm: bool = False) -> str:
     """Why answer claims have no task family, and the setting that would give them one (``default_family`` only
-    where it applies: no families configured and no roster)."""
+    where it applies: no families configured and no roster; ``--llm`` unless the run used it)."""
+    alt = "" if llm else ", or use `--llm`"
     if cfg.families:
         return ("none has a task family: their posts match no configured `families` pattern"
-                + (" and fall in no roster or shared goal" if roster else "") + " (widen the patterns, or use `--llm`)")
+                + (" and fall in no roster or shared goal" if roster else "") + f" (widen the patterns{alt})")
     if roster:
         return ("none has a task family: their posts fall in no roster or shared goal, and `default_family` does not "
-                "apply with a roster (set `families`, or use `--llm`)")
-    return "none has a task family (set `families` or `default_family`, or use `--llm`)"
+                f"apply with a roster (set `families`{alt})")
+    return f"none has a task family (set `families` or `default_family`{alt})"
 
 
-def _a1_gap(claims: pd.DataFrame, rounds: pd.DataFrame, family_hint: str) -> str:
+def _a1_gap(claims: pd.DataFrame, rounds: pd.DataFrame, family_hint: str, llm: bool = False) -> str:
     """Why no agent-round reached exposure, from the agent_rounds filter and exposure's timestamp guard."""
+    alt = "" if llm else ", or use `--llm`"
     a = claims[claims["event_type"] == "answer"] if len(claims) else claims
     if not len(a):
-        return "no answer claims were extracted (see the funnel; set `families` and `extra_items`, or use `--llm`)"
+        return f"no answer claims were extracted (see the funnel; set `families` and `extra_items`{alt})"
     if not len(rounds):
         has_fam, has_item = a["family"].fillna("").astype(bool), a["item"].notna()
         why = (family_hint if not has_fam.any() else
-               "none names an item (add `extra_items`, or use `--llm`)" if not has_item.any() else
+               f"none names an item (add `extra_items`{alt})" if not has_item.any() else
                "none names both an item and a task family")
         return f"{len(a):,} answer claim{'s' * (len(a) != 1)} extracted, 0 agent-rounds: {why}"
     return f"none of the {len(rounds):,} agent-rounds has a timestamp, so nothing can be ordered against them"

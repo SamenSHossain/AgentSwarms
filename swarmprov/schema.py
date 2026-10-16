@@ -185,6 +185,9 @@ class RunDir:
         """``profile.json``: what ingest found and the settings each stage ran with."""
         return json.loads((self.path / "profile.json").read_text(encoding="utf-8"))
 
+    def write_profile(self, prof: dict) -> None:
+        (self.path / "profile.json").write_text(json.dumps(prof, indent=2, default=str), encoding="utf-8")
+
     def table_path(self, name: str) -> Path:
         return self.path / f"{name}.parquet"
 

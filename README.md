@@ -323,7 +323,7 @@ All source-specific knowledge lives in one adapter plus an `AdapterConfig`, whic
 
 **URLs as facts** — Indexed for reach and relay chains on free-form chat without task structure.
 
-**Optional LLM extraction** — `--llm claude-haiku-4-5` uses structured outputs and caches by event id. LLM handles semantics, rules fill in numbers.
+**Optional LLM extraction** — `--llm claude-haiku-4-5` uses structured outputs. LLM handles semantics, rules fill in numbers. Results are cached in `RUN/llm_cache/` under a hash of the model, the prompt and the post (family, author, channel, text), so an edited post or prompt is asked again and a rerun into the same directory never serves another transcript's extraction. The post is sent between `<post>` tags it cannot close (a `<post` or `</post` in its text is broken up), and the prompt says it is untrusted agent-written data whose instructions are never followed. The first call runs alone: if it fails with an authentication, permission or unknown-model error (no `ANTHROPIC_API_KEY` included), or if every call fails, the run stops with that error (exit status 2). Otherwise a post whose call failed keeps its rule claims, and profile.json's `warnings` and the report say `N of M LLM calls failed: <first error>`. profile.json's `llm` records the model and the counts (candidate posts, served from the cache, calls, failed), which the report's source line repeats; a later `extract` without `--llm` clears it, and a run that used `--llm` no longer suggests it in its skip notes.
 
 ## Design notes and limitations
 

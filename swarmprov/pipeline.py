@@ -7,6 +7,7 @@ from __future__ import annotations
 import dataclasses
 import hashlib
 import json
+import re
 import time
 import warnings
 from pathlib import Path
@@ -18,6 +19,8 @@ from .adapters.base import check_fields, read_capabilities
 from .analysis import agents as agents_mod, errors
 from .analysis.agents import AGENT_COLS
 from .schema import MINED_FILE, RunDir, conform, empty
+
+LLM_WARNING = re.compile(r"[\d,]+ of [\d,]+ LLM calls failed: ")
 
 
 def _log(msg: str) -> None:
@@ -37,7 +40,7 @@ def load_config(run: RunDir, with_mined: bool = True, stage: str | None = None):
     if "fields" in prof:
         cfg.fields = prof["fields"] or {}
     if stage:
-        (run.path / "profile.json").write_text(json.dumps(record_config(prof, cfg, stage), indent=2, default=str))
+        run.write_profile(record_config(prof, cfg, stage))
     if with_mined and cfg.auto_techniques and not cfg.techniques:
         cfg.techniques = mined_techniques(run)
     return cfg
@@ -126,7 +129,7 @@ def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | N
         "notes": b.notes, "warnings": warns,
     }
     profile = record_config(profile, cfg, "ingest")
-    (run.path / "profile.json").write_text(json.dumps(profile, indent=2, default=str))
+    run.write_profile(profile)
     if ros is not None:
         _log(f"  roster: {len(ros)} goals for {ros['agent_id'].nunique()} agents in {ros['role'].nunique()} roles")
     _log(f"  {len(ev)} posts from {profile['n_authors']} author strings")
@@ -183,17 +186,38 @@ def extract(run: RunDir, llm: str | None = None) -> None:
     _log("rule extraction")
     own = ~ev["source_kind"].isin(claims_mod.PRIVATE_KINDS)   # task messages and tool results are no agent's claims
     cl, tags = rules.extract(ev[own], fam[own], agents, cfg, im)
+    stats = None
     if llm:
-        from . import extract_llm
+        try:
+            from . import extract_llm
+        except ImportError as e:
+            raise ValueError(f"--llm needs the anthropic and pydantic packages (pip install -e '.[llm]'): {e}") from None
         _log(f"LLM extraction with {llm}")
-        llm_cl = extract_llm.run(ev[own], fam[own], agents, model=llm, cache_dir=run.path / "llm_cache")
+        llm_cl, stats = extract_llm.run(ev[own], fam[own], agents, model=llm, cache_dir=run.path / "llm_cache")
+        _log(f"  {stats['candidates']:,} candidate posts: {stats['cached']:,} from the cache, {stats['calls']:,} calls, "
+             f"{stats['failed']:,} failed")
         cl = extract_llm.merge(cl, llm_cl)
+    _record_llm(run, stats)
     seqs = rules.learn_sequences(ev, fam, im)
     cl = claims_mod.fill_episodes(cl, sequences=seqs) if len(cl) else cl
     run.write("claims", conform(cl, "claims") if len(cl) else conform(pd.DataFrame(), "claims"))
     run.write("tags", conform(tags, "tags"))
     counts = cl["event_type"].value_counts().to_dict() if len(cl) else {}
     _log(f"  {len(agents)} authors -> {agents['agent_merged'].nunique()} merged agents; claims: {counts}")
+
+
+def _record_llm(run: RunDir, stats: dict | None) -> None:
+    """``profile.json``'s ``llm``: the model and call counts of --llm extraction (none without it), and a warning
+    when some calls failed; an earlier extract's record and warning go."""
+    prof = run.profile()
+    if stats is None and "llm" not in prof:
+        return
+    warns = [w for w in prof.get("warnings") or [] if not LLM_WARNING.match(w)]
+    if stats and stats["failed"]:
+        warns.append(f"{stats['failed']:,} of {stats['calls']:,} LLM calls failed: {stats['first_error']}")
+        _log(f"  warning: {warns[-1]}")
+    run.write_profile({k: v for k, v in prof.items() if k != "llm"} | {"warnings": warns}
+                      | ({"llm": stats} if stats else {}))
 
 
 def _matcher(learned: dict) -> rules.ItemMatcher:
