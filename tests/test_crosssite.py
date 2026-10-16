@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pandas as pd
@@ -5,6 +6,8 @@ import pytest
 
 from swarmprov.adapters.base import Technique
 from swarmprov.analysis import crosssite
+from swarmprov.crosssite_pipeline import run_crosssite
+from swarmprov.schema import RunDir, conform
 
 ROOT = Path(__file__).resolve().parents[1]
 T0 = pd.Timestamp("2026-06-01 00:00", tz="UTC")
@@ -120,3 +123,26 @@ def test_coverage_summary_real_file():
     assert any("Discord" in c and str(s["discord_urls"]) in c for c in s["caveats"])
     md = crosssite.coverage_markdown(s)
     assert "| category |" in md and "427" in md
+
+
+def test_run_crosssite_writes_its_tables_as_csv(tmp_path):
+    """The two tables come as CSV beside the Parquet, the files results/crosssite commits."""
+    wiki = RunDir(tmp_path / "wiki")
+    ev = pd.DataFrame({"event_id": [f"w{i}" for i in range(6)], "ts": [T0 + pd.Timedelta(hours=i) for i in range(6)],
+                       "channel": [f"dse/Page{i}" for i in range(6)], "author_raw": [f"a{i}" for i in range(6)],
+                       "text": ["fetch via https://markdown.new/x"] + ["plain"] * 5, "site": "dse",
+                       "source_kind": "revision", "family": ""})
+    wiki.write("events", conform(ev, "events").assign(family=""))
+    corpus = tmp_path / "raw2"
+    corpus.mkdir()
+    records = [{"id": f"r{i}", "text": "mirror https://markdown.new/y" if i == 2 else f"note {i}",
+                "origins": [{"source_id": f"p/{i}", "site": "paste.linuxiarz.pl", "title": f"P{i}",
+                             "url": f"https://paste.linuxiarz.pl/P{i}", "kind": "paste_candidate",
+                             "source_date_literal": (T0 + pd.Timedelta(hours=1 + i)).isoformat()}]} for i in range(6)]
+    (corpus / "records.jsonl").write_text("".join(json.dumps(r) + "\n" for r in records))
+    run = run_crosssite(wiki.path, corpus, tmp_path / "cs", markers=[])
+    for name in ("technique_spread", "technique_site_summary"):
+        assert (run.path / f"{name}.csv").read_text() == run.read(name).to_csv(index=False)
+    spread = pd.read_csv(run.path / "technique_spread.csv")
+    assert spread[spread["technique"] == "proxy-markdown-new"]["site"].tolist() == ["dse", "paste.linuxiarz.pl"]
+    assert spread["hours_after_origin"].tolist() == pytest.approx([0.0, 3.0])

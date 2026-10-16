@@ -64,8 +64,9 @@ def run_crosssite(wiki_run: str | Path, corpus_path: str | Path, out: str | Path
     techs += [t for t in EXTRA_TECHNIQUES if t.name not in names]
     spread = crosssite.technique_spread(ev, techs)
     summary = crosssite.technique_site_summary(spread, ev, techs)
-    run.write("technique_spread", spread)
-    run.write("technique_site_summary", summary)
+    for name, df in (("technique_spread", spread), ("technique_site_summary", summary)):
+        run.write(name, df)
+        run.write_csv(name, df)
     fig_spread = crosssite.technique_spread_figure(spread, run.figure("x1_technique_spread.png"))
     fig_time = crosssite.timeline(ev, run.figure("x2_timeline.png"),
                                   [(pd.Timestamp(t, tz="UTC"), lab) for t, lab in markers])
