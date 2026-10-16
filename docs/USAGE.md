@@ -51,7 +51,7 @@ Prints, and writes nothing: each adapter's sniff (with the error a sniff raised)
 
 ### ingest
 
-`swarmprov ingest INPUT -o RUN [--roster GOALS] [--field FIELD=KEY]`
+`swarmprov ingest INPUT -o RUN [--adapter A] [--config FILE] [--roster GOALS] [--field FIELD=KEY]`
 
 Writes `events`, `lifecycle`, `reads` (a framework trace's tool results), `roster`, `profile.json` (capabilities, the run's `clock`, the `fields` used, ingest's `warnings`, and the settings the stages ran with: `config_settings` as the latest stage read them, a hash per stage in `config_stages`).
 
@@ -111,7 +111,7 @@ An empty table still gets the full header. A detail table exists only for the ma
 
 ### sample-gold and validate
 
-`swarmprov sample-gold RUN -n 100` / `swarmprov validate RUN labels.jsonl`
+`swarmprov sample-gold RUN [-n 120] [--seed 0] [--exclude LABELS ...] [--name gold_template.jsonl]` / `swarmprov validate RUN labels.jsonl [--out-name validation.json]`
 
 A hand-label sample, and precision–recall on the labelled posts the run holds (`validation.json`, with that `coverage`; labels none of whose posts are in the run are not scored, exit 1).
 

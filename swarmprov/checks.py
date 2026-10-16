@@ -311,6 +311,12 @@ def main(run: RunDir, mapping: str = "merged") -> int:
             f": {r.n_violations:,} {CHECKS[r.check][1]} (e.g. {', '.join(r.example_ids)})" if r.n_violations else ""))
     fail = out[out["n_violations"] > 0]
     n_err = int((fail["severity"] == "error").sum())
-    print(f"{len(out) - len(fail)} of {len(out)} checks pass: {n_err} error{'s' * (n_err != 1)}, "
-          f"{len(fail) - n_err} warning{'s' * (len(fail) - n_err != 1)}; written to {run.path / f'checks{suffix(mapping)}.json'}")
+    print(f"{summary_line(len(out), len(out) - len(fail), n_err)}; written to {run.path / f'checks{suffix(mapping)}.json'}")
     return 1 if n_err else 0
+
+
+def summary_line(n_checks: int, n_pass: int, n_errors: int) -> str:
+    """What ``swarmprov check`` prints after the checks, e.g. ``19 of 19 checks pass: 0 errors, 0 warnings``."""
+    n_warn = n_checks - n_pass - n_errors
+    return (f"{n_pass} of {n_checks} checks pass: {n_errors} error{'s' * (n_errors != 1)}, "
+            f"{n_warn} warning{'s' * (n_warn != 1)}")

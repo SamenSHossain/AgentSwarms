@@ -133,6 +133,8 @@ def _settings(run: RunDir, prof: dict):
     that, the config file as it reads now (False), or why it cannot be read."""
     if "config_settings" in prof:
         return prof["config_settings"], True
+    if "adapter" not in prof:   # no built-in config to read the file against; the setup rows show the missing adapter
+        return "unreadable (profile.json names no adapter)", False
     from .pipeline import load_config
     try:
         return load_config(run, with_mined=False).settings(), False

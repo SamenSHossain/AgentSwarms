@@ -197,3 +197,16 @@ def test_the_config_is_read_as_each_run_used_it(tmp_path, capsys):
     cfg.unlink()
     gone = compare.compare(tmp_path / "A", tmp_path / "A")
     assert gone["n_changes"] == 0 and not gone["setup"]
+
+
+def test_a_profile_without_an_adapter_is_a_setup_difference(tmp_path):
+    """A hand-made profile.json naming no adapter has no config to read: the setup says so and the summaries still
+    compare."""
+    for name, prof in (("a", {"adapter": "wiki"}), ("b", {})):
+        (tmp_path / name).mkdir()
+        (tmp_path / name / "profile.json").write_text(json.dumps(prof))
+        (tmp_path / name / "summary.json").write_text(json.dumps({"A1": {"share_exposed": 0.9}}))
+    res = compare.compare(tmp_path / "a", tmp_path / "b")
+    assert res["setup"] == [{"field": "adapter", "a": "wiki", "b": None},
+                            {"field": "config", "a": "read", "b": "unreadable (profile.json names no adapter)"}]
+    assert res["summary"]["changed"] == [] and res["n_changes"] == 2
