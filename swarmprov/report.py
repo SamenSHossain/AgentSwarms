@@ -18,7 +18,7 @@ from .adapters.chat import no_author_warning
 from .analysis import agents as agents_mod, causal, diffusion, errors, origins, provenance, structure, uncertainty
 from .claims import agent_rounds, consensus, public, value_key
 from .exposure import credited
-from .fmt import dumps, json_safe, pct
+from .fmt import dumps, json_safe, log, pct
 from .schema import TABLES, RunDir, other_mapping, suffix
 
 
@@ -241,6 +241,7 @@ def _write(run: RunDir, L: list[str], summary: dict, mapping: str) -> str:
     (run.path / f"report{sfx}.md").write_text(text, encoding="utf-8")
     (run.path / f"summary{sfx}.json").write_text(dumps(summary, indent=2), encoding="utf-8")
     print(f"[swarmprov] wrote {run.path / f'report{sfx}.md'}")
+    log(f"report ({mapping}): report{sfx}.html")
     from .html import build_html
     build_html(run, mapping)
     return text
@@ -307,17 +308,23 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
     if not prof["n_events"]:
         return _no_posts(run, prof, mapping)
     c = _context(run, mapping, cfg, boot, prof)
+    phase = lambda what: log(f"report ({mapping}): {what}")   # a progress line per long part of the stage
     L = _header(c) + _funnel(c.events, c.tags, c.claims, c.rounds, mapping, c.catch_all, c.summary)
     L += _village_block(run, prof, c.summary)
     if run.has("roster"):
         L += _roster_block(run, prof, c.summary)
     L += _lifecycle_blocks(c)
+    resamples = f", {boot:,} bootstrap resamples per interval" if boot else ""
+    phase(f"A1 to A4 with their figures{resamples}")
     L += _a1(c)
     _slots(c)
-    for section in (_a2, _a3, _a4, _a5):
+    for section in (_a2, _a3, _a4):
         L += section(c)
-    L += _agents_block(c.profiles, mapping, c.summary)
-    L += _a6(c) + _validation(c) + _limitations(c)
+    phase(f"A5 graph statistics, the agent profiles and A6 reach with their figures{resamples}")
+    L += _a5(c)   # finds the agent profiles the Agents section reads
+    L += _agents_block(c.profiles, mapping, c.summary) + _a6(c)
+    phase("integrity checks and validation")
+    L += _validation(c) + _limitations(c)
     L[2:2] = _headline(run, c.summary, mapping)
     return _write(run, L, c.summary, mapping)
 
@@ -1506,8 +1513,12 @@ def _a1_gap(claims: pd.DataFrame, rounds: pd.DataFrame, family_hint: str, llm: b
     """Why no agent-round reached exposure, from the agent_rounds filter and exposure's timestamp guard."""
     alt = "" if llm else ", or use `--llm`"
     a = claims[claims["event_type"] == "answer"] if len(claims) else claims
-    if not len(a):
-        return f"no answer claims were extracted (see the funnel; set `families` and `extra_items`{alt})"
+    if not len(a):   # no setting helps here: the rules read only these two forms of an answer report
+        return ("no answer claims were extracted: no post reports an answer in the wording the rules read, "
+                '"answered", "submitted", "replied" or "responded" followed by the value with the item named in the '
+                "sentence (a built-in state or country, a phrase learned after round markers, or `extra_items`), or "
+                "`Answer: ITEM = value` (see \"What the rule extractor recognises\" in the README"
+                + ("" if llm else "; for other wording use `--llm`") + ")")
     if not len(rounds):
         has_fam, has_item = a["family"].fillna("").astype(bool), a["item"].notna()
         why = (family_hint if not has_fam.any() else

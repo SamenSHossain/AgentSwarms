@@ -33,7 +33,7 @@ from .analysis.agents import AGENT_COLS
 from .fmt import dumps
 from .schema import RunDir, suffix
 
-TOL = 1e-6
+TOL = 1e-4   # fixed-effects estimates move by up to 6e-5 relative between processes on identical tables
 LIMIT = 10
 TS_RE = re.compile(r"\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}")
 LOW_OVERLAP = 0.5   # below this share of shared event ids, align posts on (ts, author_raw, text hash)

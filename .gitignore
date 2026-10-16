@@ -8,4 +8,8 @@ data/raw2/
 runs/
 .swarmprov/
 data/synth/
+# the README writes its other synthetic swarms here
+data/ag/
+data/ramp/
+data/scen/
 .coverage

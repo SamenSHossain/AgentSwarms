@@ -139,7 +139,8 @@ def test_llm_failures_reach_the_profile_and_the_report(tmp_path, monkeypatch, ca
            "cache)" in text and "**Warning:** 1 of 5 LLM calls failed: RuntimeError: overloaded" in text
     assert set(run.read("claims")["extractor"]) == {"rule", "llm:fake-model+rule"}   # Hungary's post kept its rules
     assert "--llm" not in report._family_hint(AdapterConfig(name="chat"), False, llm=True)
-    assert "--llm" not in report._a1_gap(pd.DataFrame(columns=["event_type"]), pd.DataFrame(), "", llm=True)
+    assert "--llm" not in report._a1_gap(pd.DataFrame({"event_type": ["answer"], "family": ["f"], "item": [None]}),
+                                         pd.DataFrame(), "", llm=True)
     pipeline.extract(run)
     assert "llm" not in run.profile() and run.profile()["warnings"] == []
     client.fail = lambda msg: AuthenticationError("invalid x-api-key")
@@ -248,7 +249,7 @@ def test_freeform_chat_explains_every_skipped_section_and_counts_url_chains(fami
     text = _text(run)
     assert "## Pipeline funnel" in text and "| answer claims | 0 |" in text
     assert "## A1. Provenance split\n\n_Skipped: needs agent-rounds (an agent's answer to an item in a task family); " \
-           "no answer claims were extracted" in text
+           "no answer claims were extracted: no post reports an answer in the wording the rules read" in text
     assert "## A2. Does availability cause copying?\n\n_Skipped: needs more than 20 agent-rounds; this run has 0._" in text
     assert "## A3. Technique diffusion\n\n_Skipped: needs configured techniques" in text
     assert "No task value was carried by two or more agents, but 2 URLs were, over 4 hops (3 same-page relay, 1 " \
@@ -265,7 +266,12 @@ def test_a1_skip_names_what_kept_claims_from_agent_rounds():
     hint, none = report._family_hint(AdapterConfig(name="chat"), roster=False), pd.DataFrame()
     assert hint == "none has a task family (set `families` or `default_family`, or use `--llm`)"
     pred = answers(("f", "Poland")).assign(event_type="prediction")
-    assert report._a1_gap(pred, none, hint).startswith("no answer claims were extracted")
+    assert report._a1_gap(pred, none, hint) == (
+        'no answer claims were extracted: no post reports an answer in the wording the rules read, "answered", '
+        '"submitted", "replied" or "responded" followed by the value with the item named in the sentence (a built-in '
+        "state or country, a phrase learned after round markers, or `extra_items`), or `Answer: ITEM = value` (see "
+        "\"What the rule extractor recognises\" in the README; for other wording use `--llm`)")
+    assert "families" not in report._a1_gap(pred, none, hint) and "--llm" not in report._a1_gap(pred, none, hint, True)
     assert report._a1_gap(answers(("", "Poland")), none, hint) == f"1 answer claim extracted, 0 agent-rounds: {hint}"
     assert report._a1_gap(answers(("f", None), ("f", None)), none, hint) == \
         "2 answer claims extracted, 0 agent-rounds: none names an item (add `extra_items`, or use `--llm`)"
@@ -273,6 +279,20 @@ def test_a1_skip_names_what_kept_claims_from_agent_rounds():
         "2 answer claims extracted, 0 agent-rounds: none names both an item and a task family"
     assert report._a1_gap(answers(("f", "Poland")), pd.DataFrame({"t_report": [pd.NaT] * 2}), hint) == \
         "none of the 2 agent-rounds has a timestamp, so nothing can be ordered against them"
+
+
+def test_the_skip_note_points_to_a_readme_section_that_exists():
+    assert "**What the rule extractor recognises.**" in (Path(__file__).resolve().parents[1] / "README.md").read_text()
+
+
+def test_the_report_stage_logs_each_phase(tmp_path, capsys):
+    _chat_run(tmp_path, "logs", PLAIN, {"bootstrap_reps": 10})
+    out = capsys.readouterr().out
+    phases = [re.search(rf"\] report \(merged\): {p}", out) for p in (
+        "A1 to A4 with their figures, 10 bootstrap resamples per interval",
+        "A5 graph statistics, the agent profiles and A6 reach with their figures, 10 bootstrap",
+        "integrity checks and validation", "report.html")]
+    assert all(phases) and [m.start() for m in phases] == sorted(m.start() for m in phases)
 
 
 def test_a1_skip_suggests_default_family_only_where_it_applies():

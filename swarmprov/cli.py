@@ -18,12 +18,12 @@
     swarmprov crosssite runs/wiki data/raw2 -o runs/crosssite
     swarmprov compare  runs/wiki runs/wiki2 -o runs/cmp                    # what changed: setup, summary, rows
     swarmprov compare  runs/wiki runs/wiki --mapping-b strict              # the two identity mappings of one run
-    swarmprov suggest  runs/agents -o suggested_config.json            # techniques, families, items mined for review
+    swarmprov suggest  runs/agents -o runs/agents/suggested_config.json   # techniques, families, items mined for review
     swarmprov trace    runs/wiki --agent "Mar16|oecd-equity" --item "Czech Republic"   # one answer's sources
-    swarmprov trace    runs/wiki --fact "oecd-equity|Hungary|9.9" --png hungary.png     # one fact's relay tree
-    swarmprov agent    runs/wiki May28                                                 # one agent's profile and links
-    swarmprov export   runs/wiki -o out/ [--tables exposures,adoptions] [--format csv|parquet] [--mapping strict]
-    swarmprov synth    -o data/synth.jsonl            # synthetic swarm with known provenance
+    swarmprov trace    runs/wiki --fact "oecd-equity|Hungary|9.9" --png runs/wiki/hungary.png   # one fact's relay tree
+    swarmprov agent    runs/wiki "May28|datausa-cashiers-masters"                      # one agent's profile and links
+    swarmprov export   runs/wiki -o runs/export [--tables exposures,adoptions] [--format csv|parquet] [--mapping strict]
+    swarmprov synth    -o data/synth/transcript.jsonl   # synthetic swarm with known provenance (truth.csv beside it)
     swarmprov synth    -o data/ag/autogen.jsonl --format autogen   # the same as an AutoGen stream with tool calls
     swarmprov synth    -o data/ramp/transcript.jsonl --copy-ramp-h 4   # copying grows with the answer's head start
 """
@@ -110,6 +110,7 @@ def _add_fields(s: argparse.ArgumentParser) -> None:
 
 
 def _parser() -> argparse.ArgumentParser:
+    from .compare import TOL
     p = argparse.ArgumentParser(prog="swarmprov", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -194,8 +195,9 @@ def _parser() -> argparse.ArgumentParser:
     s.add_argument("--mapping-b", choices=["merged", "strict"], default="merged")
     s.add_argument("-o", "--out", default="runs/compare", help="directory for compare.md and compare.json")
     s.add_argument("--limit", type=_positive, default=None, help="at most N examples per change (default 10)")
-    s.add_argument("--tol", type=_tolerance, default=1e-6,
-                   help="relative tolerance within which summary numbers count as equal (default 1e-6)")
+    s.add_argument("--tol", type=_tolerance, default=TOL,
+                   help=f"relative tolerance within which summary numbers count as equal (default {TOL:g}, above the "
+                        "solver noise in fixed-effects estimates; 0: exact)")
 
     s = sub.add_parser("suggest", help="a starter config mined from a run (URL techniques, channel families, items), "
                                        "with its evidence; written for review, not applied")

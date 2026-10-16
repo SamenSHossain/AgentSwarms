@@ -1,10 +1,11 @@
-"""Formatting shared by every writer: strict JSON values, percentages and console-safe text."""
+"""Formatting shared by every writer: strict JSON values, percentages, console-safe text and progress lines."""
 
 from __future__ import annotations
 
 import json
 import math
 import re
+import time
 from datetime import datetime
 
 import numpy as np
@@ -49,6 +50,11 @@ CONSOLE_RE = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f\u202a-\u202e\u2066-\u2069
 def console(s: str) -> str:
     """``s`` safe to print: each control or bidi-override character as its escape (``\\x1b``, ``\\u202e``)."""
     return CONSOLE_RE.sub(lambda m: f"\\x{ord(m[0]):02x}" if ord(m[0]) < 0x100 else f"\\u{ord(m[0]):04x}", s)
+
+
+def log(msg: str) -> None:
+    """A stage's progress line, timestamped."""
+    print(f"[swarmprov {time.strftime('%H:%M:%S')}] {msg}", flush=True)
 
 
 def say(*parts) -> None:

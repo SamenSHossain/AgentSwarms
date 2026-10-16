@@ -8,7 +8,6 @@ import dataclasses
 import hashlib
 import json
 import re
-import time
 import warnings
 from collections import Counter
 from pathlib import Path
@@ -19,14 +18,11 @@ from . import adapters, claims as claims_mod, exposure, graph, identity, remote,
 from .adapters.base import check_fields, read_capabilities
 from .analysis import agents as agents_mod, errors
 from .analysis.agents import AGENT_COLS
+from .fmt import log as _log
 from .schema import MINED_FILE, RunDir, conform, empty
 from .textutil import clean
 
 LLM_WARNING = re.compile(r"[\d,]+ of [\d,]+ LLM calls failed: ")
-
-
-def _log(msg: str) -> None:
-    print(f"[swarmprov {time.strftime('%H:%M:%S')}] {msg}", flush=True)
 
 
 def load_config(run: RunDir, with_mined: bool = True, stage: str | None = None):

@@ -83,6 +83,15 @@ def test_summary_rows_are_keyed_by_meaning_within_a_tolerance():
     assert compare.summary_diff(sa, sb)["rows_only_b"] == ["agents.top_suppliers[mar16scout]"]   # untranslated
 
 
+def test_the_default_tolerance_hides_solver_noise():
+    """Fixed-effects estimates move by up to 6e-5 relative between processes on the same tables: by default that is
+    no change, so a rerun of the committed wiki compares with 0 changes; --tol 0 shows it."""
+    sa = {"A2": [{"outcome": "y_instant", "treatment": "D", "ci_hi": 0.0628}]}
+    sb = {"A2": [{"outcome": "y_instant", "treatment": "D", "ci_hi": 0.0628 * (1 + 6e-5)}]}
+    assert cli._parser().parse_args(["compare", "a", "b"]).tol == compare.TOL == 1e-4
+    assert compare.summary_diff(sa, sb)["changed"] == [] and len(compare.summary_diff(sa, sb, tol=0)["changed"]) == 1
+
+
 def test_two_configs_on_a_moved_transcript(synth_run, slow):
     """Moving the file changes every chat event id, so posts are aligned on (time, author, text hash); the only row
     change left is y_instant, and its flips are exactly those a join on the agent-round finds."""

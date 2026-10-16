@@ -1,6 +1,8 @@
 """The command line on user errors: one `swarmprov: error:` line and exit status 2, nothing created or overwritten."""
 
 import json
+import re
+from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -82,3 +84,19 @@ def test_export_and_crosssite_refuse_to_write_into_the_run_they_read(tmp_path, c
     assert "is the wiki run it reads" in _error(capsys)
     assert (run / "exposures_merged.parquet").read_bytes() == before and sorted(p.name for p in run.iterdir()) == [
         "exposures_merged.parquet", "profile.json"]
+
+
+def test_readme_examples_write_only_where_git_ignores():
+    """Following the README leaves `git status` clean: every output its commands name is in an ignored directory."""
+    root = Path(__file__).resolve().parents[1]
+    ignored = [line for line in (root / ".gitignore").read_text().splitlines() if line.endswith("/")]
+    code = "\n".join(re.findall(r"```bash\n(.*?)```", (root / "README.md").read_text(), re.S))
+    outputs = re.findall(r"(?:-o|--out|--png|--json) (\S+)", code)
+    assert len(outputs) > 20 and "runs/wiki/hungary.png" in outputs
+    assert [o for o in outputs if not any(o.startswith(d) for d in ignored)] == []
+
+
+def test_the_agent_example_in_the_help_names_one_agent(wiki_run):
+    from swarmprov.analysis.agents import match_agents
+    name = re.search(r'swarmprov agent +runs/wiki "([^"]+)"', cli.__doc__)[1]
+    assert match_agents(wiki_run, name) == [name]
