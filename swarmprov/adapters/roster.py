@@ -13,12 +13,12 @@ from pathlib import Path
 from .. import roster as roster_mod
 from ..schema import empty
 from .base import Adapter, Bundle, Capabilities
-from .chat import _is_tabular, _read_any
+from .chat import TABLES, _is_tabular, _read_any
 
 
 def read_rows(path: Path) -> list[dict]:
     """Dict rows of a JSON, JSONL or CSV/TSV table (the chat adapter's reader)."""
-    obj = _read_any(Path(path))
+    obj = _read_any(Path(path), TABLES)
     if isinstance(obj, dict):  # {"goals": [...]} / {"data": [...]}
         lists = [v for v in obj.values() if isinstance(v, list)]
         obj = lists[0] if lists else []

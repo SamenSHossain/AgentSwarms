@@ -11,6 +11,7 @@ import pandas as pd
 
 from . import identity, lifecycle as lifecycle_mod, roster as roster_mod, village as village_mod
 from .adapters.base import read_capabilities
+from .adapters.chat import no_author_warning
 from .analysis import causal, diffusion, errors, origins, provenance, structure
 from .claims import agent_rounds, public
 from .schema import TABLES, RunDir
@@ -191,9 +192,12 @@ def _swarmtraces_block(prof: dict, st: dict, summary: dict) -> list[str]:
 
 def _warnings(prof: dict, summary: dict) -> list[str]:
     """Ingest's warnings (a field not found, a config key ignored), also kept in ``summary.json``."""
-    if prof.get("warnings"):
-        summary["warnings"] = prof["warnings"]
-    return [f"**Warning:** {w}\n" for w in prof.get("warnings") or []]
+    warns = prof.get("warnings")
+    if warns is None and (prof.get("notes") or {}).get("n_no_author"):   # a profile from before ingest kept warnings
+        warns = [no_author_warning(prof["notes"]["n_no_author"])]
+    if warns:
+        summary["warnings"] = warns
+    return [f"**Warning:** {w}\n" for w in warns or []]
 
 
 def _write(run: RunDir, L: list[str], summary: dict) -> str:

@@ -208,6 +208,7 @@ class Bundle:
 
 class Adapter:
     name: str = "base"
+    reads_fields: bool = False   # its messages go through the chat reader, so a ``fields`` mapping applies
 
     def sniff(self, path: Path) -> bool:  # pragma: no cover - interface
         raise NotImplementedError

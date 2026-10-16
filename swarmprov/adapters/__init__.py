@@ -29,10 +29,12 @@ ADAPTERS["chat"] = ChatAdapter
 
 
 def get(name: str, fields: dict | None = None) -> Adapter:
-    """The adapter called ``name``; ``fields`` (canonical field -> source key) reaches the chat adapter."""
+    """The adapter called ``name``; ``fields`` (canonical field -> source key) reaches the adapters whose messages go
+    through the chat reader (chat, and village's message table)."""
     if name not in ADAPTERS:
         raise ValueError(f"unknown adapter `{name}`{did_you_mean(name, ADAPTERS)}; the adapters are auto, {', '.join(ADAPTERS)}")
-    return ChatAdapter(fields) if name == "chat" else ADAPTERS[name]()
+    cls = ADAPTERS[name]
+    return cls(fields) if cls.reads_fields else cls()
 
 
 def sniffs(path: str | Path, fields: dict | None = None):

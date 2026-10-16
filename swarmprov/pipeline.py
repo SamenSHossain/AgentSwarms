@@ -49,8 +49,9 @@ def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | N
         cfg = adapters.AdapterConfig.from_dict(user, base=a.config())
     cfg.fields = fields
     warns = [str(w.message) for w in caught]
-    if fields and a.name != "chat":
-        warns.append(f"`fields` reach the chat adapter only; the `{a.name}` adapter reads its own schema and ignores them.")
+    if fields and not a.reads_fields:
+        warns.append(f"`fields` reach the chat reader only (chat transcripts and an AI Village message table); the "
+                     f"`{a.name}` adapter reads its own schema and ignores them.")
     _log(f"ingest {path} with adapter '{a.name}'" + (f", fields {fields}" if fields else ""))
     b = a.load(Path(path))
     warns += b.notes.pop("warnings", [])

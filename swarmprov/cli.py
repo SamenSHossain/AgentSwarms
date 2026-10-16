@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 
 from . import pipeline
@@ -36,8 +37,9 @@ def _positive(v: str) -> int:
 
 
 def _fields(v: str) -> dict[str, str]:
-    """``author=source``, or several at once: ``author=source,text=content``."""
-    pairs = [p.split("=", 1) for p in v.split(",") if p.strip()]
+    """``author=source``, or several at once: ``author=source,text=content``.  Only a comma before another
+    ``FIELD=`` separates, so a key may hold one (``author=Last, First``)."""
+    pairs = [p.split("=", 1) for p in re.split(r",(?=\s*\w+\s*=)", v) if p.strip()]
     if not pairs or any(len(p) != 2 for p in pairs):
         raise argparse.ArgumentTypeError(f"expected FIELD=KEY (e.g. author=source), got {v!r}")
     try:

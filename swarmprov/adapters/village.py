@@ -41,6 +41,10 @@ def discover(path: Path) -> dict[str, Path]:
 
 class VillageAdapter(Adapter):
     name = "village"
+    reads_fields = True   # in its message table
+
+    def __init__(self, mapping: dict | None = None):
+        self.mapping = mapping or {}
 
     def sniff(self, path: Path) -> bool:
         path = Path(path)
@@ -80,7 +84,7 @@ class VillageAdapter(Adapter):
                                                      has_lifecycle=channels is not None)
         caps.has_activity = activity is not None
         if "messages" in found:
-            b = ChatAdapter().load(found["messages"])
+            b = ChatAdapter(self.mapping).load(found["messages"])
             events, caps = b.events, b.capabilities
             caps.has_lifecycle = channels is not None
             caps.has_activity = activity is not None

@@ -1,6 +1,6 @@
 """Chat ingest that works or fails loudly: the field mapping (config ``fields``, ``--field``), CSV, Slack exports,
-Discord exports, directories of message files, AutoGen's ``source``, ingest warnings, config-key validation, adapter
-errors, the detection order and ``swarmprov inspect``."""
+Discord exports, directories of message files (ids made unique per list), AutoGen's ``source``, ingest warnings,
+config-key validation, adapter errors, the detection order and ``swarmprov inspect``."""
 
 import csv
 import gzip
@@ -12,7 +12,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from swarmprov import adapters, cli, inspect, pipeline
+from swarmprov import adapters, cli, pipeline, report
 from swarmprov.adapters.base import AdapterConfig, config_snippet
 from swarmprov.adapters.chat import ChatAdapter, _get
 from swarmprov.schema import RunDir
@@ -54,6 +54,12 @@ def _slack(d: Path) -> Path:
         msgs[2]["thread_ts"] = msgs[0]["ts"]
         msgs.append({"type": "message", "subtype": "bot_message", "bot_id": "B1", "username": "ci-bot",
                      "text": "build ok", "ts": f"{int(T0.timestamp()) + offset + 300}.{k:06d}"})
+        if ch == "review":                                         # Slack escapes &, < and >, in links too
+            msgs.append({"type": "message", "user": users[0]["id"], "ts": f"{int(T0.timestamp()) + offset + 400}.{k:06d}",
+                         "text": "Poland is 0.2 &lt;-- see <https://x.org/q?a=1&amp;b=2|the query> &amp; more"})
+            msgs.append({"type": "message", "subtype": "channel_join", "user": users[1]["id"],
+                         "ts": f"{int(T0.timestamp()) + offset + 500}.{k:06d}",
+                         "text": f"<@{users[1]['id']}> has joined the channel"})
         (root / ch / "2026-05-04.json").write_text(json.dumps(msgs))
     return root
 
@@ -124,6 +130,11 @@ def test_inspect_with_fields_reports_coverage_and_stops_at_another_adapters_inpu
     assert cli.main(["inspect", str(d / "untimed.jsonl")]) == 0
     out = capsys.readouterr().out
     assert "  author     <- source (7)" in out and out.endswith("\nNo key looks like the ts.\n")
+    (d / "fields.toml").write_text('[fields]\ntext = "output"\nauthor = "agent_handle"\n')
+    assert cli.main(["inspect", str(p), "--config", str(d / "fields.toml"), "--field", "author=room"]) == 0
+    out = capsys.readouterr().out                                    # the flag overrides the config's author
+    assert "fields given: text=output, author=room\n" in out and "  author     <- room (20) [mapped]" in out
+    assert json.loads(out[out.index("{"):]) == {"fields": {"text": "output", "author": "room", "ts": "step_time"}}
     assert cli.main(["inspect", str(ROOT / "data" / "raw_village")]) == 0
     out = capsys.readouterr().out
     assert "  village      yes   <- auto-detection picks this one" in out and "first record's keys" not in out
@@ -148,12 +159,18 @@ def test_field_flags_and_config_fields_reach_the_adapter(d, capsys):
     with pytest.raises(SystemExit):
         cli.main(["ingest", str(p), "--field", "author"])
     assert "expected FIELD=KEY" in capsys.readouterr().err
+    comma = d / "comma_key.jsonl"                                    # a key holding a comma is one KEY, not a list
+    comma.write_text("\n".join(json.dumps({"Last, First": NAMES[i % 3], "text": _answer(i)}) for i in range(6)))
+    cli.main(["ingest", str(comma), "-o", str(d / "run_comma"), "--field", "author=Last, First"])
+    prof = json.loads((d / "run_comma" / "profile.json").read_text())
+    assert prof["fields"] == {"author": "Last, First"} and prof["n_authors"] == 3
     with pytest.raises(ValueError, match="unknown field `txt` \\(did you mean `text`\\?\\)"):
         AdapterConfig.from_dict({"fields": {"txt": "output"}})
 
 
-def test_autogen_source_is_the_last_author_alias(synth_run, tmp_path):
-    """The synthetic swarm written as an AutoGen stream: 300 posts from 60 speakers, not one `unknown`."""
+def test_autogen_source_is_the_last_author_resort(synth_run, tmp_path):
+    """The synthetic swarm written as an AutoGen stream: 300 posts from 60 speakers, not one `unknown`.  `source` is
+    read after every author alias and after the agent-id fallback, so a categorical data source merges no agents."""
     run, _ = synth_run
     ev = run.read("events")
     p = tmp_path / "autogen.jsonl"
@@ -166,6 +183,11 @@ def test_autogen_source_is_the_last_author_alias(synth_run, tmp_path):
             {"source": "planner", "text": "x"}]
     p.write_text("\n".join(json.dumps(r) for r in rows))
     assert list(ChatAdapter().load(p).events["author_raw"]) == ["unknown"] * 3 + ["named", "planner"]
+    p.write_text("\n".join(json.dumps({"agent_id": f"a{i % 5}", "source": "web", "text": _answer(i),
+                                       "timestamp": (T0 + pd.Timedelta(minutes=i)).isoformat()}) for i in range(15)))
+    b = ChatAdapter().load(p)
+    assert sorted(b.events["author_raw"].unique()) == ["a0", "a1", "a2", "a3", "a4"]
+    assert not any("one author" in w for w in b.notes["warnings"])
 
 
 def test_csv_and_tsv_transcripts(d):
@@ -181,6 +203,17 @@ def test_csv_and_tsv_transcripts(d):
     tsv.write_bytes(gzip.compress(tsv.read_bytes()))
     b = adapters.detect(tsv).load(tsv)
     assert len(b.events) == 20 and b.events["author_raw"].nunique() == 7
+    bom = d / "bom.csv"                                              # Excel's "CSV UTF-8" opens with a byte-order mark
+    bom.write_bytes(b"\xef\xbb\xbf" + p.read_bytes())
+    b = adapters.detect(bom).load(bom)
+    assert b.notes["clock"] == "wall" and b.events["ts"].min() == T0 and b.notes["warnings"] == []
+    (d / "bom.json").write_text(json.dumps([{"author": "a", "text": "x"}]), encoding="utf-8-sig")
+    assert len(ChatAdapter().load(d / "bom.json").events) == 1
+    semi = _csv(d, "semicolon.csv", ";")
+    assert adapters.detect(semi).load(semi).events["channel"].nunique() == 2
+    for key in ("text", "content", "message"):                      # one column: no delimiter to sniff
+        (d / "onecol.csv").write_text(f"{key}\nPoland is 0.2\nHungary is 9.9\n")
+        assert list(ChatAdapter().load(d / "onecol.csv").events["text"]) == ["Poland is 0.2", "Hungary is 9.9"]
 
 
 def test_slack_export_directory(d):
@@ -189,7 +222,9 @@ def test_slack_export_directory(d):
     run = RunDir(d / "run_slack")
     prof = pipeline.ingest(root, run)
     ev = run.read("events")
+    assert len(ev) == 16 and not ev["text"].str.contains("has joined").any()      # a join is no one's post
     assert prof["clock"] == "wall" and prof["capabilities"]["has_threading"] is True and ev["ts"].notna().all()
+    assert ev["event_id"].str.match(r"^\d+\.\d{6}$").all()                         # unique ts stay the ids
     assert ev["author_raw"].nunique() == 7 and set(ev["channel"]) == {"general", "research", "review"}
     assert {"Alpha Agent", "ci-bot"} <= set(ev["author_raw"]) and "U00ABC" in set(ev["author_alt"])
     replies = ev.dropna(subset=["parent_id"]).merge(ev, left_on="parent_id", right_on="event_id", suffixes=("", "_parent"))
@@ -198,7 +233,26 @@ def test_slack_export_directory(d):
     assert b.events["ts"].is_monotonic_increasing and b.events["channel"].iloc[0] == "research"
     first = b.events["text"].iloc[0]
     assert first.startswith("@Charlie Agent R1 CONFIRMED") and first.endswith("see https://example.org/t.csv")
-    assert "<" not in "".join(b.events["text"])
+    assert "Poland is 0.2 <-- see https://x.org/q?a=1&b=2 & more" in set(b.events["text"])
+    assert not b.events["text"].str.contains("<@|<http|&amp;|&lt;").any()
+
+
+def test_slack_ts_shared_by_two_channels_gives_two_ids(tmp_path):
+    root = tmp_path / "slack"
+    root.mkdir()
+    (root / "users.json").write_text(json.dumps([{"id": "U1", "name": "ann"}, {"id": "U2", "name": "bob"}]))
+    (root / "channels.json").write_text(json.dumps([{"id": "C1", "name": "general"}, {"id": "C2", "name": "random"}]))
+    ts = f"{int(T0.timestamp())}.000100"
+    for ch, (a, b) in (("general", ("U1", "U2")), ("random", ("U2", "U1"))):
+        (root / ch).mkdir()
+        (root / ch / "2026-05-04.json").write_text(json.dumps([
+            {"type": "message", "user": a, "ts": ts, "thread_ts": ts, "text": f"{ch} opens"},
+            {"type": "message", "user": b, "ts": f"{int(T0.timestamp()) + 60}.00020{len(ch)}", "thread_ts": ts,
+             "text": f"{ch} reply"}]))
+    ev = ChatAdapter().load(root).events
+    assert ev["event_id"].is_unique and {f"general/{ts}", f"random/{ts}"} <= set(ev["event_id"])
+    replies = ev.dropna(subset=["parent_id"]).merge(ev, left_on="parent_id", right_on="event_id", suffixes=("", "_p"))
+    assert len(replies) == 2 and (replies["channel"] == replies["channel_p"]).all()
 
 
 def test_discord_export_keeps_its_channel_and_replies(d):
@@ -225,11 +279,41 @@ def test_directory_of_message_files_names_channels_after_files(d):
     b = ChatAdapter().load(root)
     assert b.events.groupby("channel").size().to_dict() == {"planning": 5, "results": 5, "side": 1}
     assert b.notes["clock"] == "wall" and b.events["source_ref"].iloc[0] == "extra.json:0"
+    mixed = d / "rooms_mixed"                                     # a metadata file sorted first does not hide the chat
+    mixed.mkdir()
+    (mixed / "agents.json").write_text(json.dumps([{"name": n, "model": "m"} for n in NAMES]))
+    shutil.copy(root / "planning.jsonl", mixed)
+    assert adapters.detect(mixed).name == "chat" and len(ChatAdapter().load(mixed).events) == 5
     untimed = d / "rooms_untimed"
     untimed.mkdir()
     (untimed / "only.jsonl").write_text("\n".join(json.dumps({"author": a, "text": _answer(i)}) for i, a in enumerate(NAMES)))
     b = ChatAdapter().load(untimed)                              # a directory is never one message list
     assert b.notes["clock"] == "none" and not b.capabilities.has_order and b.events["ts"].isna().all()
+
+
+def test_lists_that_reuse_ids_get_ids_named_by_their_list(synth_run, tmp_path):
+    """The synthetic board split into one file per family, each numbered 0..n with replies to the previous post: ids
+    and parents are prefixed with the file, so every post keeps its own id and a reply's parent is in its own file."""
+    ev = synth_run[0].read("events").sort_values("ts")
+    split = tmp_path / "boards"
+    split.mkdir()
+    for fam, g in ev.groupby(ev["text"].str.contains("alpha", case=False).map({True: "alpha-board", False: "beta-board"})):
+        split.joinpath(f"{fam}.jsonl").write_text("\n".join(
+            json.dumps({"id": j, "parent_id": j - 1 if j else None, "timestamp": t.isoformat(), "author": a, "text": x})
+            for j, (t, a, x) in enumerate(zip(g["ts"], g["author_raw"], g["text"]))))
+    out = ChatAdapter().load(split).events
+    assert out["event_id"].is_unique and len(out) == len(ev)
+    assert out["event_id"].str.match(r"^(alpha|beta)-board/\d+$").all() and "alpha-board/0" in set(out["event_id"])
+    parents = out.dropna(subset=["parent_id"]).merge(out, left_on="parent_id", right_on="event_id", suffixes=("", "_p"))
+    assert len(parents) == len(out) - 2 and (parents["channel"] == parents["channel_p"]).all()
+    n = parents["event_id"].str.split("/").str[1].astype(int)
+    assert (n == parents["event_id_p"].str.split("/").str[1].astype(int) + 1).all()
+    unique = tmp_path / "unique"                                  # ids that never repeat stay as given, across files too
+    unique.mkdir()
+    (unique / "a.jsonl").write_text(json.dumps({"id": "m1", "author": "x", "text": "first"}))
+    (unique / "b.jsonl").write_text(json.dumps({"id": "m2", "parent_id": "m1", "author": "y", "text": "reply"}))
+    out = ChatAdapter().load(unique).events
+    assert list(out["event_id"]) == ["m1", "m2"] and out["parent_id"].iloc[1] == "m1"
 
 
 def test_detection_order_keeps_table_directories(tmp_path):
@@ -245,10 +329,15 @@ def test_detection_order_keeps_table_directories(tmp_path):
     st.write_text(json.dumps({"id": "R1", "cite": "R1:a", "kind": "payload", "parent_id": None, "time_utc": None,
                               "tags": "", "text": "x", "source": "https://example.org"}) + "\n")
     assert adapters.detect(st).name == "swarmtraces" and adapters.detect(st.parent).name == "swarmtraces"
-    if (ROOT / "data" / "raw2" / "records.jsonl").exists():
-        assert adapters.detect(ROOT / "data" / "raw2").name == "corpus"
-    if (ROOT / "data" / "raw" / "revisions.jsonl").exists():
-        assert adapters.detect(ROOT / "data" / "raw").name == "wiki"
+    corpus = tmp_path / "corpus"                                  # the keys the corpus and wiki sniffs look for
+    corpus.mkdir()
+    (corpus / "records.jsonl").write_text(json.dumps({"id": "r1", "text": "Poland 0.2", "origins": [], "author": "a"}))
+    assert adapters.detect(corpus).name == "corpus"
+    wiki = tmp_path / "wiki"
+    wiki.mkdir()
+    (wiki / "revisions.jsonl").write_text(json.dumps({"rev_id": 1, "page_id": 1, "body": "x", "label": "a", "time": 0}))
+    (wiki / "pages.jsonl").write_text(json.dumps({"page_id": 1, "title": "Main"}))
+    assert adapters.detect(wiki).name == "wiki"
 
 
 def test_adapter_names_and_sniff_errors_are_explained(d, capsys):
@@ -266,6 +355,13 @@ def test_adapter_names_and_sniff_errors_are_explained(d, capsys):
     msg = str(e.value)
     assert "Sniff errors:" in msg and "\n  chat: ValueError: broken.json cannot be read (" in msg
     assert "the chat adapter reads a JSON array of messages" in msg and "CSV/TSV with a header row" in msg
+    (d / "plain.jsonl.gz").write_text(json.dumps({"author": "a", "text": "x"}))   # not gzipped, whatever its name says
+    with pytest.raises(ValueError) as e:
+        adapters.detect(d / "plain.jsonl.gz")
+    msg = str(e.value)
+    assert "\n  chat: ValueError: plain.jsonl.gz cannot be read (Not a gzipped file" in msg
+    assert "\n  roster: ValueError: plain.jsonl.gz cannot be read (Not a gzipped file (b'{\"')); a table is a JSON " \
+           "array (or an object holding one), JSONL or CSV/TSV" in msg     # the table reader's own wording
 
 
 def test_unknown_config_keys_warn_with_a_suggestion_and_strict_raises():
@@ -306,7 +402,9 @@ def test_ingest_warns_in_the_log_the_profile_and_the_report(d, capsys):
     assert w[2] == ("3 of 12 posts have no timestamp field (the first record's keys are `author`, `text`, `timestamp`); "
                     "if one holds the time, map it with `--field ts=<key>`. 3 of 12 timestamps could not be read as a time "
                     "(ISO text, or epoch seconds or milliseconds from 1990 to 2100), e.g. `soon`.")
-    assert w[3].startswith("All 12 posts are in one channel, `main`")
+    assert w[3] == ("All 12 posts are in one channel, `main`, so A5's relay rule takes every hop as same-page (the parent "
+                    "is the latest earlier carrier anywhere) and `family_from_channel` has no channel names to use. If the "
+                    "source has rooms or threads, name their key with `--field channel=<key>`.")
     assert all(f"warning: {x}" in out for x in w)
     text = (run.path / "report.md").read_text()
     capabilities = text[text.index("## Data capabilities"):text.index("## Pipeline funnel")]
@@ -323,7 +421,44 @@ def test_ingest_warns_in_the_log_the_profile_and_the_report(d, capsys):
         "with `--field author=<key>`.")
     roster = RunDir(d / "run_roster")
     pipeline.ingest(ROOT / "data" / "village" / "agent_goals.jsonl", roster, fields={"author": "x"})
-    ignored = "`fields` reach the chat adapter only; the `roster` adapter reads its own schema and ignores them."
+    ignored = ("`fields` reach the chat reader only (chat transcripts and an AI Village message table); the `roster` "
+               "adapter reads its own schema and ignores them.")
     assert json.loads((roster.path / "profile.json").read_text())["warnings"] == [ignored]
-    from swarmprov import report
     assert f"**Warning:** {ignored}\n" in report.build(roster)            # the context report lists them too
+    old = json.loads((run.path / "profile.json").read_text())           # a profile written before ingest kept warnings
+    del old["warnings"]
+    old["notes"]["n_no_author"] = 3
+    (run.path / "profile.json").write_text(json.dumps(old))
+    assert "**Warning:** 3 posts name no author (no author field was recognised), so they are pooled as one agent, " \
+           "`unknown`, which can look like a hub or a relay source in A5.\n" in report.build(run)
+
+
+def test_timestamp_warning_needs_a_time_to_point_at(d):
+    """An untimed framework log has no time field to map, so only the clock note speaks; a key that holds times is named."""
+    log = d / "untimed_openai.json"
+    log.write_text(json.dumps([{"role": "assistant", "name": NAMES[i % 3], "content": _answer(i)} for i in range(15)]))
+    b = ChatAdapter().load(log)
+    assert b.notes["clock"] == "sequence" and not any("timestamp" in w for w in b.notes["warnings"])
+    b = ChatAdapter({"text": "output", "author": "agent_handle"}).load(_custom_keys(d))
+    assert b.notes["warnings"] == ["No post has a timestamp field the chat aliases know, but `step_time` holds times: "
+                                   "map it with `--field ts=step_time`."]
+    b = ChatAdapter({"ts": "when"}).load(log)                         # a mapped key that no record holds
+    assert b.notes["warnings"][0].startswith("15 of 15 posts have no timestamp field")
+
+
+def test_village_message_table_takes_the_field_mapping(tmp_path, capsys):
+    """The Village reads its message table with the chat reader, so the `--field` its warnings suggest applies."""
+    v = tmp_path / "village"
+    v.mkdir()
+    shutil.copy(ROOT / "data" / "raw_village" / "agents.jsonl.gz", v)
+    (v / "chat_messages.jsonl").write_text("\n".join(json.dumps(
+        {"author": NAMES[i % 3], "content": _answer(i), "venue": "lab" if i % 2 else "ops",
+         "timestamp": (T0 + pd.Timedelta(minutes=i)).isoformat()}) for i in range(12)))
+    prof = pipeline.ingest(v, RunDir(tmp_path / "plain"))
+    assert prof["adapter"] == "village" and prof["warnings"][0].startswith("All 12 posts are in one channel, `main`")
+    prof = pipeline.ingest(v, RunDir(tmp_path / "mapped"), fields={"channel": "venue"})
+    assert prof["adapter"] == "village" and prof["warnings"] == [] and prof["notes"]["n_channels"] == 2
+    assert cli.main(["inspect", str(v), "--field", "channel=venue"]) == 0
+    out = capsys.readouterr().out
+    assert "reads its message table, chat_messages.jsonl, with the chat reader" in out
+    assert "  channel    <- venue (12) [mapped]" in out and "2 channels" in out
