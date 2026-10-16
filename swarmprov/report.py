@@ -11,7 +11,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from . import checks, graph, identity, lifecycle as lifecycle_mod, roster as roster_mod, village as village_mod
+from . import checks, graph, identity, lifecycle as lifecycle_mod, roster as roster_mod, suggest, village as village_mod
 from .adapters.base import read_capabilities
 from .adapters.chat import no_author_warning
 from .analysis import agents as agents_mod, causal, diffusion, errors, origins, provenance, structure, uncertainty
@@ -268,7 +268,7 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
     """``boot``: bootstrap resamples behind the intervals (default: the config's ``bootstrap_reps``; 0 = none).  A
     strict report writes its files with a ``_strict`` suffix (``schema.suffix``), beside the merged one."""
     prof = json.loads((run.path / "profile.json").read_text())
-    from .pipeline import load_config
+    from .pipeline import load_config, mined_techniques
     cfg = load_config(run)
     boot = cfg.bootstrap_reps if boot is None else boot
     if isinstance(boot, bool) or not isinstance(boot, (int, np.integer)) or boot < 0:
@@ -504,8 +504,10 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
                    if not seq or not (c == "first_seen" or "hours" in c)]]
         # the contagion test compares pages, so it needs more than one
         con = diffusion.contagion(tags, events, cfg.techniques, agent_col) if posts["channel"].nunique() > 1 else {}
+        mined = {t.name for t in mined_techniques(run)} & set(r3)   # found by auto_techniques, not configured
         summary["A3"] = [r | ({"contagion": {k: v for k, v in con[r["technique"]].items() if k != "agents"}}
-                              if r["technique"] in con else {}) for r in tbl.to_dict("records")]
+                              if r["technique"] in con else {}) | ({"mined": True} if r["technique"] in mined else {})
+                         for r in tbl.to_dict("records")]
         ad = pd.concat([r["adoptions"] for r in r3.values()], ignore_index=True)
         if con:
             per = [c["agents"] for c in con.values() if "agents" in c]
@@ -536,6 +538,12 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
             L.append(_needs_clock("Times to adoption (hours, the Kaplan–Meier median) and the first-seen time") + "\n")
         if figs["diffusion"]:
             L.append(f"![diffusion](figures/{run.figure('a3_diffusion.png', mapping).name})\n")
+        if mined:
+            tbl["technique"] = [f"{n} (mined)" if n in mined else n for n in tbl["technique"]]
+            L.append("Rows marked *(mined)* were not configured: `auto_techniques` found them in the posts, as URL "
+                     f"domains that at least {suggest.MIN_AGENTS} agents posted and whose distinct URLs wrap another URL "
+                     f"in at least {suggest.MIN_WRAP:.0%} of cases (fetch proxies and readers). `swarmprov suggest RUN` "
+                     "prints the evidence; read these rows as a first pass.\n")
         L.append(md_table(tbl, index=False, pct=("adoption_share", "baseline"), floatfmt="{:.1f}"))
         L.append(_contagion_note(con) if con else
                  "The contagion test compares the pages agents adopted on, and every post here is on one page or channel, "
@@ -546,7 +554,13 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
                  + (", and for each adopter the page, whether it carried the technique, its baseline and its first earlier "
                     "post on a carrying page (`t_exposed`)" if con else "") + ".\n")
     else:
-        L += _skipped("A3", "needs configured techniques (config `techniques`: a name and a regex each)" if not cfg.techniques else
+        L += _skipped("A3", (f"`auto_techniques` mined no URL technique (no domain that {suggest.MIN_AGENTS} or more agents "
+                             f"posted has URLs that wrap another URL in {suggest.MIN_WRAP:.0%} of cases; `swarmprov suggest "
+                             "RUN` shows the evidence), and none is configured (config `techniques`: a name and a regex each)"
+                             if cfg.auto_techniques else
+                             "needs configured techniques (config `techniques`: a name and a regex each; `swarmprov suggest "
+                             "RUN` proposes URL ones from the posts, and `auto_techniques` mines them at extract)")
+                      if not cfg.techniques else
                       f"none of the {len(cfg.techniques)} configured techniques appears in a post with a timestamp")
 
     # A4
@@ -654,7 +668,7 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
         L += _skipped("A4", "needs item–value pairs or URLs in the posts; none was found")
 
     # A5 / A6
-    r6 = structure.reach(chains, boot=boot)
+    r6 = structure.reach(chains, boot=boot, mentions=mentions, agent_col=agent_col)
     # the relay-window sweep is in seconds, so no sequence clock; task values only (see window_sensitivity)
     ws = structure.window_sensitivity(mentions, agent_col) if r6.get("task values") and not seq else None
     agents = run.read("agents")
@@ -707,6 +721,12 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
                               if ws is not None else {})
         L.append(f"## {SECTIONS['A6']}\n")
         L.append(md_table(_with_ci(pd.DataFrame(r6).T, ("mean_repeaters",), fmt="{:.2f}"), floatfmt="{:.2f}"))
+        if "url domains" in r6:
+            d = r6["url domains"]
+            L.append(f"The `url domains` row counts the distinct agents that posted any URL on each domain "
+                     f"({d['facts']:,} domain{'s' * (d['facts'] != 1)}, {d['repeated']:,} posted by two or more agents), "
+                     "so agents who fetched different pages of one source count together although no exact URL "
+                     "repeats; it has no relay hops, and its interval resamples domains.\n")
         if any("mean_repeaters_lo" in r for r in r6.values()):
             L.append(f"The interval on mean_repeaters is the 95% percentile interval from {boot:,} resamples of the "
                      "facts: sampling noise only.\n")

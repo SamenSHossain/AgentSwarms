@@ -125,6 +125,8 @@ TABLES: dict[str, list[str]] = {
 # the per-agent detail the report writes, one table per identity mapping: who adopted each technique (A3), who
 # carried each disputed variant (A4), and A1 by family with no size cut
 REPORT_TABLES = ("adoptions", "disputes", "a1_by_family")
+# the URL techniques extract mined under ``auto_techniques`` (see ``pipeline.mined_techniques``)
+MINED_FILE = "mined_techniques.json"
 
 
 def suffix(mapping: str) -> str:
@@ -198,5 +200,5 @@ class RunDir:
         scores = [f.name for f in self.path.glob("validation*.json")]   # they score the claims of the earlier run
         reports = [f"{f}{suffix(m)}.{x}" for m in ("merged", "strict")
                    for f, x in (("report", "md"), ("summary", "json"), ("checks", "json"))]
-        for f in ("items.json", "agent_aliases.csv", "truth_validation.json", *reports, *graphs, *scores):
+        for f in ("items.json", "agent_aliases.csv", "truth_validation.json", MINED_FILE, *reports, *graphs, *scores):
             (self.path / f).unlink(missing_ok=True)

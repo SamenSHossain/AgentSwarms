@@ -17,6 +17,7 @@
     swarmprov crosssite runs/wiki data/raw2 -o runs/crosssite
     swarmprov compare  runs/wiki runs/wiki2 -o runs/cmp                    # what changed: setup, summary, rows
     swarmprov compare  runs/wiki runs/wiki --mapping-b strict              # the two identity mappings of one run
+    swarmprov suggest  runs/agents -o suggested_config.json            # techniques, families, items mined for review
     swarmprov trace    runs/wiki --agent "Mar16|oecd-equity" --item "Czech Republic"   # one answer's sources
     swarmprov trace    runs/wiki --fact "oecd-equity|Hungary|9.9" --png hungary.png     # one fact's relay tree
     swarmprov agent    runs/wiki May28                                                 # one agent's profile and links
@@ -182,6 +183,11 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--tol", type=_tolerance, default=1e-6,
                    help="relative tolerance within which summary numbers count as equal (default 1e-6)")
 
+    s = sub.add_parser("suggest", help="a starter config mined from a run (URL techniques, channel families, items), "
+                                       "with its evidence; written for review, not applied")
+    s.add_argument("run")
+    s.add_argument("-o", "--out", default="suggested_config.json", help="the config file to write")
+
     s = sub.add_parser("trace", help="one answer's sources, one fact's relay tree, one post's extraction")
     s.add_argument("run")
     q = s.add_mutually_exclusive_group(required=True)
@@ -282,6 +288,9 @@ def main(argv: list[str] | None = None) -> int:
     elif a.cmd == "compare":
         from . import compare
         return compare.main(a.run_a, a.run_b, a.mapping_a, a.mapping_b, a.out, a.limit, a.tol)
+    elif a.cmd == "suggest":
+        from . import suggest
+        return suggest.main(a.run, a.out)
     elif a.cmd == "trace":
         from . import query
         return query.trace(a.run, agent=a.agent, item=a.item, family=a.family, answer=a.answer, fact=a.fact,

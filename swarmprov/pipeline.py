@@ -4,6 +4,7 @@ doesn't re-ingest)."""
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import time
 import warnings
@@ -15,22 +16,32 @@ from . import adapters, claims as claims_mod, exposure, graph, identity, remote,
 from .adapters.base import check_fields, read_capabilities
 from .analysis import agents as agents_mod, errors
 from .analysis.agents import AGENT_COLS
-from .schema import RunDir, conform, empty
+from .schema import MINED_FILE, RunDir, conform, empty
 
 
 def _log(msg: str) -> None:
     print(f"[swarmprov {time.strftime('%H:%M:%S')}] {msg}", flush=True)
 
 
-def load_config(run: RunDir):
-    """The adapter's built-in config, overridden by a --config file if one was given at ingest."""
+def load_config(run: RunDir, with_mined: bool = True):
+    """The adapter's built-in config, overridden by a --config file if one was given at ingest; under
+    ``auto_techniques`` with no techniques configured, the techniques extract mined (``with_mined``)."""
     prof = json.loads((run.path / "profile.json").read_text())
     cfg = adapters.get(prof["adapter"]).config()
     if prof.get("config_path"):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")   # ingest logged them, and the report lists them
             cfg = adapters.AdapterConfig.from_file(prof["config_path"], base=cfg)
+    if with_mined and cfg.auto_techniques and not cfg.techniques:
+        cfg.techniques = mined_techniques(run)
     return cfg
+
+
+def mined_techniques(run: RunDir) -> list[adapters.Technique]:
+    """The URL techniques ``auto_techniques`` mined at extract (``MINED_FILE``), or none."""
+    p = run.path / MINED_FILE
+    return [adapters.Technique(t["name"], t["pattern"], tuple(t.get("families", ())), t.get("description", ""))
+            for t in json.loads(p.read_text())] if p.exists() else []
 
 
 def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | None = None,
@@ -105,7 +116,8 @@ def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | N
 
 
 def extract(run: RunDir, llm: str | None = None) -> None:
-    cfg = load_config(run)
+    cfg = load_config(run, with_mined=False)
+    (run.path / MINED_FILE).unlink(missing_ok=True)
     ev = run.read("events")
     if not len(ev):
         _log("no posts: nothing to extract (a roster alone gives a roster report; add a transcript for provenance)")
@@ -142,6 +154,12 @@ def extract(run: RunDir, llm: str | None = None) -> None:
         learned.setdefault(f, set()).update(items)
     (run.path / "items.json").write_text(json.dumps({k: sorted(v) for k, v in learned.items()}, indent=1))
     im = _matcher(learned)
+    if cfg.auto_techniques and not cfg.techniques:   # tagged like configured ones, so A3 runs on them
+        from . import suggest
+        cfg.techniques = suggest.mine_url_techniques(suggest.url_mentions(ev, agents))
+        (run.path / MINED_FILE).write_text(json.dumps([dataclasses.asdict(t) for t in cfg.techniques], indent=1))
+        _log(f"  auto_techniques: {len(cfg.techniques)} URL technique{'s' * (len(cfg.techniques) != 1)} mined"
+             + (f" ({', '.join(t.name for t in cfg.techniques)})" if cfg.techniques else ""))
     _log("rule extraction")
     own = ~ev["source_kind"].isin(claims_mod.PRIVATE_KINDS)   # task messages and tool results are no agent's claims
     cl, tags = rules.extract(ev[own], fam[own], agents, cfg, im)

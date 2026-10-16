@@ -149,7 +149,8 @@ def test_a_strict_report_writes_beside_the_merged_one(synth_run, synth_strict, c
 
 def test_clear_removes_both_mappings_reports(tmp_path):
     run = RunDir(tmp_path / "run")
-    names = ["report.md", "summary.json", "checks.json", "report_strict.md", "summary_strict.json", "checks_strict.json"]
+    names = ["report.md", "summary.json", "checks.json", "report_strict.md", "summary_strict.json", "checks_strict.json",
+             "mined_techniques.json"]
     for n in names:
         (run.path / n).write_text("{}")
     run.clear()

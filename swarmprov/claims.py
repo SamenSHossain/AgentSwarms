@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import re
 from collections import Counter
+from urllib.parse import unquote
 
 import pandas as pd
 
@@ -24,6 +25,23 @@ from .rules import ItemMatcher, first_value, norm_value
 
 URL_RE = re.compile(r"https?://[^\s\]\)\|'\"<>]+")
 PRIVATE_KINDS = ("task", "tool_result")   # framework rows: the task's prompt and an agent's own tool output
+
+
+def urls(text: str) -> list[tuple[str, str]]:
+    """(host as written, URL) for each URL in ``text``: a URL fact's item and value.  Sorted, because set order
+    follows the hash seed."""
+    out = []
+    for u in sorted(set(URL_RE.findall(text))):
+        u = u.rstrip(".,;")
+        out.append((re.sub(r"^https?://", "", u).split("/")[0], u))
+    return out
+
+
+def url_domain(host: str) -> str:
+    """A URL fact's host as a domain: percent-decoded and lower case, without user, port, query or trailing dot
+    (``%61llorigins.hexlet.app`` and ``allorigins%2ehexlet%2eapp`` are ``allorigins.hexlet.app``)."""
+    h = re.split(r"[/?#]", unquote(str(host)).lower(), maxsplit=1)[0].rsplit("@", 1)[-1]
+    return h.split(":")[0].rstrip(".")
 
 
 def public(rows: pd.DataFrame) -> pd.DataFrame:
@@ -136,9 +154,7 @@ def index_mentions(events: pd.DataFrame, families: pd.Series, agents: pd.DataFra
                     rows.append({**base, "channel": ev.channel, "family": fam, "item": item,
                                  "value_norm": norm_value(v), "source_kind": kind})
         if with_urls:
-            for u in sorted(set(URL_RE.findall(text))):   # deterministic order: set order follows the hash seed
-                u = u.rstrip(".,;")
-                dom = re.sub(r"^https?://", "", u).split("/")[0]
+            for dom, u in urls(text):
                 rows.append({**base, "channel": ev.channel, "family": "url", "item": dom, "value_norm": u,
                              "source_kind": kind})
     m = pd.DataFrame(rows)

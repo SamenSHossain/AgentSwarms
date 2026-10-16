@@ -15,6 +15,7 @@ import pandas as pd
 from matplotlib.ticker import MaxNLocator
 
 from .. import plotting
+from ..claims import url_domain
 from ..exposure import match_key
 from ..graph import gini, relay_edges, to_networkx
 from ..plotting import plt
@@ -147,21 +148,29 @@ def analyze(edges: pd.DataFrame, chains: pd.DataFrame, top_k: int = 10, ex: pd.D
     return res
 
 
-def reach(chains: pd.DataFrame, boot: int = 0, seed: int = 0) -> dict:
+def reach(chains: pd.DataFrame, boot: int = 0, seed: int = 0, mentions: pd.DataFrame | None = None,
+          agent_col: str = "agent_merged") -> dict:
     """A6: for every fact (item+value, or URL): how many agents repeated it, how many hops.  ``boot`` > 0 adds a
     95% interval for ``mean_repeaters`` (``mean_repeaters_lo`` / ``_hi``) from that many resamples of the facts,
-    when there are ``uncertainty.MIN_CLUSTERS`` facts or more."""
+    when there are ``uncertainty.MIN_CLUSTERS`` facts or more.  With the public ``mentions``, a ``url domains`` row
+    counts each domain's distinct agents over all its URLs, as the chains count carriers (timed mentions only); its
+    hop columns are NaN."""
     if chains.empty:
         return {}
     out = {}
-    for kind, g in [("task values", chains[chains["family"] != "url"]), ("urls", chains[chains["family"] == "url"])]:
-        if g.empty:
+    m = mentions[(mentions["family"] == "url") & mentions["ts"].notna()] if mentions is not None and len(mentions) else None
+    domains = None if m is None or m.empty else (
+        m.assign(domain=m["item"].map(url_domain)).groupby("domain")[agent_col].nunique().rename("n_agents").to_frame())
+    for kind, g in [("task values", chains[chains["family"] != "url"]), ("urls", chains[chains["family"] == "url"]),
+                    ("url domains", domains)]:
+        if g is None or g.empty:
             continue
         out[kind] = {
             "facts": int(len(g)), "repeated": int((g["n_agents"] > 1).sum()),
             "mean_repeaters": float((g["n_agents"] - 1).mean()),
             "p90_repeaters": float((g["n_agents"] - 1).quantile(0.9)),
-            "max_hops": int(g["max_depth"].max()), "mean_hops_repeated": float(g.loc[g["n_agents"] > 1, "max_depth"].mean()),
+            "max_hops": int(g["max_depth"].max()) if kind != "url domains" else float("nan"),
+            "mean_hops_repeated": float(g.loc[g["n_agents"] > 1, "max_depth"].mean()) if kind != "url domains" else float("nan"),
         }
         lo, hi = cluster_bootstrap(g, None, lambda d, w: wmean(d["n_agents"] - 1, w), boot, seed)
         if lo == lo:

@@ -89,6 +89,9 @@ class AdapterConfig:
     # extra items to recognise per family (on top of the built-in gazetteers)
     extra_items: dict[str, list[str]] = field(default_factory=dict)
     techniques: list[Technique] = field(default_factory=list)
+    # with no techniques configured, mine URL ones at extract (``suggest.mine_url_techniques``: domains whose URLs
+    # wrap another URL, such as fetch proxies) and label them "(mined)" in A3; off unless a config turns it on
+    auto_techniques: bool = False
     # (family, item) pairs to feature in the error-propagation figure
     featured_disputes: list[tuple[str, str]] = field(default_factory=list)
     # analyst-declared disputes the parser cannot attribute:
