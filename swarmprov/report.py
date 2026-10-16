@@ -347,7 +347,8 @@ def _context(run: RunDir, mapping: str, cfg, boot: int, prof: dict) -> _Ctx:
     if missing and len(ex.columns):   # a 0x0 table from a run with no agent-rounds has nothing to miss
         raise SystemExit(f"{run.path}: the exposure tables predate this version (no {', '.join(missing)}); "
                          f"rerun `swarmprov expose {run.path}`, then `graph` and `report`")
-    events, claims, agent_col = run.read("events"), run.read("claims"), agents_mod.AGENT_COLS[mapping]
+    events, claims, agents = run.read("events"), run.read("claims"), run.read("agents")
+    agent_col = agents_mod.AGENT_COLS[mapping]
     seq = prof.get("clock") == "sequence"   # posts ordered by message position: nothing measured in hours
     summary = {"mapping": mapping, "profile": {
         k: pd.Timestamp(prof[k]).isoformat() if k.endswith("_ts") and prof.get(k) else prof.get(k)
@@ -360,12 +361,12 @@ def _context(run: RunDir, mapping: str, cfg, boot: int, prof: dict) -> _Ctx:
     catch_all = identity.catch_all_family(cfg, roster)
     return _Ctx(run=run, mapping=mapping, cfg=cfg, boot=boot, prof=prof, caps=read_capabilities(prof),
                 notes=prof.get("notes") or {}, summary=summary, seq=seq, agent_col=agent_col, alt=alt,
-                events=events, posts=posts, pseudo=pseudo, agents=run.read("agents"), claims=claims,
+                events=events, posts=posts, pseudo=pseudo, agents=agents, claims=claims,
                 tags=run.read("tags"), mentions=public(run.read("mentions")), rounds=rounds, ex=ex, ex_alt=ex_alt,
                 edges=run.read(f"edges_{mapping}"), chains=run.read(f"chains_{mapping}"), roster=roster,
                 catch_all=catch_all if catch_all and (events["family"] == catch_all).any() else None,
                 untimed=int(rounds["t_report"].isna().sum()) if len(rounds) else 0,
-                same=identity.one_to_one(run.read("agents")) is not None)
+                same=identity.one_to_one(agents) is not None)
 
 
 def _header(c: _Ctx) -> list[str]:
