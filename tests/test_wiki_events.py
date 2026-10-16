@@ -235,12 +235,13 @@ def test_report_helpers_on_small_frames():
         {"D": 1, "D_visible": 1, "src_deleted_before_report": 1, "t_report": t("14:00"), "t_public": t("10:00"), "t_src_deleted": t("12:00"), "gap_s": 14400.0},
         {"D": 1, "D_visible": 0, "src_deleted_before_report": 1, "t_report": t("14:00"), "t_public": t("13:00"), "t_src_deleted": t("13:30"), "gap_s": 3600.0},
         {"D": 0, "D_visible": 0, "src_deleted_before_report": 0, "t_report": t("14:00"), "t_public": pd.NaT, "t_src_deleted": None, "gap_s": None},
-    ])
+    ]).assign(self_originated=[1, 0, 0])   # the first agent had posted the value before anyone: no lookup to count
     note = report._visibility_note(ex)
     assert "2 of 2 exposed answers were preceded by a public copy" in note
     assert "for 1 another copy was still visible, for 1 nothing visible" in note
     assert "would be 2 (67%) under D_visible instead of 1 (33%)" in note
-    assert report._visibility_counts(ex) == {"n_independent_visible": 2, "n_src_deleted_before_report": 2, "n_only_deleted_copies": 1}
+    assert report._visibility_counts(ex) == {"n_independent_visible": 2, "n_independent_at_most_visible": 3,
+                                             "n_src_deleted_before_report": 2, "n_only_deleted_copies": 1}
     assert report._visibility_note(ex.assign(src_deleted_before_report=0)).endswith("so D_visible equals D.")
     edges = pd.DataFrame([{"kind": "relay", "family": "f", "within_clock_res": True}, {"kind": "relay_xchannel", "family": "f", "within_clock_res": False},
                           {"kind": "relay", "family": "url", "within_clock_res": True}, {"kind": "citation", "family": "f", "within_clock_res": True}])

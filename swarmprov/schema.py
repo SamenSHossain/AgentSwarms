@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 
 import pandas as pd
+import pyarrow.parquet as pq
 
 TABLES: dict[str, list[str]] = {
     # One row per post: a single authored unit of text that became visible to
@@ -206,6 +207,17 @@ class RunDir:
 
     def read(self, name: str) -> pd.DataFrame:
         return pd.read_parquet(self.table_path(name))
+
+    def require_exposures(self, *mappings: str) -> None:
+        """Stop, naming the stages to rerun, when an ``exposures_<mapping>`` table predates a column
+        ``TABLES['exposures']`` now has (a 0x0 table, from a run with no agent-rounds, has nothing to miss)."""
+        missing = []
+        for m in mappings:
+            if cols := pq.read_schema(self.table_path(f"exposures_{m}")).names:
+                missing += [c for c in TABLES["exposures"] if c not in cols and c not in missing]
+        if missing:
+            raise SystemExit(f"{self.path}: the exposure tables predate this version (no {', '.join(missing)}); "
+                             f"rerun `swarmprov expose {self.path}`, then `graph` and `report`")
 
     def write_csv(self, name: str, df: pd.DataFrame) -> Path:
         """A table meant for a human to read (an audit), beside the Parquet stage outputs."""

@@ -17,7 +17,8 @@ EXPOSURE_COLUMNS = ["claim_id", "agent", "family", "episode", "item", "value_nor
                     # appended so the first mirrors' columns keep their places; the framework-trace columns
                     # (own lookups, task messages) come only with all_columns
                     "t_cons", "gap_cons_s", "y_winner", "report_event_id", "src_event_id", "src_channel",
-                    "src_visible_event_id", "self_event_id", "src_latest", "t_latest", "latest_event_id"]
+                    "src_visible_event_id", "self_event_id", "src_latest", "t_latest", "latest_event_id",
+                    "self_originated"]
 EDGE_COLUMNS = ["src", "dst", "family", "item", "value_norm", "kind", "dt_s", "event_id", "within_clock_res",
                 "claim_id", "src_event_id"]
 

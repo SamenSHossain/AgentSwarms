@@ -583,6 +583,7 @@ def _open(run_path: str, mapping: str, need: tuple[str, ...]) -> tuple[RunDir | 
         say(f"{run_path}: not a finished run, it has no {', '.join(missing)} (run `swarmprov run`, or every stage "
               "up to `swarmprov graph`)")
         return None, False
+    run.require_exposures(mapping)
     say(f"mapping: {mapping} ({MAPPING_NOTE[mapping]})")
     seq = run.profile().get("clock") == "sequence"
     if seq:

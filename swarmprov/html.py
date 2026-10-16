@@ -267,11 +267,12 @@ def tiles(summary: dict) -> list[tuple[str, str, str]]:
     """The hero row, (value, label, what it means), from the summary values the key findings quote."""
     out = []
     if a1 := summary.get("A1"):
+        k = a1.get("n_self_originated") or 0   # absent from a summary written before self-originated answers
         out += [(f"{a1['n_answers']:,}", "answers", f"by {a1['n_agents']:,} agents"),
                 (pct(a1["share_exposed"]), "already public before the report", "a floor: only captured posts are searched"),
-                (f"≤ {a1['n_independent_at_most']:,}", "independent lookups",
-                 f"{a1['n_independent']:,} with nothing public, {a1['n_self_originated']:,} first posted by the agent "
-                 "itself" if a1["n_self_originated"] else "nothing carrying the answer was public")]
+                (f"≤ {a1['n_independent'] + k:,}", "independent lookups",
+                 f"{a1['n_independent']:,} with nothing public, {k:,} first posted by the agent itself" if k
+                 else "nothing carrying the answer was public")]
     if rng := top10_range(summary.get("A5") or {}):
         out.append((rng[0], "top-10 source share", f"of {rng[1]:,} exposed answers, across attribution rules"))
     if (tv := (summary.get("A6") or {}).get("task values")) and tv.get("max_hops") is not None:
@@ -280,9 +281,14 @@ def tiles(summary: dict) -> list[tuple[str, str, str]]:
         main, by = a2_identified(summary["A2"])
         null = sorted(by[causal.NO_EFFECT], key=lambda r: -r["agents_with_D_variation"])
         if main and null and not by[causal.IDENTIFIED]:
-            r = null[0]
-            out.append((causal.NO_EFFECT, "does availability cause copying?",
-                        f"A2: {r['agents_with_D_variation']:,} agents switch, 95% CI {r['ci_lo']:+.2f} to {r['ci_hi']:+.2f}"))
+            r, rest = null[0], len(main) - len(null)
+            row = (f"{r['outcome']} under {r['treatment']}: {r['agents_with_D_variation']:,} agents switch, 95% CI "
+                   f"{r['ci_lo']:+.2f} to {r['ci_hi']:+.2f}")
+            # as the key finding opens: one row's null does not answer the question when most rows are not identified
+            out.append(("mostly not identified", "does availability cause copying?",
+                        f"{rest} of {len(main)} rows; no effect detected for {row}") if 2 * rest > len(main) else
+                       (causal.NO_EFFECT, "does availability cause copying?",
+                        row + (f"; {rest} of {len(main)} rows not identified" if rest else "")))
         elif main:
             out.append((causal.IDENTIFIED if by[causal.IDENTIFIED] else causal.NOT_IDENTIFIED,
                         "does availability cause copying?", "A2: two-way fixed effects on agent-rounds"))

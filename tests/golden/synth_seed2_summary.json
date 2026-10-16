@@ -780,13 +780,15 @@
       "computed": 242,
       "no answer round observed": 0,
       "dissent": 0,
-      "relayed": 0
+      "relayed": 0,
+      "posted before its own source": 0
      },
      "latest source": {
       "computed": 53,
       "no answer round observed": 0,
       "dissent": 0,
-      "relayed": 189
+      "relayed": 189,
+      "posted before its own source": 0
      }
     },
     "strict": {
@@ -794,13 +796,15 @@
       "computed": 242,
       "no answer round observed": 0,
       "dissent": 0,
-      "relayed": 0
+      "relayed": 0,
+      "posted before its own source": 0
      },
      "latest source": {
       "computed": 53,
       "no answer round observed": 0,
       "dissent": 0,
-      "relayed": 189
+      "relayed": 189,
+      "posted before its own source": 0
      }
     }
    },

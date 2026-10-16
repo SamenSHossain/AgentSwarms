@@ -250,8 +250,12 @@ def test_a2_weak_and_flat_rows_beside_unidentified_ones():
     assert ("Not identified for most rows (3–17 agents switch exposure status); `y_instant` under `D_cons_w60m`: no "
             "effect detected (37 agents switch, 95% CI -0.34 to +0.11). From two-way fixed effects") in bullet
     assert "a row is identified with at least 20 switching agents and a 95% CI that excludes 0." in bullet
-    assert ("no effect detected", "does availability cause copying?", "A2: 37 agents switch, 95% CI -0.34 to +0.11") \
-        in html.tiles({"A2": rows})
+    # the tile opens as the key finding does, and names the one row with no effect detected
+    assert ("mostly not identified", "does availability cause copying?", "3 of 4 rows; no effect detected for "
+            "y_instant under D_cons_w60m: 37 agents switch, 95% CI -0.34 to +0.11") in html.tiles({"A2": rows})
+    rows[0]["agents_with_D_variation"] = 27   # now two of four rows have enough switchers and cover 0
+    assert ("no effect detected", "does availability cause copying?", "y_instant under D_cons_w60m: 37 agents switch, "
+            "95% CI -0.34 to +0.11; 2 of 4 rows not identified") in html.tiles({"A2": rows})
 
 
 def test_the_a2_table_notes_weak_rows(synth_null):
@@ -277,6 +281,18 @@ def test_a2_names_the_headline_rows_it_could_not_identify():
     (bullet,) = [b for b in report.key_findings({"profile": {"n_events": 10}, "A2": rows}) if "A2." in b]
     assert ("not identified (3–5 agents switch exposure status): no estimate of `y_instant` or `y_consensus` under "
             "`D_cons` or `D_cons_w60m` from two-way fixed effects") in bullet and "y_winner" not in bullet
+
+
+def test_a2_names_the_treatment_of_an_outcome_read_both_ways():
+    """An outcome with a no-effect row and an unidentified one names the treatment of each."""
+    rows = [_a2(40, 0.1, 0.9), _a2(23, -0.12, 0.08, outcome="y_consensus") | {"treatment": "D_cons_w60m"},
+            _a2(18, -0.1, 0.2, outcome="y_consensus"), _a2(4, None, None, beta=None) | {"treatment": "D_cons_w60m"}]
+    (bullet,) = [b for b in report.key_findings({"profile": {"n_events": 10}, "A2": rows}) if "A2." in b]
+    assert ("`y_consensus` under `D_cons_w60m`: no effect detected (23 agents switch, 95% CI -0.12 to +0.08). Not "
+            "identified for `y_consensus` under `D_cons` (18 agents switch).") in bullet
+    rows[1] = _a2(5, None, None, beta=None, outcome="y_consensus") | {"treatment": "D_cons_w60m"}
+    (bullet,) = [b for b in report.key_findings({"profile": {"n_events": 10}, "A2": rows}) if "A2." in b]
+    assert bullet.endswith("Not identified for `y_consensus` (5–18 agents switch).")   # no row of it to tell apart
 
 
 def test_a5_collapsed_ranges_read_as_one_value():

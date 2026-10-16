@@ -9,7 +9,7 @@ import shutil
 import pandas as pd
 import pytest
 
-from swarmprov import checks, cli, pipeline, report, synth, truthscore
+from swarmprov import checks, cli, exposure, pipeline, report, synth, truthscore
 from swarmprov.adapters.chat import ChatAdapter
 from swarmprov.schema import RunDir
 
@@ -232,6 +232,10 @@ def test_scorecard_rows_for_deletions_techniques_and_aliases(scored):
     assert "A5 top-10 share of instant answers, first copy still visible (not an A5 rule)" in rows
     strict = r["identity"]["strict"]
     assert rows["identity, strict mapping"].endswith(f"| purity 100%, {strict['true_agents_split']} true agents split |")
+    weak = {"beta": 0.758, "se": 0.08, "p": 1e-5, "ci_lo": 0.595, "ci_hi": 0.92, "true_effect": 0.748, "covers": True,
+            "note": "weakly identified: only 18 agents switch (< 20)"}   # the estimate keeps its note, as printed
+    assert ("| A2 `y_instant ~ D_cons` | 0.758 (95% CI 0.595 to 0.920, p < 0.001); weakly identified: only 18 agents "
+            "switch (< 20) | 0.748") in report._truth_block(r | {"A2": weak}, {})[1]
 
 
 def test_truth_score_rebuilds_each_report_the_run_has(tmp_path, monkeypatch):
@@ -284,3 +288,33 @@ def test_truth_score_names_what_is_missing(synth_null, tmp_path, capsys):
     bare.mkdir()
     shutil.copy(d / "truth.csv", bare)
     assert cli.main(["truth-score", str(run.path), str(bare)]) == 1 and "no config.json" in capsys.readouterr().out
+
+
+def test_a_self_originated_answer_credits_nobody_in_the_scorecard():
+    """A posts 7 at 0 and B at 10; A reports at 20 (self-originated: B's copy is a later repeat) and B at 30.  Every
+    rule's credit for A's answer is blanked, as in A5, so a copied A counts as credited to nobody, whatever the edges
+    say (here a relay edge from B into A)."""
+    t0 = pd.Timestamp("2026-05-04T09:00:00Z")
+    at = {m: t0 + pd.Timedelta(minutes=m) for m in (0, 10, 20, 30)}
+    rounds = pd.DataFrame([{"claim_id": c, "report_event_id": f"r{c}", "agent": a, "family": "f", "episode": 1,
+                            "item": "x", "value_norm": "7", "t_report": at[m], "latency_class": "instant",
+                            "wrong_flag": False, "correct_flag": False} for c, a, m in (("a", "A", 20), ("b", "B", 30))])
+    mentions = pd.DataFrame([{"event_id": e, "ts": at[m], "agent_merged": a, "channel": "p", "family": "f", "item": "x",
+                              "value_norm": "7", "value_key": "7"} for e, a, m in (("e0", "A", 0), ("e1", "B", 10))])
+    ex = exposure.build(rounds, mentions, {("f", "x"): "7"}, "agent_merged")
+    events = pd.DataFrame({"event_id": ["e0", "e1", "ra", "rb"], "ts": [at[0], at[10], at[20], at[30]],
+                           "author_raw": ["a", "b", "a", "b"]})
+    agents = pd.DataFrame({"author_raw": ["a", "b"], "agent_merged": ["A", "B"], "n_events": [2, 2]})
+    edges = pd.DataFrame([{"src": "B", "dst": "A", "family": "f", "item": "x", "value_norm": "7", "kind": "relay",
+                           "src_event_id": "e1", "event_id": "ra"}])
+    cr = truthscore._credits(ex, edges, events, agents, "agent_merged").set_index("agent")
+    cols = [*truthscore.RULES.values(), "src_visible_agent"]
+    assert cr.loc["A", cols].isna().all()
+    assert cr.loc["B", ["src_agent", "src_latest", "src_visible_agent"]].tolist() == ["A", "A", "A"]
+    j = cr.reset_index().assign(copied=True, true_src=["b", "a"])   # in truth A copied B's post and B copied A's
+    rows = {r["rule"]: r for r in truthscore._sources(cr.reset_index(), j, edges, events, pd.Series({"A": "a", "B": "b"}),
+                                                     {"a": "a", "b": "b"}, deleted=True)}
+    for rule in ("first source", "latest source", truthscore.VISIBLE):
+        assert (rows[rule]["credits_nobody"], rows[rule]["names_true_source"]) == (1, 0.5), rule
+    assert rows["same-page relay parent"]["credits_nobody"] == 2   # B has no relay parent either
+    assert rows[truthscore.VISIBLE]["top10_share"] == 1.0

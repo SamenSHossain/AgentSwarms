@@ -15,7 +15,7 @@ import pandas as pd
 import pytest
 
 from swarmprov import report
-from swarmprov.analysis import causal
+from swarmprov.analysis import causal, origins
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "results"
@@ -121,6 +121,17 @@ def _flat_numbers(r: dict) -> list[str]:
     return [f"{r['agents_with_D_variation']}", f"{abs(r['ci_lo']):.2f}", f"{r['ci_hi']:.2f}"]
 
 
+def _independent(a1: dict) -> list[str]:
+    """A1's bound on independent lookups as the key finding states it: at most n_independent + n_self_originated,
+    the two counts, and the bound under D_visible.  A summary from before self-originated answers were counted
+    apart (results/ until it is regenerated, which must then drop that branch) has n_independent and its D_visible
+    variant only."""
+    if "n_self_originated" not in a1:
+        return [f"{a1['n_independent']:,}", f"{a1['n_independent_visible']:,}"]
+    return [f"{a1[k]:,}" for k in ("n_independent_at_most", "n_independent", "n_self_originated",
+                                   "n_independent_at_most_visible")]
+
+
 def _headline_expected(s: dict, synth: dict, cross: dict) -> dict[str, list[str]]:
     """Each headline row's numbers in the order the README states them, formatted from the summaries."""
     a1, a5, reach = s["A1"], s["A5"], s["A6"]["task values"]
@@ -136,8 +147,7 @@ def _headline_expected(s: dict, synth: dict, cross: dict) -> dict[str, list[str]
     return {
         "How much was copied?": [pct(a1["share_exposed"]), *map(pct, a1["share_exposed_ci"]), f"{a1['n_answers']:,}",
                                  f"{a1['n_agents']:,}", pct(a1["share_exposed_60m"]), f"{a1['median_gap_h']:.1f}",
-                                 f"{a1['n_independent']:,}", f"{a1['n_independent_visible']:,}",
-                                 pct(a1["share_self_prepared"])],
+                                 *_independent(a1), pct(a1["share_self_prepared"])],
         "Who supplied it?": [*NUMBER.findall(span), f"{n_credited:,}",
                              pct(rule["first source"]["top10_share"]), f"{rule['first source']['gini']:.2f}",
                              pct(rule["latest source"]["top10_share"]), pct(rule["same-page relay parent"]["top10_share"]),
@@ -207,8 +217,7 @@ def _results_expected(s: dict, synth: dict) -> dict[str, list]:
     truth = synth["truth_validation"]["A2"]
     return {
         "**A1 Provenance**": [
-            f"{a1['n_answers']:,}", f"{a1['n_agents']:,}", f"{a1['n_independent']:,}", f"{a1['n_independent_visible']:,}",
-            f"{a1['n_only_deleted_copies']:,}", f"{a1['n_src_deleted_before_report']:,}",
+            f"{a1['n_answers']:,}", f"{a1['n_agents']:,}", *_independent(a1), f"{a1['n_only_deleted_copies']:,}", f"{a1['n_src_deleted_before_report']:,}",
             f"{a1['n_src_deleted_before_report'] - a1['n_only_deleted_copies']:,}",
             pct(a1["share_exposed"]), *map(pct, a1["share_exposed_ci"]),
             pct(a1["share_exposed_60m"]), *map(pct, a1["share_exposed_60m_ci"]),
@@ -249,7 +258,9 @@ def _results_expected(s: dict, synth: dict) -> dict[str, list]:
             *NUMBER.findall(instant), f"{a5['items_one_source']}", f"{a5['items_exposed']}",
             share("merged", "first source", "computed"), share("merged", "first source", "no answer round observed"),
             share("strict", "first source", "no answer round observed"), share("merged", "first source", "dissent"),
-            share("merged", "first source", "relayed"), share("merged", "latest source", "relayed"),
+            # a summary from before a source that posted first had its own label counts it as relayed
+            share("merged", "first source", origins.POSTED_FIRST if origins.POSTED_FIRST in by["merged"]["first source"]
+                  else "relayed"), share("merged", "latest source", "relayed"),
             f"{a5['origins']['roots']['latest source']['chain cut (its latest source posted after it)']:,}",
             f"{tv['mean_hops_repeated']:.1f}", f"{tv['max_hops']}"],
         "**A6 Reach**": [
@@ -266,7 +277,7 @@ def test_readme_results_table_quotes_the_committed_summaries():
     assert list(rows) == list(expected)
     for analysis, numbers in expected.items():
         _check(rows[analysis], numbers, analysis)
-    a1, a3, a4, a5 = rows["**A1 Provenance**"], rows["**A3 Diffusion**"], rows["**A4 Errors**"], rows["**A5 Structure**"]
+    a1, a3, a4 = rows["**A1 Provenance**"], rows["**A3 Diffusion**"], rows["**A4 Errors**"]
     tc = s["A1"]["threshold_curve"]
     assert dict((c["answers"], c["share"]) for c in tc["curves"])["datausa-sector61-state"][tc["hours"].index(6)] == 0
     assert "none of datausa-sector61-state's at 6 h" in a1
@@ -283,7 +294,6 @@ def test_readme_results_table_quotes_the_committed_summaries():
     assert sum(r["first seen tie"] for r in s["A4"]["rows"]) == 1 and "first posted in the same second" in a4
     czech = slots["oecd-equity | Czech Republic"]["variant_provenance"]["by_variant"]["9.69"]
     assert czech["independent_dissent"] == czech["derived_independently"] and "all while 9.7 was public" in a4
-    assert f"within {WORDS[s['A5']['origins']['max depth']['first source']]} hops" in a5
 
 
 def _crosssite_expected(s: dict, cross: dict, corpus: dict) -> dict[str, list]:

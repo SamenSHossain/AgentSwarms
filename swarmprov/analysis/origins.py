@@ -2,7 +2,8 @@
 
 The source's own answer round on the same item (from the same exposure table) says
 whether it **computed** the value (answered it with nothing matching public, D == 0),
-was itself exposed and **relayed** it (D == 1), or was matched on a different value
+was itself exposed and **relayed** it (D == 1), had **posted it before its own source** (its own answer is
+self-originated: it posted the value before any other agent did), or was matched on a different value
 (**dissent**: its own, or the consensus when it stated none).  A source with no answer
 round on the item reads **no answer round observed**: an agent that only published values (an answer list, a sequence scout),
 or an answer the extractor missed, or an identity split.  Being the first public
@@ -16,17 +17,18 @@ import pandas as pd
 
 from ..exposure import match_key
 
-LABELS = ("computed", "no answer round observed", "dissent", "relayed")
+# A source posted the value no later than the post it would be credited to.  POSTED_FIRST: no later than any other
+# carrier, so it counts as exposed only because another agent posted the value between its own post and its report:
+# a source whose own answer is self-originated, or a root where the walk stops on a tie or leads back to an agent
+# on its path.  CUT: an earlier carrier existed, but the latest rule credits it to one that posted after it (the
+# first rule cannot).
+POSTED_FIRST = "posted before its own source"
+CUT = "chain cut (its latest source posted after it)"
+LABELS = ("computed", "no answer round observed", "dissent", "relayed", POSTED_FIRST)
 # the exposed answers no source is credited with, a row of their own in A5's origins table
 SELF = "self-originated (the answering agent posted it first)"
 # attribution rule: the source column and the time of the source's post
 SOURCE_TIME = {"src_agent": "t_public", "src_latest": "t_latest"}
-# roots where the walk stops because the source had posted the value no later than the post it is credited to.
-# POSTED_FIRST: no later than any other carrier, so it counts as exposed only because another agent posted the
-# value between its own post and its report.  CUT: an earlier carrier existed, but the latest rule credits it to
-# one that posted after it (the first rule cannot).
-POSTED_FIRST = "posted before its own source"
-CUT = "chain cut (its latest source posted after it)"
 
 
 def _rounds(ex: pd.DataFrame) -> dict:
@@ -49,7 +51,7 @@ def origin_status(ex: pd.DataFrame, src_col: str = "src_agent") -> pd.DataFrame:
         elif own[1] != key:
             origin = "dissent"
         else:
-            origin = "relayed" if own[0].D == 1 else "computed"
+            origin = POSTED_FIRST if own[0].self_originated else "relayed" if own[0].D == 1 else "computed"
         rows.append({"claim_id": r.claim_id, "agent": r.agent, "family": r.family, "item": r.item,
                      "source": src, "origin": origin})
     return pd.DataFrame(rows, columns=["claim_id", "agent", "family", "item", "source", "origin"])

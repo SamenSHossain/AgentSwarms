@@ -19,7 +19,7 @@ from .analysis import agents as agents_mod, causal, diffusion, errors, origins, 
 from .claims import agent_rounds, consensus, public, value_key
 from .exposure import credited
 from .fmt import dumps, json_safe, log, pct
-from .schema import TABLES, RunDir, other_mapping, suffix
+from .schema import RunDir, other_mapping, suffix
 
 
 # capability -> (consequence when the source has it, consequence when it does not)
@@ -350,12 +350,9 @@ def _no_posts(run: RunDir, prof: dict, mapping: str) -> str:
 
 
 def _context(run: RunDir, mapping: str, cfg, boot: int, prof: dict) -> _Ctx:
-    ex, alt = run.read(f"exposures_{mapping}"), other_mapping(mapping)
-    ex_alt = run.read(f"exposures_{alt}")
-    missing = [c for c in TABLES["exposures"] if c not in ex.columns or c not in ex_alt.columns]
-    if missing and len(ex.columns):   # a 0x0 table from a run with no agent-rounds has nothing to miss
-        raise SystemExit(f"{run.path}: the exposure tables predate this version (no {', '.join(missing)}); "
-                         f"rerun `swarmprov expose {run.path}`, then `graph` and `report`")
+    alt = other_mapping(mapping)
+    run.require_exposures(mapping, alt)
+    ex, ex_alt = run.read(f"exposures_{mapping}"), run.read(f"exposures_{alt}")
     events, claims, agents = run.read("events"), run.read("claims"), run.read("agents")
     agent_col = agents_mod.AGENT_COLS[mapping]
     seq = prof.get("clock") == "sequence"   # posts ordered by message position: nothing measured in hours
@@ -821,7 +818,8 @@ def _a5(c: _Ctx) -> list[str]:
          + (_replies(r5["n_reply_edges"], graph.reply_edges(c.events, c.agents, c.agent_col)[1]) if threading else "")
          + "). "
          + (_hub_headline(r5) if r5.get("n_exposure_edges") else
-            "No answer had a first public source here, so there is no exposure concentration to report. ")
+            "No answer had a first public source here" + _self_only(r5.get("n_self_originated"))
+            + ", so there is no exposure concentration to report. ")
          + _depth_sentence(r5, c.r6, edges, c.ws)]
     if has_fig:
         L.append(f"![structure](figures/{run.figure('a5_structure.png', mapping).name})\n")
@@ -994,14 +992,15 @@ def _kf_a1(a: dict, s: dict, seq: bool) -> str:
         out += f", {pct(a['share_exposed_60m'])}{_ci_text(a, 'share_exposed_60m')} at least an hour before"
         if a.get("median_gap_h") is not None:
             out += f", with a median head start of {a['median_gap_h']:.1f} h{_ci_text(a, 'median_gap_h', hours=True)}"
-    vis = (f"{a['n_independent_visible']:,} under `D_visible`, which counts a copy deleted before the report as never "
-           "public") if a.get("n_independent_visible") is not None else ""
+    vis = " under `D_visible`, which counts a copy deleted before the report as never public"
     if k := a.get("n_self_originated"):
+        bound = a.get("n_independent_at_most_visible")
         out += (f"; at most {a['n_independent_at_most']:,} were independent lookups ({a['n_independent']:,} with nothing "
-                f"public before the report{', ' + vis if vis else ''}; {k:,} more {'were' if k != 1 else 'was'} first "
-                "posted by the agent itself before any other copy)")
+                f"public before the report; {k:,} more {'were' if k != 1 else 'was'} first posted by the agent itself "
+                "before any other copy" + (f"; at most {bound:,}{vis}" if bound is not None else "") + ")")
     else:
-        out += f"; at most {a['n_independent']:,} were independent lookups" + (f" ({vis})" if vis else "")
+        out += f"; at most {a['n_independent']:,} were independent lookups" + (
+            f" ({a['n_independent_visible']:,}{vis})" if a.get("n_independent_visible") is not None else "")
     return out + ". These are floors: only the posts this run captured are searched, so a copy anywhere else is invisible."
 
 
@@ -1050,7 +1049,9 @@ def _kf_a2(rows: list[dict], s: dict, seq: bool) -> str | None:
         by_outcome.setdefault(r["outcome"], []).append(r)
     rest = [r for r in main if r["outcome"] not in by_outcome]
     flat, unseen = [r for r in rest if r in null], [r for r in rest if r not in null]
-    others = ", ".join(f"`{o}`" for o in dict.fromkeys(r["outcome"] for r in unseen))
+    named = {r["outcome"] for r in flat}   # an outcome also read as no effect names its treatment here
+    others = ", ".join(dict.fromkeys(f"`{r['outcome']}`" + (f" under `{r['treatment']}`" if r["outcome"] in named else "")
+                                     for r in unseen))
 
     def cell(rs: list[dict]) -> str:
         r = rs[0]
@@ -1121,7 +1122,8 @@ def _kf_a5(a: dict, s: dict, seq: bool) -> str:
     if not rows:
         k, e = a["n_nodes"], a["n_relay_edges"]
         return (f"{k:,} agent{'s' * (k != 1)} linked by {e:,} same-page relay hop{'s' * (e != 1)}; no answer had a "
-                "first public source, so there is no hub concentration to report.")
+                f"first public source{_self_only(a.get('n_self_originated'))}, so there is no hub concentration to "
+                "report.")
     whole, n = top10_range(a)
     parts = []
     if (f := rows.get("first source")) is not None:
@@ -1141,6 +1143,13 @@ def _kf_a5(a: dict, s: dict, seq: bool) -> str:
                "nobody)" if k else "")
             + (" under every attribution rule" if same else ", depending on who is credited")
             + " (nothing records who read whom, so each rule credits one source per answer): " + ", ".join(parts) + ".")
+
+
+def _self_only(k: int | None) -> str:
+    """A5 with no exposure edge: the exposed answers that are self-originated, which no rule credits."""
+    return (f" (the {k:,} exposed answer{'s' * (k != 1)} {'were' if k != 1 else 'was'} self-originated: "
+            f"{'their agents' if k != 1 else 'its agent'} posted the value before any other agent did, so no source "
+            "is credited)") if k else ""
 
 
 def top10_range(a5: dict) -> tuple[str, int] | None:
@@ -1207,7 +1216,8 @@ def _truth_block(tv: dict, summary: dict) -> list[str]:
         # a point interval (standard error 0: every round has the same outcome) is no estimate
         fit = a2["p"] is not None and a2["ci_lo"] is not None and a2["ci_lo"] < a2["ci_hi"]
         est = f"{a2['beta']:.3f} (95% CI {a2['ci_lo']:.3f} to {a2['ci_hi']:.3f}, " \
-            + ("p < 0.001)" if a2["p"] < 0.001 else f"p {a2['p']:.3f})") if fit else a2["note"] or "not estimated"
+            + ("p < 0.001)" if a2["p"] < 0.001 else f"p {a2['p']:.3f})") + (f"; {a2['note']}" if a2["note"] else "") \
+            if fit else a2["note"] or "not estimated"
         rows.append(("A2 `y_instant ~ D_cons`", est,
                      ("–" if a2["true_effect"] is None else f"{a2['true_effect']:.3f}")
                      + " (the share of rounds public at arrival that copied)",
@@ -1793,7 +1803,7 @@ def _origins_block(exs: dict[str, pd.DataFrame], mapping: str, summary: dict,
                         + ([f"{own[m]:,}"] if len(labels) > len(origins.LABELS) else [])
                         for (rule, m), t in tr.items()}, index=pd.Index(labels, name="credited source"))
     rules = ("first source", "latest source")
-    root_labels = [k for k in origins.LABELS if k != "relayed"] + [origins.POSTED_FIRST, origins.CUT]
+    root_labels = [k for k in origins.LABELS if k != "relayed"] + [origins.CUT]
     roots = pd.DataFrame({r: tr[(r, mapping)]["root_origin"].value_counts().reindex(root_labels, fill_value=0) for r in rules})
     roots.index.name = "root"
     relayed = {r: tr[(r, mapping)].loc[tr[(r, mapping)]["origin"] == "relayed", "depth"] for r in rules}
@@ -1814,7 +1824,9 @@ def _origins_block(exs: dict[str, pd.DataFrame], mapping: str, summary: dict,
          "**no answer round observed** = no answer round of its own on the item was extracted, which fits an agent that "
          "only published values (an answer list, a sequence scout) but also a missed answer or an identity split, so audit "
          "the sources below before calling them compilers; **dissent** = its answer round matched a different value (its "
-         "own, or the consensus when it stated none); **relayed** = it answered the same value but was itself exposed"
+         "own, or the consensus when it stated none); **relayed** = it answered the same value but was itself exposed; "
+         f"**{origins.POSTED_FIRST}** = it answered the same value and had posted it before any other agent did (its "
+         "own answer is self-originated: exposed only because another agent repeated the value before its report)"
          + ("; **self-originated** = no source is credited, as the answering agent had posted the value before any other "
             "agent did (outside the count in brackets)" if any(own.values()) else "")
          + ". Being the first public source is not proof of being read.\n",
@@ -1891,7 +1903,10 @@ def _identity_merges(agents: pd.DataFrame, explicit: bool) -> str:
 def _visibility_counts(ex: pd.DataFrame) -> dict:
     exposed = ex[ex["D"] == 1]
     gone = exposed[exposed["src_deleted_before_report"] == 1]
-    return {"n_independent_visible": int((ex["D_visible"] == 0).sum()),
+    n_vis = int((ex["D_visible"] == 0).sum())
+    # a self-originated answer whose other copies were all deleted before the report is already among the n_vis
+    own = int(((ex["D_visible"] == 1) & (ex["self_originated"] == 1)).sum())
+    return {"n_independent_visible": n_vis, "n_independent_at_most_visible": n_vis + own,
             "n_src_deleted_before_report": int(len(gone)),
             "n_only_deleted_copies": int((gone["D_visible"] == 0).sum())}
 

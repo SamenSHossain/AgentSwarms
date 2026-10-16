@@ -101,6 +101,17 @@ def _a2(ex: pd.DataFrame, truth: pd.DataFrame, wall: bool) -> dict:
             "y_instant_sd": sd, "mean_y_D0": r["mean_y_D0"], "mean_y_D1": r["mean_y_D1"]}
 
 
+def _credits(ex: pd.DataFrame, edges: pd.DataFrame, events: pd.DataFrame, agents: pd.DataFrame, col: str) -> pd.DataFrame:
+    """``ex`` with the agent each rule credits (``RULES``' columns, and ``src_visible_agent``, the author of the first
+    copy still visible), None for a self-originated answer, which credits nobody, as in A5."""
+    author = events.drop_duplicates("event_id").set_index("event_id")["author_raw"]
+    ex = ex.assign(relay_parent=structure.relay_parents(ex, edges, events),
+                   src_visible_agent=ex["src_visible_event_id"].map(author).map(agents.set_index("author_raw")[col]))
+    rules = [*RULES.values(), "src_visible_agent"]
+    ex[rules] = ex[rules].astype(object).where(ex["self_originated"] == 0, None)
+    return ex
+
+
 def _sources(ex: pd.DataFrame, j: pd.DataFrame, edges: pd.DataFrame, events: pd.DataFrame, label: pd.Series,
              handle: dict, deleted: bool) -> list[dict]:
     """Per A5 rule: the share of copied answers it credits to the agent whose post was copied, and its top-10 share on
@@ -185,11 +196,7 @@ def score(run: RunDir, truth_dir: str | Path, mapping: str = "merged") -> dict:
     wall = run.profile().get("clock") != "sequence"
     ex, edges, events, agents = (run.read(t) for t in (f"exposures_{mapping}", f"edges_{mapping}", "events", "agents"))
     refs = json.loads((truth_dir / "config.json").read_text(encoding="utf-8")).get("reference_values", {})
-    author = events.drop_duplicates("event_id").set_index("event_id")["author_raw"]
-    ex = ex.assign(relay_parent=structure.relay_parents(ex, edges, events),
-                   src_visible_agent=ex["src_visible_event_id"].map(author).map(agents.set_index("author_raw")[col]))
-    rules = [*RULES.values(), "src_visible_agent"]   # a self-originated answer is credited to nobody, as in A5
-    ex[rules] = ex[rules].astype(object).where(ex["self_originated"] == 0, None)
+    ex = _credits(ex, edges, events, agents, col)
     cols = {"agent": "author_raw", "family": "family", "item": "item", "public_at_arrival": "public_at_arrival",
             "copied": "copied", "src_agent": "true_src", "target": "target", "visible": "visible"}
     j = (ex.merge(events[["event_id", "author_raw"]].drop_duplicates("event_id"), left_on="report_event_id",

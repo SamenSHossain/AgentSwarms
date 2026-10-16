@@ -145,7 +145,9 @@ def test_trace_root_follows_a_three_hop_chain():
     assert r.loc["D", ["origin", "root", "root_origin", "depth"]].tolist() == ["relayed", "A", "computed", 3]
     assert r.loc["B", ["origin", "root", "depth"]].tolist() == ["computed", "A", 1]
     assert r.loc["E", "origin"] == "dissent" and r.loc["F", "origin"] == "no answer round observed"
-    assert r.loc["G", ["origin", "root", "root_origin", "depth"]].tolist() == ["relayed", "H", origins.POSTED_FIRST, 1]
+    # H is G's origin itself, not a relay: A1 and trace call H's own answer self-originated
+    assert r.loc["G", ["origin", "root", "root_origin", "depth"]].tolist() == [origins.POSTED_FIRST, "H",
+                                                                               origins.POSTED_FIRST, 1]
     assert "H" not in r.index
     assert set(r["origin"]) <= set(origins.LABELS)
 

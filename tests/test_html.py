@@ -64,6 +64,23 @@ def test_every_committed_report_converts(path):
     assert "<script" not in out and out.count("<img") == out.count('src="data:image/png;base64,')
 
 
+@pytest.mark.parametrize("path", sorted((ROOT / "results").glob("*/summary*.json")), ids=lambda p: p.parent.name)
+def test_tiles_read_every_committed_summary(path):
+    """``swarmprov html`` re-renders a run written by an earlier version, so the tiles read what its summary has."""
+    s = json.loads(path.read_text())
+    tiles = {lab: (v, note) for v, lab, note in html.tiles(s)}
+    if a1 := s.get("A1"):
+        assert tiles["independent lookups"][0] == f"≤ {a1['n_independent'] + (a1.get('n_self_originated') or 0):,}"
+
+
+def test_the_independent_tile_counts_self_originated_answers_apart():
+    a1 = {"n_answers": 5, "n_agents": 5, "share_exposed": 1.0, "n_independent": 0}
+    assert ("≤ 0", "independent lookups", "nothing carrying the answer was public") in html.tiles({"A1": a1})   # older
+    a1 |= {"n_self_originated": 3, "n_independent_at_most": 3}
+    assert ("≤ 3", "independent lookups", "0 with nothing public, 3 first posted by the agent itself") \
+        in html.tiles({"A1": a1})
+
+
 def test_script_json_cannot_close_or_hide_its_element():
     s = html._script_json({"x": "</script><!--<script>alert(1)"})
     assert "</" not in s and "<!--" not in s and json.loads(s) == {"x": "</script><!--<script>alert(1)"}

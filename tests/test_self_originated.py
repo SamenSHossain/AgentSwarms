@@ -63,11 +63,15 @@ def test_report_counts_them_apart(chat):
     first = {r["rule"]: r for r in a5["attribution"] if r["answers"] == "all exposed"}["first source"]
     assert first["n"] == a5["n_exposure_edges"] == 2 and a5["n_self_originated"] == 3
     assert a5["origins"]["self_originated"] == {"merged": 3, "strict": 3}   # the mappings group the authors alike
-    assert sum(a5["origins"]["by_mapping"]["merged"]["first source"].values()) == 2
+    # the planner's credited source posted the value first: its origin, not a relay of the planner's later copy
+    assert a5["origins"]["by_mapping"]["merged"]["first source"] == {
+        "computed": 0, "no answer round observed": 1, "dissent": 0, "relayed": 0, origins.POSTED_FIRST: 1}
     assert "(3 more, first posted by the answering agent itself, are credited to nobody)" in s["headline"][4]
     md = (chat.path / "report.md").read_text()
     assert "**5 answers given by 5 agents; at most 3 independent lookups**: 0 with nothing" in md
     assert f"| {origins.SELF} | 3 | 3 |" in md and "3 more exposed answers were self-originated" in md
+    assert f"| {origins.POSTED_FIRST} | 1 (50%) | 1 (50%) |" in md and "| relayed | 0 (0%) | 0 (0%) |" in md
+    assert "| researcher-1 | 1 | 1 | posted before its own source 1 |" in md
     assert "No rule credits the 3 self-originated answers" in md
 
 
@@ -99,9 +103,39 @@ def test_an_edge_for_a_self_originated_round_is_an_error(chat, tmp_path):
     assert bad.loc[("exposure_edges", "edges_merged"), "n_violations"] == 0
 
 
+def test_commands_on_exposure_tables_from_before_self_originated_answers(chat, tmp_path):
+    """``report``, ``trace`` and ``agent`` stop alike, naming the stages to rerun, instead of failing on the column."""
+    import shutil
+    from swarmprov import cli
+    shutil.copytree(chat.path, tmp_path / "run")
+    old = RunDir(tmp_path / "run")
+    for m in ("merged", "strict"):
+        old.write(f"exposures_{m}", old.read(f"exposures_{m}").drop(columns=["self_originated"]))
+    for argv in (["report"], ["trace", "--agent", "researcher-1", "--item", "Poland"], ["agent", "researcher-1"]):
+        with pytest.raises(SystemExit, match=r"predate this version \(no self_originated\); rerun `swarmprov expose"):
+            cli.main([argv[0], str(old.path), *argv[1:]])
+
+
+def test_a5_with_only_self_originated_answers_says_so(tmp_path):
+    """a posts the value, b repeats it, a reports: the one exposed answer credits nobody, and A5 says why."""
+    path = tmp_path / "chat.jsonl"
+    path.write_text("".join(json.dumps({"id": f"m{i}", "timestamp": (T0 + pd.Timedelta(minutes=i)).isoformat(),
+                                        "author": a, "channel": "research", "text": t}) + "\n"
+                            for i, (a, t) in enumerate((("a", "Found it: the World Bank page shows Poland 0.2 for 2023."),
+                                                        ("b", "Poland 0.2, per the World Bank page."),
+                                                        ("a", "I answered Poland 0.2.")))))
+    (tmp_path / "cfg.json").write_text(json.dumps({"bootstrap_reps": 0}))
+    run = pipeline.run_all(path, tmp_path / "run", adapter="chat", config=str(tmp_path / "cfg.json"))
+    why = ("no answer had a first public source (the 1 exposed answer was self-originated: its agent posted the value "
+           "before any other agent did, so no source is credited), so there is no hub concentration")
+    assert why in json.loads((run.path / "summary.json").read_text())["headline"][4]
+    assert "No answer had a first public source here (the 1 exposed answer was self-originated" in \
+        (run.path / "report.md").read_text()
+
+
 def test_a_synthetic_case_credits_only_the_later_poster():
     """A posts the value at 0 and B at 10; A reports at 20 and B at 30.  A's answer is self-originated (B's copy is a
-    later repeat); B's is credited to A, whose own round is exposed, so the root walk stops at A."""
+    later repeat); B's is credited to A, whose own answer is self-originated: A posted the value before its own source, not relayed it."""
     rounds = pd.DataFrame([{"claim_id": c, "report_event_id": f"r{c}", "agent": a, "family": "f", "episode": 1,
                             "item": "x", "value_norm": "7", "t_report": T0 + pd.Timedelta(minutes=m),
                             "latency_class": None, "wrong_flag": False, "correct_flag": False}
@@ -117,8 +151,17 @@ def test_a_synthetic_case_credits_only_the_later_poster():
     att = structure.attribution(ex, edges, pd.DataFrame(columns=["event_id", "ts"])).set_index(["rule", "answers"])
     assert att.loc[("first source", "all exposed"), "n"] == att.loc[("latest source", "all exposed"), "n"] == 1
     root = origins.trace_root(ex)
-    assert root[["agent", "source", "origin", "root_origin"]].values.tolist() == [["B", "A", "relayed",
+    assert root[["agent", "source", "origin", "root_origin"]].values.tolist() == [["B", "A", origins.POSTED_FIRST,
                                                                                   origins.POSTED_FIRST]]
-    assert report.key_findings({"profile": {"n_events": 4}, "A1": {
-        "n_answers": 2, "n_agents": 2, "share_exposed": 1.0, "n_independent": 0, "n_self_originated": 1,
-        "n_independent_at_most": 1}})[1].count("1 more was first posted by the agent itself") == 1
+    a1 = {"n_answers": 2, "n_agents": 2, "share_exposed": 1.0, "n_independent": 0, "n_self_originated": 1,
+          "n_independent_at_most": 1}
+    assert report.key_findings({"profile": {"n_events": 4}, "A1": a1})[1].count(
+        "(0 with nothing public before the report; 1 more was first posted by the agent itself before any other copy)") == 1
+    # D_visible states its own bound, the self-originated answers it does not already count added
+    a1 |= {"n_independent_visible": 1, "n_independent_at_most_visible": 1} | report._visibility_counts(ex)
+    assert a1["n_independent_at_most_visible"] == 1   # A's copy by B is still visible: D_visible = 1, no lookup
+    assert ("1 more was first posted by the agent itself before any other copy; at most 1 under `D_visible`, which "
+            "counts a copy deleted before the report as never public)") in report.key_findings(
+        {"profile": {"n_events": 4}, "A1": a1})[1]
+    gone = ex.assign(D_visible=[0, 1])   # had B deleted its copy before A's report, D_visible would count A already
+    assert report._visibility_counts(gone)["n_independent_at_most_visible"] == 1

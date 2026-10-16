@@ -284,6 +284,12 @@ def test_synthetic_wrong_values_are_derived_once_then_copied(synth_run):
                 assert p["derived_independently"] == 1 and p["adopted_after_public"] == p["answer_rounds"] - 1
 
 
+@pytest.mark.xfail(reason="results/openai-wiki predates self_originated in the exposure mirror", strict=True)
+def test_the_committed_exposure_mirror_has_the_export_columns():
+    """Regenerating results/ makes this pass, and must then drop the mark (strict: a pass fails)."""
+    assert list(pd.read_csv(COMMITTED / "exposures_merged.csv", nrows=0).columns) == export_mod.EXPOSURE_COLUMNS
+
+
 def test_export_writes_the_mirrors_and_the_detail(synth_run, tmp_path, capsys):
     run, _ = synth_run
     out = tmp_path / "out"
@@ -293,8 +299,9 @@ def test_export_writes_the_mirrors_and_the_detail(synth_run, tmp_path, capsys):
     assert list(ex.columns) == export_mod.EXPOSURE_COLUMNS and len(ex) == len(run.read("exposures_merged"))
     edges = pd.read_csv(out / "edges_exposure_citation_merged.csv")
     assert list(edges.columns) == export_mod.EDGE_COLUMNS and set(edges["kind"]) <= {"exposure", "citation"}
-    if COMMITTED.is_dir():                                 # the committed results/ mirrors have these headers
-        assert list(pd.read_csv(COMMITTED / "exposures_merged.csv", nrows=0).columns) == export_mod.EXPOSURE_COLUMNS
+    if COMMITTED.is_dir():   # the committed results/ mirrors have these headers (new exposure columns are appended)
+        header = list(pd.read_csv(COMMITTED / "exposures_merged.csv", nrows=0).columns)
+        assert header == export_mod.EXPOSURE_COLUMNS[:len(header)]
         assert list(pd.read_csv(COMMITTED / "edges_exposure_citation.csv", nrows=0).columns) == export_mod.EDGE_COLUMNS
     assert len(pd.read_csv(out / "disputes_merged.csv")) == len(run.read("disputes_merged"))
     assert cli.main(["export", str(run.path), "-o", str(out), "--tables", "exposures,claims", "--format", "parquet",
