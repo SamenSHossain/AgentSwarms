@@ -244,10 +244,14 @@ def build(run: RunDir, mapping: str = "merged") -> str:
     seq = prof.get("clock") == "sequence"   # posts ordered by message position: nothing measured in hours
     figs, summary = {}, {"mapping": mapping, "profile": {k: prof.get(k) for k in ("adapter", "n_events", "n_authors", "first_ts",
                                                                                    "last_ts", "clock")}}
+    # the framework pseudo-authors, when they wrote no agent's post: the task and unattributed tool output
+    posts = public(events)
+    pseudo = [a for a in ("task", "tool") if a in set(events["author_raw"]) - set(posts["author_raw"])]
     L: list[str] = []
     L.append(f"# Copied or computed? — provenance report\n")
     L.append(f"Source: `{prof['source']}` (adapter `{prof['adapter']}`), {prof['n_events']:,} posts from "
-             f"{prof['n_authors']:,} author strings, " + _when(prof, notes)
+             f"{prof['n_authors'] - len(pseudo):,} author strings" + (f" plus {' and '.join(f'`{a}`' for a in pseudo)}"
+                                                                    if pseudo else "") + ", " + _when(prof, notes)
              + f"Agent identity mapping: **{mapping}** (sensitivity under the other mapping below).\n")
     L.append("## Data capabilities\n")
     L.append("| capability | available | consequence |\n|---|---|---|")
@@ -260,7 +264,8 @@ def build(run: RunDir, mapping: str = "merged") -> str:
         L.append(f"| {k} | {'yes' if v else 'no'} | {yes if v else no} |")
     L.append("")
     explicit = bool(caps.get("has_explicit_author"))
-    L.append(_identity_merges(run.read("agents"), explicit) + "\n")
+    ag = run.read("agents")
+    L.append(_identity_merges(ag[~ag["author_raw"].isin(pseudo)], explicit) + "\n")
     L += _warnings(prof, summary)
     if notes.get("clock_grades"):
         L.append((_needs_clock("Clock quality notes") if seq else _clock_note(notes, ex, events)) + "\n")
@@ -396,7 +401,7 @@ def build(run: RunDir, mapping: str = "merged") -> str:
         rule = {"bin_h": None} if seq else {}   # no hours: the whole run is one majority bin
         vs = errors.value_slots(mentions, agent_col, **rule)
         ss = errors.sequence_slots(claims, agent_col, **rule) if len(claims) else []
-        ds = errors.regex_slots(events, run.read("agents"), cfg.disputes, agent_col, **rule) if cfg.disputes else []
+        ds = errors.regex_slots(posts, ag, cfg.disputes, agent_col, **rule) if cfg.disputes else []
         feat = errors.pick_featured(vs, ss, cfg.featured_disputes, declared=ds)
         figs["errors"] = None if seq else errors.figure(feat, run.figure("a4_errors.png"))
         refs = errors.reference_keys(cfg.reference_values)

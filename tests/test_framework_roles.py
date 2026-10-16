@@ -15,19 +15,26 @@ from swarmprov.adapters.chat import ChatAdapter, _pick
 PHANTOMS = {"unknown", "task", "tool", "user", "lookup"}
 ROUNDS = [("Poland", "0.2"), ("Hungary", "-0.9"), ("Chile", "0.2")]
 AGENTS = ["researcher-1", "researcher-2", "researcher-3"]
+FAMILY_ROUNDS = [("alpha-task", "Poland", "0.2"), ("alpha-task", "Hungary", "-0.9"), ("beta-task", "Peru", "1.5")]
+
+
+def _lookup(agent: str, call: str, item: str, result: str) -> list[dict]:
+    """An OpenAI tool call that names no text, and its result."""
+    return [{"role": "assistant", "name": agent, "content": None,
+             "tool_calls": [{"id": call, "type": "function",
+                             "function": {"name": "lookup", "arguments": json.dumps({"country": item})}}]},
+            {"role": "tool", "tool_call_id": call, "name": "lookup", "content": result}]
 
 
 def _openai() -> list[dict]:
-    """researcher-1 looks each value up with a tool, then all three answer; the user prompt already gives Chile's."""
+    """researcher-1 looks each value up with a tool, then all three answer; the user prompt already gives Chile's, and
+    researcher-3 names "the task's value" (no agent's name)."""
     msgs = [{"role": "system", "content": "You are a research swarm. Report 'R<n> CONFIRMED: <item> answered <value>'."},
             {"role": "user", "content": "Find the 2023 change for Poland, Hungary and Chile. Known so far: Chile 0.2."}]
     for r, (item, val) in enumerate(ROUNDS, start=1):
-        msgs += [{"role": "assistant", "name": "researcher-1", "content": None,
-                  "tool_calls": [{"id": f"call_{r}", "type": "function",
-                                  "function": {"name": "lookup", "arguments": json.dumps({"country": item})}}]},
-                 {"role": "tool", "tool_call_id": f"call_{r}", "name": "lookup", "content": f"{item} {val} (2023)"}]
-        msgs += [{"role": "assistant", "name": a, "content": f"R{r} CONFIRMED: {item} arrived; answered {val} at +{3 + k}s."}
-                 for k, a in enumerate(AGENTS)]
+        msgs += _lookup("researcher-1", f"call_{r}", item, f"{item} {val} (2023)")
+        msgs += [{"role": "assistant", "name": a, "content": f"R{r} CONFIRMED: {item} arrived; answered {val} at +{3 + k}s."
+                  + (" It matches the task's value." if k == 2 else "")} for k, a in enumerate(AGENTS)]
     return msgs
 
 
@@ -36,6 +43,20 @@ def oai(tmp_path_factory):
     d = tmp_path_factory.mktemp("openai")
     (d / "openai.json").write_text(json.dumps(_openai()))
     return pipeline.run_all(d / "openai.json", d / "run", adapter="chat")
+
+
+@pytest.fixture(scope="module")
+def configured(tmp_path_factory):
+    """Configured families that neither the prompt nor the tool output names; researcher-1 works in both."""
+    d = tmp_path_factory.mktemp("configured")
+    msgs = [{"role": "user", "content": "Find the 2023 change for Poland, Hungary and Peru. Known so far: Peru 1.5."}]
+    for r, (fam, item, val) in enumerate(FAMILY_ROUNDS, start=1):
+        msgs += _lookup("researcher-1", f"call_{r}", item, f"{item} {val} (2023)")
+        msgs += [{"role": "assistant", "name": a, "content": f"{fam} R{r} CONFIRMED: {item} arrived; answered {val}."}
+                 for a in AGENTS]
+    (d / "trace.json").write_text(json.dumps(msgs))
+    (d / "config.json").write_text(json.dumps({"families": {"alpha-task": "alpha-task", "beta-task": "beta-task"}}))
+    return pipeline.run_all(d / "trace.json", d / "run", adapter="chat", config=str(d / "config.json"))
 
 
 @pytest.fixture(scope="module")
@@ -62,8 +83,18 @@ def test_roles_of_openai_langchain_autogen_and_anthropic_messages():
              ({"type": "TextMessage", "source": "user", "content": "x"}, "task"),
              ({"type": "TextMessage", "source": "planner", "content": "x"}, "agent"),
              ({"type": "TextMessage", "handle": "planner", "content": "x"}, "agent"),   # no speaker: still an agent turn
-             ({"type": "ToolCallRequestEvent", "source": "planner", "content": []}, "agent"),
+             ({"type": "ToolCallSummaryMessage", "source": "planner", "content": "x"}, "agent"),
+             ({"type": "HandoffMessage", "source": "planner", "content": "x"}, "agent"),
+             ({"type": "AssistantMessage", "source": "planner", "content": []}, "agent"),          # autogen-core
+             ({"type": "SystemMessage", "content": "x"}, "task"),
+             # an agent's inner events reach no other agent, whoever the source
+             ({"type": "ToolCallRequestEvent", "source": "planner", "content": []}, "inner"),
+             ({"type": "ThoughtEvent", "source": "planner", "content": "x"}, "inner"),
+             ({"type": "ModelClientStreamingChunkEvent", "source": "planner", "content": "x"}, "inner"),
+             ({"type": "UserInputRequestedEvent", "source": "user", "content": ""}, "inner"),
              ({"type": "ToolCallExecutionEvent", "source": "planner", "content": []}, "tool"),
+             ({"type": "CodeExecutionEvent", "source": "planner", "result": {"output": "x"}}, "tool"),
+             ({"type": "FunctionExecutionResultMessage", "content": []}, "tool"),
              ({"role": "user", "content": [{"type": "tool_result", "tool_use_id": "t1", "content": "x"}]}, "tool"),
              ({"type": "message", "user": "U1", "text": "x"}, None), ({"author": "a", "text": "x"}, None),
              ({"type": "Default", "author": {"name": "a"}, "content": "x"}, None)]   # Slack and Discord types are no roles
@@ -83,6 +114,40 @@ def test_tool_results_go_to_the_caller_by_call_id_else_the_one_pending_call():
     assert c.answer(["x"]) == "a"
 
 
+def test_a_result_naming_an_unseen_id_is_not_given_to_a_call_with_another_id():
+    c = framework.Calls()
+    c.open("b", ["y"])
+    assert c.answer(["x1"]) is None and c.pending   # not b's: b's call has an id, and the result names another
+    assert c.answer(["x1"], named="r1") == "r1"     # an AutoGen event names the agent whose tool ran
+    assert c.answer(["y"], named="r1") == "b"       # a matching call id comes first
+    c.open("a", ["1", "2"])
+    assert c.answer([]) == "a" and c.answer([]) == "a" and not c.pending   # every pending call is a's
+
+
+def test_autogen_inner_events_are_no_posts_and_tool_events_go_to_their_caller(tmp_path):
+    p = tmp_path / "autogen.jsonl"
+    msgs = [{"type": "TextMessage", "source": "user", "content": "Find Poland, Hungary and Chile."},
+            {"type": "ThoughtEvent", "source": "r1", "content": "Poland is 0.2, I will report it"},
+            {"type": "ModelClientStreamingChunkEvent", "source": "r1", "content": "Poland is"},
+            {"type": "ToolCallRequestEvent", "source": "r2", "content": [{"id": "y", "name": "f", "arguments": "{}"}]},
+            # no logged request: the event's source ran the tool (r2's pending call has another id)
+            {"type": "ToolCallExecutionEvent", "source": "r1", "content": [{"call_id": "x1", "content": "Poland 0.2"}]},
+            {"type": "CodeExecutionEvent", "source": "r3", "retry_attempt": 0,
+             "result": {"exit_code": 0, "output": "Hungary -0.9"}},
+            # autogen-core: the call ids are in the AssistantMessage's FunctionCalls
+            {"type": "AssistantMessage", "source": "r4", "content": [{"id": "call_1", "name": "f", "arguments": "{}"}]},
+            {"type": "FunctionExecutionResultMessage", "content": [{"call_id": "call_1", "content": "Chile 0.2"}]},
+            {"type": "TextMessage", "source": "r1", "content": "R1 CONFIRMED: Poland arrived; answered 0.2"}]
+    p.write_text("\n".join(json.dumps(m) for m in msgs))
+    b = ChatAdapter().load(p)
+    assert list(zip(b.events["author_raw"], b.events["source_kind"], b.events["text"])) == [
+        ("task", "task", "Find Poland, Hungary and Chile."), ("r1", "tool_result", "Poland 0.2"),
+        ("r3", "tool_result", "Hungary -0.9"), ("r4", "tool_result", "Chile 0.2"),
+        ("r1", "message", "R1 CONFIRMED: Poland arrived; answered 0.2")]
+    assert b.notes["n_inner_dropped"] == 3 and b.notes["n_tool_unmatched"] == 0 and list(b.reads["agent_raw"]) == \
+        ["r1", "r3", "r4"]
+
+
 def test_unattributable_tool_results_are_the_tool_s_with_a_warning(tmp_path):
     p = tmp_path / "parallel.json"
     p.write_text(json.dumps([{"role": "assistant", "name": "a", "content": None, "function_call": {"name": "f"}},
@@ -92,8 +157,8 @@ def test_unattributable_tool_results_are_the_tool_s_with_a_warning(tmp_path):
     b = ChatAdapter().load(p)
     assert b.events["author_raw"].tolist() == ["tool", "tool"] and b.notes["n_tool_unmatched"] == 2
     assert b.reads is None and b.capabilities.has_reads is False   # a read needs a reader
-    assert "2 tool results answer no call id seen in the file while not exactly one tool call was pending" \
-        in b.notes["warnings"][-1]
+    assert "2 tool results answer no call id seen in the file, and neither an AutoGen `source` nor a single agent with " \
+           "calls pending names the caller, so they are attributed to `tool`" in b.notes["warnings"][-1]
 
 
 def test_langchain_dicts_and_anthropic_blocks(tmp_path):
@@ -124,8 +189,12 @@ def test_openai_trace_has_no_phantom_agent_and_tool_output_is_a_private_read(oai
     private = set(ev.loc[ev["source_kind"] != "message", "event_id"])
     assert not private & set(oai.read("claims")["event_id"]) and not private & set(oai.read("tags")["event_id"])
     edges = oai.read("edges_merged")
-    assert not PHANTOMS & (set(edges["src"]) | set(edges["dst"]))     # no A5 node
+    assert "task" in set(oai.read("tags")["cites"])                   # "the task's value" reads as a citation ...
+    assert not PHANTOMS & (set(edges["src"]) | set(edges["dst"]))     # ... but `task` is no A5 node
     assert not private & set(edges["event_id"]) and not private & set(edges["src_event_id"].dropna())
+    text = (oai.path / "report.md").read_text()
+    assert "14 posts from 3 author strings plus `task`, ordered by message position" in text
+    assert "Identity merges: none; each of the 3 merged ids is a single author string" in text
 
 
 def test_own_lookup_preceded_the_report_and_the_task_gave_chile(oai):
@@ -159,6 +228,32 @@ def test_a1_states_own_lookups_and_values_given_in_the_task(oai):
                                "n_given_in_task", "n_given_in_task_no_public_copy")} == {
         "n_own_lookup": 3, "n_exposed_with_own_lookup": 0, "n_exposed_no_lookup": 6, "n_neither": 0,
         "n_given_in_task": 3, "n_given_in_task_no_public_copy": 1}
+
+
+def test_task_and_tool_rows_without_a_family_count_in_every_family(configured):
+    ev = configured.read("events")
+    assert set(ev.loc[ev["source_kind"] != "message", "family"]) == {""}   # they name no configured family
+    ex = configured.read("exposures_merged").set_index(["agent", "item"])
+    assert ex["t_task"].notna().sum() == 3 and set(ex.index[ex["t_task"].notna()].get_level_values("item")) == {"Peru"}
+    own = ex.loc["researcher-1"]   # two alpha-task rounds and one beta-task round, each after its own lookup
+    assert set(own["family"]) == {"alpha-task", "beta-task"} and (own["own_lookup_evidence"] == 1).all()
+    text = (configured.path / "report.md").read_text()
+    assert "3 answers had the value given in the task" in text and "No answer had its value given" not in text
+    assert "Of 3 with no earlier public copy, 3 were preceded by the agent's own tool output" in text
+
+
+def test_a4_declared_disputes_count_agents_posts_only(tmp_path):
+    """The task and every agent's tool output say 1.5, but only r1 posts it: neither is a carrier."""
+    msgs = [{"role": "user", "content": "Peru prep 1.5 is where to start."}]
+    for k, v in enumerate(["1.5", "2.5", "2.5", "2.5"], start=1):
+        msgs += _lookup(f"r{k}", f"call_{k}", "Peru", "Peru prep 1.5")
+        msgs.append({"role": "assistant", "name": f"r{k}", "content": f"R1 CONFIRMED: Peru arrived; answered {v}. Peru prep {v}"})
+    (tmp_path / "trace.json").write_text(json.dumps(msgs))
+    (tmp_path / "config.json").write_text(json.dumps({"disputes": [
+        {"family": "all", "slot": "Peru prep", "context": "Peru prep", "variants": {"low": r"prep 1\.5", "high": r"prep 2\.5"}}]}))
+    run = pipeline.run_all(tmp_path / "trace.json", tmp_path / "run", adapter="chat", config=str(tmp_path / "config.json"))
+    feat = json.loads((run.path / "summary.json").read_text())["A4"]["featured"][0]
+    assert feat["kind"] == "declared" and feat["variants (agents)"] == "high (3), low (1)" and feat["agents carrying both"] == 0
 
 
 def test_trace_shows_the_own_lookup_and_the_task_under_the_sequence_clock(oai, capsys):
@@ -214,6 +309,17 @@ def test_own_lookup_recovers_computed_rounds_on_the_autogen_swarm(autogen):
     assert not PHANTOMS & (set(edges["src"]) | set(edges["dst"]))
     a1 = json.loads((run.path / "summary.json").read_text())["A1"]
     assert a1["n_exposed_no_lookup"] / a1["n_answers"] == pytest.approx(truth["copied"].mean(), abs=0.02)
+
+
+def test_trace_says_whether_the_public_copy_came_before_or_after_the_lookup(autogen, capsys):
+    run, _, _ = autogen
+    ex = run.read("exposures_merged")
+    both = ex[(ex["D"] == 1) & ex["t_own_lookup"].notna()]
+    for when, row in (("after", both[both["t_own_lookup"] < both["t_public"]].iloc[0]),
+                      ("before", both[both["t_own_lookup"] > both["t_public"]].iloc[0])):
+        assert query.trace(str(run.path), agent=row["agent"], item=row["item"]) == 0
+        assert f"a public copy was also there before the report ({when} this lookup), so no own_lookup_evidence" \
+            in capsys.readouterr().out
 
 
 def test_tool_output_changes_no_exposure_against_the_plain_swarm(autogen, synth_run):

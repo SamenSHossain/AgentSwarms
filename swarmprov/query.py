@@ -373,8 +373,11 @@ def text_answers(answers: list[dict], seq: bool = False) -> list[str]:
         for key, what in (("own_lookup", "own tool output before the report"), ("given_in_task", "value given in the task")):
             p = a.get(key)
             if p:
+                when = "" if not s else (" (" + ("before" if s["ts"] < p["ts"] else "after" if s["ts"] > p["ts"]
+                                                 else "at the time of") + " this lookup)")
                 note = ("" if key != "own_lookup" else "; own lookup preceded report (own_lookup_evidence)"
-                        if a["own_lookup_evidence"] else "; a public copy came first, so no own_lookup_evidence")
+                        if a["own_lookup_evidence"] else f"; a public copy was also there before the report{when}, so "
+                        "no own_lookup_evidence")
                 L.append(f"  {what}: post {_post_line(p)}{note}")
                 L.append(f"    \"{p['excerpt']}\"")
         rp = a["relay_parent"]

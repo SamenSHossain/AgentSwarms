@@ -73,8 +73,11 @@ def inspect(path, config: str | None = None, fields: dict | None = None) -> int:
           f"text non-empty {n_text / n:.0%}, {len(channels):,} channel{'s' if len(channels) > 1 else ''}")
     kinds = Counter(roles)
     if set(kinds) != {None}:
-        print(f"framework roles: {kinds['agent']:,} agent turns, {kinds['task']:,} task messages (system or user: author "
-              f"`task`), {kinds['tool']:,} tool results (the calling agent's own reads, not posts)"
+        cnt = lambda k, word: f"{kinds[k]:,} {word}" + "s" * (kinds[k] != 1)
+        print(f"framework roles: {cnt('agent', 'agent turn')}, {cnt('task', 'task message')} (system or user: author "
+              f"`task`), {cnt('tool', 'tool result')} (the calling agent's own reads, not posts)"
+              + (f", {cnt('inner', 'inner event')} (AutoGen thoughts, call requests, streaming chunks: no other agent "
+                 "receives them, so ingest drops them)" if kinds["inner"] else "")
               + (f", {kinds[None]:,} with no role (ordinary posts)" if kinds[None] else ""))
     weak = [f for f in GUESS if f not in fields and sum(found[f].values()) < n / 2]
     taken = set(fields.values()) | {k for h in found.values() for k in h}

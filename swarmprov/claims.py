@@ -9,6 +9,8 @@
   also works on free-form chat.  Each mention keeps its post's ``source_kind``:
   framework task messages and tool results (``PRIVATE_KINDS``) are indexed but are
   not public posts, so only exposure reads them (as given in the task / own lookup).
+  One with no family of its own is read under every task family: a prompt or a
+  tool's output names the item, rarely the family.
 """
 
 from __future__ import annotations
@@ -24,11 +26,11 @@ URL_RE = re.compile(r"https?://[^\s\]\)\|'\"<>]+")
 PRIVATE_KINDS = ("task", "tool_result")   # framework rows: the task's prompt and an agent's own tool output
 
 
-def public(mentions: pd.DataFrame) -> pd.DataFrame:
-    """The mentions in public posts: every one but a framework task message's or tool result's."""
-    if "source_kind" not in mentions or not len(mentions):
-        return mentions
-    return mentions[~mentions["source_kind"].isin(PRIVATE_KINDS)]
+def public(rows: pd.DataFrame) -> pd.DataFrame:
+    """The posts (or their mentions) that are public: every one but a framework task message or tool result."""
+    if "source_kind" not in rows or not len(rows):
+        return rows
+    return rows[~rows["source_kind"].isin(PRIVATE_KINDS)]
 
 
 def value_key(v: str | None) -> str | None:
@@ -109,15 +111,18 @@ def consensus(claims: pd.DataFrame, mentions: pd.DataFrame | None = None,
 def index_mentions(events: pd.DataFrame, families: pd.Series, agents: pd.DataFrame,
                    items: ItemMatcher, targets: set[tuple[str, str]] | None = None,
                    window: int = 60, with_urls: bool = True) -> pd.DataFrame:
-    """Every 'item <= window chars => number' pair (and URL) in every post."""
+    """Every 'item <= window chars => number' pair (and URL) in every post.  A task message or tool result with no
+    family is read under each family of ``targets`` (or of ``items``), so the matching rounds find it whatever
+    their family."""
     amap = agents.set_index("author_raw")[["agent_strict", "agent_merged"]].to_dict("index")
+    every = sorted({f for f, _ in targets} if targets is not None else items.by_family)
     rows = []
-    for ev, fam in zip(events.itertuples(index=False), families):
+    for ev, own in zip(events.itertuples(index=False), families):
         ids = amap.get(ev.author_raw, {"agent_strict": ev.author_raw, "agent_merged": ev.author_raw})
         base = {"event_id": ev.event_id, "ts": ev.ts, **ids}
         kind = getattr(ev, "source_kind", None)
         text = ev.text
-        if fam:
+        for fam in [own] if own else every if kind in PRIVATE_KINDS else []:
             found = items.find(fam, text)
             for k, (pos, item) in enumerate(found):
                 if targets is not None and (fam, item) not in targets:

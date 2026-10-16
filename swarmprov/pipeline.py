@@ -133,12 +133,7 @@ def extract(run: RunDir, llm: str | None = None) -> None:
     agents = identity.resolve(ev, fam, cfg, explicit_author=caps.get("has_explicit_author", False))
     if ann is not None and "roster_agent" in ann:
         agents = roster_mod.merge_agents(agents, ev, ann, ros)
-    # a tool result is part of its caller's work: one that names no family of its own takes the caller's
-    tool = (ev["source_kind"] == "tool_result") & ~fam.astype(bool)
-    if tool.any():
-        fam = fam.where(~tool, ev["author_raw"].map(agents.drop_duplicates("author_raw").set_index("author_raw")["family"])
-                        .fillna(""))
-    ev["family"] = fam
+    ev["family"] = fam   # a task message or tool result without one is read under every family (index_mentions)
     run.write("events", ev)
     run.write("agents", agents)
     run.write_csv("agent_aliases", identity.alias_table(agents))
@@ -226,11 +221,12 @@ def build_graph(run: RunDir) -> None:
     # message positions are 1 s apart, so the 2 s clock resolution would flag every adjacent hop
     res = None if seq else graph.CLOCK_RES_S
     pub = claims_mod.public(mn)   # a tool result or task message relays nothing: no other agent saw it
+    posters = agents[agents["author_raw"].isin(claims_mod.public(events)["author_raw"])]   # citable; never `task`
     for name, col in AGENT_COLS.items():
         ex = run.read(f"exposures_{name}")
         rel, chains = graph.relay_edges(pub, col, res) if len(pub) else (pd.DataFrame(), pd.DataFrame())
         parts = [rel, graph.exposure_edges(ex) if len(ex) else pd.DataFrame(),
-                 graph.citation_edges(tags, agents, col, cfg.cohort_regex)]
+                 graph.citation_edges(tags, posters, col, cfg.cohort_regex)]
         note = ""
         if threading:
             rep, unresolved = graph.reply_edges(events, agents, col)

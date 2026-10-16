@@ -13,7 +13,8 @@ relay rule; only an AI Village room table restricts who can read a room), except
 framework traces (``framework``: messages with an OpenAI/Anthropic ``role`` or a
 LangChain/AutoGen ``type``), where task messages (author ``task``) and tool results
 (the calling agent's, also written as ``reads``) are kept with ``source_kind``
-``task`` / ``tool_result`` and are not public posts.
+``task`` / ``tool_result`` and are not public posts, and AutoGen's inner events
+(thoughts, streaming chunks, call requests) are dropped.
 
 Framework logs (OpenAI message lists, AutoGen, LangGraph state) often carry no
 timestamps.  When fewer than 90% of the messages have one and the file is a
@@ -393,18 +394,22 @@ class ChatAdapter(Adapter):
         path = Path(path)
         msgs, one_list = read_messages(path)
         rows, pos, lists, n_no_author, n_ts_values, bad_ts = [], [], [], 0, 0, None
-        calls, n_unmatched = framework.Calls(), 0
+        calls, n_unmatched, n_inner = framework.Calls(), 0, 0
         for i, (m, container, ref, lst) in enumerate(msgs):
             alt = str(_pick(m, "author_alt", self.mapping) or "")
             author = _pick(m, "author", self.mapping) or alt
             kind = framework.role(m, author)
-            if kind == "agent":   # before the text check: a call-only turn has no text but opens calls
+            # before the text check: a call-only turn has no text but opens calls
+            if kind == "agent" or kind == "inner" and framework.call_ids(m):
                 calls.open(str(author or "unknown"), framework.call_ids(m))
-            elif kind == "tool":
-                author = calls.answer(framework.result_ids(m)) or "tool"
+            elif kind == "tool":   # an AutoGen event's speaker ran the tool; an OpenAI tool's `name` is the function's
+                author = calls.answer(framework.result_ids(m), framework.autogen_type(m) and author) or "tool"
             elif kind == "task":
                 author = "task"
-            text = _text(_pick(m, "text", self.mapping))
+            if kind == "inner":   # no other agent receives it
+                n_inner += 1
+                continue
+            text = _text(_pick(m, "text", self.mapping) or (framework.result_text(m) if kind == "tool" else None))
             if not text.strip():
                 continue
             n_unmatched += kind == "tool" and author == "tool"
@@ -446,10 +451,11 @@ class ChatAdapter(Adapter):
         warns = _warnings(ev, n_no_author, n_ts_values, bad_ts, [m for m, *_ in msgs[:SAMPLE]],
                           self.mapping)   # before positions replace times
         if n_unmatched:
-            warns.append(f"{n_unmatched:,} tool result{'s' if n_unmatched > 1 else ''} answer{'' if n_unmatched > 1 else 's'} "
-                         "no call id seen in the file while not exactly one tool call was pending, so "
-                         f"{'they are' if n_unmatched > 1 else 'it is'} attributed to `tool`, not to the agent that called "
-                         "the tool, and count as no agent's own lookup.")
+            many = n_unmatched > 1
+            warns.append(f"{n_unmatched:,} tool result{'s' if many else ''} answer{'' if many else 's'} no call id seen "
+                         "in the file, and neither an AutoGen `source` nor a single agent with calls pending names the "
+                         f"caller, so {'they are' if many else 'it is'} attributed to `tool`, not to the agent that called "
+                         f"the tool, and count{'' if many else 's'} as no agent's own lookup.")
         if clock == "sequence":
             ev["ts"] = SEQUENCE_EPOCH + pd.to_timedelta(pos, unit="s")
         tools = ev[(ev["source_kind"] == "tool_result") & (ev["author_raw"] != "tool")]
@@ -462,9 +468,9 @@ class ChatAdapter(Adapter):
                  "n_authors": int(ev["author_raw"].nunique()), "clock": clock, "n_timestamps": n_timed,
                  "n_no_author": n_no_author, "warnings": warns}
         kinds = ev["source_kind"].value_counts()
-        if kinds.get("task") or kinds.get("tool_result"):
+        if kinds.get("task") or kinds.get("tool_result") or n_inner:
             notes.update(n_task=int(kinds.get("task", 0)), n_tool_results=int(kinds.get("tool_result", 0)),
-                         n_tool_unmatched=n_unmatched)
+                         n_tool_unmatched=n_unmatched, n_inner_dropped=n_inner)
         if clock == "sequence":
             notes["timestamps_discarded"] = n_timed
         return Bundle(events=ev, reads=reads if len(reads) else None, capabilities=caps, notes=notes)
