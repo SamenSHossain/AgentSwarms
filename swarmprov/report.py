@@ -585,7 +585,7 @@ def _a2(c: _Ctx) -> list[str]:
 def _a3(c: _Ctx) -> list[str]:
     from .pipeline import mined_techniques
     cfg, seq, run, mapping, tags = c.cfg, c.seq, c.run, c.mapping, c.tags
-    r3 = diffusion.analyze(tags, cfg.techniques, c.agent_col) if len(tags) and cfg.techniques else {}
+    r3 = diffusion.analyze(tags, cfg.techniques, c.agent_col, c.catch_all) if len(tags) and cfg.techniques else {}
     if not r3:
         return _skipped("A3", (f"`auto_techniques` mined no URL technique (no domain that {suggest.MIN_AGENTS} or more agents "
                                f"posted has URLs that wrap another URL in {suggest.MIN_WRAP:.0%} of cases; `swarmprov suggest "
@@ -608,7 +608,8 @@ def _a3(c: _Ctx) -> list[str]:
     # the contagion test compares pages, so it needs more than one
     con = diffusion.contagion(tags, c.events, cfg.techniques, c.agent_col) if c.posts["channel"].nunique() > 1 else {}
     mined = {t.name for t in mined_techniques(run)} & set(r3)   # found by auto_techniques, not configured
-    c.summary["A3"] = [r | ({"contagion": {k: v for k, v in con[r["technique"]].items() if k != "agents"}}
+    c.summary["A3"] = [r | {"at_risk_basis": r3[r["technique"]]["at_risk_basis"]}
+                       | ({"contagion": {k: v for k, v in con[r["technique"]].items() if k != "agents"}}
                             if r["technique"] in con else {}) | ({"mined": True} if r["technique"] in mined else {})
                        for r in tbl.to_dict("records")]
     ad = pd.concat([r["adoptions"] for r in r3.values()], ignore_index=True)
@@ -626,12 +627,18 @@ def _a3(c: _Ctx) -> list[str]:
             *(tbl[f"median_hours_to_adopt{x}"] for x in ("", "_lo", "_hi")))]
         tbl = tbl.drop(columns=["median_hours_to_adopt_lo", "median_hours_to_adopt_hi"]).rename(
             columns={"median_hours_to_adopt": "median_hours_to_adopt (95% CI)"})
+    basis = {}
+    for n, r in r3.items():
+        basis.setdefault(r["at_risk_basis"], []).append(n)
+    sets = {"all_active": "every agent active after the technique's first post, because no post has a task family (a "
+                          "larger set than one task's agents, so adoption shares are lower)",
+            "catch_all": f"every agent active after the technique's first post, as every post is in the catch-all family "
+                         f"`{c.catch_all}` and the technique names no families of its own (a larger set than one task's "
+                         "agents, which lowers adoption shares)",
+            "families": "agents active in the technique's task families after its first post"}
     L = [f"## {SECTIONS['A3']}\n",
-         ("At-risk set: every agent active after the technique's first post, because no post has a task family "
-          "(a larger set than one task's agents, so adoption shares are lower)" if diffusion.familyless(tags) else
-          "At-risk set: agents active in the technique's task families after its first post"
-          + (f" (every post is in the catch-all family `{c.catch_all}`, so for a technique without families of its "
-             "own that is every agent active after its first post, which lowers adoption shares)" if c.catch_all else ""))
+         "At-risk set: " + "; ".join(sets[b] + ("" if len(basis) == 1 else f" ({', '.join(f'`{n}`' for n in names)})")
+                                     for b, names in basis.items())
          + "; adoption = first post mentioning or using it"
          + ("." if seq else "; non-adopters censored at their last post (Kaplan–Meier). The median time to "
             "adopt is given where the Kaplan–Meier curve falls to one half (non-adopters leave the risk set "
@@ -1043,9 +1050,10 @@ def _kf_a2(rows: list[dict], s: dict, seq: bool) -> str | None:
 
 def _kf_a3(rows: list[dict], s: dict, seq: bool) -> str:
     top = sorted(rows, key=lambda r: -(r["adoption_share"] if r["adoption_share"] is not None else -1))
-    fun = s.get("funnel") or {}
-    at_risk = ("active after its first post" if not fun.get("posts_with_family") or fun.get("catch_all_family") else
-               "active in its task families after its first post")
+    kinds = {r["at_risk_basis"] for r in top[:5]}
+    at_risk = ("active in its task families after its first post" if kinds == {"families"} else
+               "active after its first post" if "families" not in kinds else
+               "active in its task families after its first post, or, for one naming none, every agent active after it")
     out = (f"adoption share = the share of the agents at risk ({at_risk}) that went on to use it: " + ", ".join(
         f"`{r['technique']}`{' (mined)' if r.get('mined') else ''} {pct(r['adoption_share'])} "
         f"({r['adopters']:,} of {r['at_risk']:,})" for r in top[:5]) + ("; lower for the rest" if len(top) > 5 else ""))
@@ -1103,19 +1111,21 @@ def _kf_a5(a: dict, s: dict, seq: bool) -> str:
     parts = []
     if (f := rows.get("first source")) is not None:
         loo = a.get("top10_share_exposure_loo")
+        lo, hi = (pct(loo[0]), pct(loo[1])) if loo and loo[0] is not None else (None, None)
         parts.append(f"{pct(f['top10_share'])} credited to the first agent to post the value (out-degree Gini "
-                     f"{f['gini']:.2f}" + (f"; leaving out any one item moves it between {pct(loo[0])} and {pct(loo[1])}"
-                                          if loo and loo[0] is not None else "") + ")")
+                     f"{f['gini']:.2f}" + ("" if lo is None else f"; leaving out any one item leaves it at {lo}" if lo == hi
+                                           else f"; leaving out any one item moves it between {lo} and {hi}") + ")")
     if (r := rows.get("latest source")) is not None:
         parts.append(f"{pct(r['top10_share'])} to the latest earlier carrier")
     if (r := rows.get("same-page relay parent")) is not None:
         parts.append(f"{pct(r['top10_share'])} of the {r['n']:,} with a same-page relay parent")
     k = a.get("n_self_originated")
+    same = len({pct(r["top10_share"]) for r in rows.values()}) == 1
     return (f"the top 10 sources supplied {whole} of {n:,} exposed answers"
             + (f" ({k:,} more, first posted by the answering agent itself, {'are' if k != 1 else 'is'} credited to "
                "nobody)" if k else "")
-            + ", depending on who is credited (nothing records who read whom, so each rule credits one source per "
-            "answer): " + ", ".join(parts) + ".")
+            + (" under every attribution rule" if same else ", depending on who is credited")
+            + " (nothing records who read whom, so each rule credits one source per answer): " + ", ".join(parts) + ".")
 
 
 def top10_range(a5: dict) -> tuple[str, int] | None:
@@ -1700,7 +1710,8 @@ def _hub_headline(r5: dict) -> str:
                "posted the value before any other agent did, so no source is credited. " if k else "")
             + (f"Leaving out any one item {loo}; concentration gets no bootstrap interval, since resampling items would "
                "repeat their sources and inflate it. " if s_lo == s_lo else "")
-            + "**That share depends on who is credited**: across the "
+            + ("**That share depends on who is credited**: across the "
+               if " to " in whole or (len(inst) and " to " in span(inst)) else "Across the ")
             + ("three attribution rules below" if len(share["all exposed"]) == 3 else
                "two attribution rules below that credit any answer")
             + (f" it runs from {whole}" if " to " in whole else f" it is {whole} under each")

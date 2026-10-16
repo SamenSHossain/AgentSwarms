@@ -312,6 +312,8 @@ def test_a5_one_item_left_out_collapses_to_one_value():
     r5 = {"attribution": pd.DataFrame([row]), "items_exposed": 12, "items_one_source": 12, "exposure_sources": 7,
           "top10_share_exposure": 1.0, "gini_exposure_outdegree": 0.31, "gini_item_exposures": 0.07,
           "top10_share_exposure_loo": [1.0, 1.0], "gini_exposure_outdegree_loo": [0.23, 0.31], "n_self_originated": 0}
-    assert "Leaving out any one item leaves the share at 100% and moves the Gini between 0.23 and 0.31;" in _hub_headline(r5)
+    head = _hub_headline(r5)
+    assert "Leaving out any one item leaves the share at 100% and moves the Gini between 0.23 and 0.31;" in head
+    assert "it is 100% under each." in head and "That share depends on who is credited" not in head
     table = _attribution_block(r5, {"A5": {}})[-1]
     assert "| 0 | 100% | 0.23–0.31 |" in table and "100–100%" not in table

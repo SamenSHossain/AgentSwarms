@@ -353,12 +353,12 @@ def coverage_summary(site_coverage_csv_path) -> dict:
     n_short = int((d["category"] == "shorteners").sum())
     caveats = []
     if shared_val is not None:
-        caveats.append(f"{shared_n} rows share selected_distinct_texts = {shared_val}; that is a shared inventory "
+        caveats.append(f"{shared_n:,} rows share selected_distinct_texts = {shared_val:,}; that is a shared inventory "
                        f"count, not a per-site text count, so the column must not be summed.")
     caveats.append(f"relays and shorteners were deliberately not visited, so no read data exists "
-                   f"({n_relays} relays, {n_short} shorteners).")
-    caveats.append(f"{n_discord} Discord-linked URLs but no Discord messages are in the corpus.")
-    caveats.append(f"{int(unsearched.sum())} of {len(d)} surfaces were never searched or yielded no agent text; "
+                   f"({n_relays:,} relays, {n_short:,} shorteners).")
+    caveats.append(f"{n_discord:,} Discord-linked URLs but no Discord messages are in the corpus.")
+    caveats.append(f"{int(unsearched.sum()):,} of {len(d):,} surfaces were never searched or yielded no agent text; "
                    f"absence there is not evidence of absence.")
     caveats.append("every row's scope is 'selected artifacts; whole-site completeness not established'.")
     return {
@@ -393,8 +393,8 @@ def _md_table(df: pd.DataFrame, index: bool = True) -> str:
 
 def coverage_markdown(summary: dict) -> str:
     s = summary
-    L = [f"{s['n_sites']} surfaces are inventoried; {s['n_gap_rows']} carry a specific unresolved gap and "
-         f"{s['n_unsearched']} were never searched or yielded no agent text.  Everything downstream "
+    L = [f"{s['n_sites']:,} surfaces are inventoried; {s['n_gap_rows']:,} carry a specific unresolved gap and "
+         f"{s['n_unsearched']:,} were never searched or yielded no agent text.  Everything downstream "
          f"(exposure shares, cross-site first-seen times) is bounded by what was captured.\n",
          _md_table(s["by_category"]),
          "Caveats:\n"]

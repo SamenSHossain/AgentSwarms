@@ -111,7 +111,8 @@ def sentinels(synth):
     _, s, _ = synth
     t = copy.deepcopy(s)
     t["A1"]["n_independent_visible"] = None
-    t["A3"] = [{"technique": "census", "adoption_share": None, "adopters": None, "at_risk": None, "contagion": None}]
+    t["A3"] = [{"technique": "census", "adoption_share": None, "adopters": None, "at_risk": None, "contagion": None,
+                "at_risk_basis": "families"}]
     a2, a5 = t["A2"], t["A5"]["attribution"]
     put = {("A1", "n_answers"): 4321, ("A1", "n_agents"): 876, ("A1", "n_independent"): 1234,
            ("A1", "n_independent_visible"): 1111, ("A1", "share_exposed"): 0.611, ("A1", "share_exposed_ci", 0): 0.512,
@@ -189,13 +190,18 @@ def test_the_tile_takes_the_range_the_headline_states(sentinels):
     assert ("19", "longest task-value relay chain (hops)", "inferred paths, not proven ones") in html.tiles(t)
 
 
-def test_a3_in_a_catch_all_run_counts_every_active_agent(sentinels):
+@pytest.mark.parametrize("bases,says", [
+    (["families"], "(active in its task families after its first post)"),
+    (["catch_all"], "(active after its first post)"), (["all_active"], "(active after its first post)"),
+    (["families", "catch_all"], "(active in its task families after its first post, or, for one naming none, every "
+                                "agent active after it)")])
+def test_a3_states_the_at_risk_set_of_its_rows(sentinels, bases, says):
+    """The key finding reads each row's ``at_risk_basis``, as the A3 text does, not the funnel."""
     t = copy.deepcopy(sentinels[0])
+    t["A3"] = [t["A3"][0] | {"technique": f"t{i}", "at_risk_basis": b} for i, b in enumerate(bases)]
+    t["funnel"]["catch_all_family"] = None if "catch_all" in bases else "all"   # the funnel no longer decides
     (a3,) = [b for b in report.key_findings(t) if "A3." in b]
-    assert "(active in its task families after its first post)" in a3
-    t["funnel"]["catch_all_family"] = "all"
-    (a3,) = [b for b in report.key_findings(t) if "A3." in b]
-    assert "(active after its first post)" in a3
+    assert says in a3
 
 
 def test_skipped_sections_repeat_their_skip_line(synth):
@@ -271,6 +277,20 @@ def test_a2_names_the_headline_rows_it_could_not_identify():
     (bullet,) = [b for b in report.key_findings({"profile": {"n_events": 10}, "A2": rows}) if "A2." in b]
     assert ("not identified (3–5 agents switch exposure status): no estimate of `y_instant` or `y_consensus` under "
             "`D_cons` or `D_cons_w60m` from two-way fixed effects") in bullet and "y_winner" not in bullet
+
+
+def test_a5_collapsed_ranges_read_as_one_value():
+    """Every rule gives the same share and leaving out an item moves nothing: no range and no 'depending on'."""
+    rows = [{"rule": r, "answers": "all exposed", "n": 5, "top10_share": 1.0, "gini": 0.27}
+            for r in ("first source", "latest source")]
+    a5 = {"attribution": rows, "top10_share_exposure_loo": [1.0, 1.0], "n_nodes": 6, "n_relay_edges": 2}
+    (bullet,) = report.key_findings({"profile": {"n_events": 10}, "A5": a5})[1:-1]
+    assert "supplied 100% of 5 exposed answers under every attribution rule (nothing records" in bullet
+    assert "leaving out any one item leaves it at 100%)" in bullet
+    assert "depending on who is credited" not in bullet and "between" not in bullet
+    rows[1]["top10_share"] = 0.4
+    (bullet,) = report.key_findings({"profile": {"n_events": 10}, "A5": a5 | {"top10_share_exposure_loo": [0.9, 1.0]}})[1:-1]
+    assert "40–100% of 5 exposed answers, depending on who is credited" in bullet and "between 90% and 100%" in bullet
 
 
 def test_a5_without_a_first_source_counts_in_the_singular():

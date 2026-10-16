@@ -53,9 +53,9 @@ def test_the_coverage_inventory_is_cited_only_where_it_describes_the_source():
     assert cited == {"openai-wiki", "corpus", "crosssite"}
 
 
-# committed reports whose key findings predate a wording change in report.key_findings (the A2 reading rule):
-# expected to fail until results/ is regenerated, which must drop them from here (strict: a pass then fails)
-STALE = {"openai-wiki", "synthetic"}
+# committed reports whose key findings predate a change in report.key_findings (the A2 reading rule, the A3 at-risk
+# basis): expected to fail until results/ is regenerated, which must drop them from here (strict: a pass then fails)
+STALE = {"corpus", "openai-wiki", "synthetic"}
 
 
 @pytest.mark.parametrize("path", [pytest.param(p, marks=pytest.mark.xfail(

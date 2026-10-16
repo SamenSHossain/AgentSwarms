@@ -6,7 +6,8 @@ Reads ``truth.csv`` (and ``truth_techniques.csv`` and ``config.json``) beside th
 * per answer round, ``D`` against the answer being on the board at arrival (a confusion matrix) and against an
   earlier post of the same value, and ``D_visible`` against such a post still undeleted at the report;
 * A2's estimate against the true effect, the share of rounds public at arrival that copied (a round answers
-  instantly by copying, which needs the answer on the board, or as a fast agent, whatever is on the board);
+  instantly by copying, which needs the answer on the board, or as a fast agent, whatever is on the board); under a
+  sequence clock a row that says it is not estimated, as the latency outcome needs a wall clock;
 * for each A5 attribution rule (and, with deletions, the first copy still visible) the share of copied answers it
   credits to the agent whose post was copied (none for a self-originated answer, as in A5), and its top-10 share on
   instant answers against the true one;
@@ -39,6 +40,7 @@ from .schema import RunDir, suffix
 LABEL = "under the synthetic generative model"
 RULES = {"first source": "src_agent", "latest source": "src_latest", "same-page relay parent": "relay_parent"}
 VISIBLE = "first copy still visible"
+SEQ_NOTE = "not estimated: the latency outcome needs a wall clock"
 
 
 def _rate(hits: pd.Series) -> float | None:
@@ -76,13 +78,17 @@ def _identity(agents: pd.DataFrame, handle: dict) -> dict:
     return out
 
 
-def _a2(ex: pd.DataFrame, truth: pd.DataFrame) -> dict:
+def _a2(ex: pd.DataFrame, truth: pd.DataFrame, wall: bool) -> dict:
     """A fit with a zero standard error (every outcome the same, as at ``copy_rate=0`` without ``confound``) has a
-    point interval: no coverage is claimed (``covers`` None) and ``note`` says why."""
-    est = causal.estimate(ex).set_index(["outcome", "treatment"])
-    r = est.loc[("y_instant", "D_cons")]
+    point interval: no coverage is claimed (``covers`` None) and ``note`` says why.  Under a sequence clock nothing is
+    estimated (``SEQ_NOTE``): A2's latency outcome needs a wall clock."""
     exposed = truth[truth["public_at_arrival"]]
     true = float(exposed["copied"].mean()) if len(exposed) else float("nan")
+    if not wall:
+        return {"outcome": "y_instant", "treatment": "D_cons", **dict.fromkeys(("beta", "se", "p", "ci_lo", "ci_hi")),
+                "note": SEQ_NOTE, "true_effect": true, "covers": None}
+    est = causal.estimate(ex).set_index(["outcome", "treatment"])
+    r = est.loc[("y_instant", "D_cons")]
     sd = float(ex["y_instant"].std())
     note = r["note"] if isinstance(r["note"], str) else None
     ok = pd.notna(r["p"]) and r["se"] > 0
@@ -202,7 +208,7 @@ def score(run: RunDir, truth_dir: str | Path, mapping: str = "merged") -> dict:
               "true_earlier_copy": _rate(j["target"]), "accuracy_vs_earlier_copy": _rate(d == j["target"])},
         "D_visible": {"share": _rate(vis), "true_visible_copy": _rate(j["visible"]), "accuracy": _rate(vis == j["visible"]),
                       "deleted_posts": int(truth["deleted_at"].notna().sum()) if "deleted_at" in truth else 0},
-        "A2": _a2(ex, truth) if len(ex) > 20 and wall else None,   # A2's latency outcome needs a wall clock
+        "A2": _a2(ex, truth, wall) if len(ex) > 20 else None,
         "sources": _sources(ex, j, edges, events, _true_agents(agents, handle, col), handle, "deleted_at" in truth),
         "A3": _a3(run.read("tags"), load_config(run).techniques, truth_dir, col, wall),
         "A4": _a4(run.read("mentions"), truth, refs, col, wall),

@@ -150,8 +150,8 @@ def test_sequence_clock_keeps_a4_status_and_a3_counts_without_hours(runs):
     a3 = summary["A3"][0]
     assert a3["at_risk"] == 14 and a3["adopters"] == 2      # every other agent posts again after agent-3's first use
     assert not {"first_seen", "median_hours_to_adopt", "median_hours_among_adopters"} & set(a3)
-    assert "(every post is in the catch-all family `all`, so for a technique without families of its own that is every " \
-           "agent active after its first post" in text
+    assert a3["at_risk_basis"] == "catch_all" and "every agent active after the technique's first post, as every post " \
+           "is in the catch-all family `all` and the technique names no families of its own" in text
     assert "Times to adoption (hours, the Kaplan–Meier median) and the first-seen time need a wall clock" in text
     assert "The contagion test compares the pages agents adopted on, and every post here is on one page or channel" in text
     ad = run.read("adoptions_merged")

@@ -57,11 +57,17 @@ def at_risk(tags: pd.DataFrame, tech, agent_col: str, pooled: bool) -> tuple[pd.
     return hit, last.drop(index=hit[agent_col].iloc[0], errors="ignore")
 
 
-def analyze(tags: pd.DataFrame, techniques, agent_col: str) -> dict:
+def analyze(tags: pd.DataFrame, techniques, agent_col: str, catch_all: str | None = None) -> dict:
     """Per technique: the A3 counts, the Kaplan-Meier curve (``km``) and ``adoptions``, one row per at-risk agent and
     per other user of the technique (``in_at_risk`` False: the originator, or an agent with no post in the pool after
     the first appearance).  ``hours_from_first_seen`` is a user's first use, ``censored_at_h`` a non-adopter's last
-    post in the pool; the curve is drawn from exactly the at-risk rows."""
+    post in the pool; the curve is drawn from exactly the at-risk rows.
+
+    ``at_risk_basis`` names the at-risk set, the one place the report's A3 text and its key finding read it from:
+    ``all_active`` (no timed post has a task family, so every agent active after the first post), ``catch_all``
+    (every post is in the catch-all family ``catch_all`` and the technique names no families of its own: every agent
+    active after it again) or ``families`` (agents active in the technique's families, any task family for one
+    without)."""
     tags = _timed(tags)
     pooled = familyless(tags)
     out = {}
@@ -94,6 +100,7 @@ def analyze(tags: pd.DataFrame, techniques, agent_col: str) -> dict:
         out[tech.name] = {
             "description": tech.description, "first_seen": t0, "originator": origin,
             "at_risk": int(len(dur)), "adopters": int(ev.sum()),
+            "at_risk_basis": "all_active" if pooled else "catch_all" if catch_all and not tech.families else "families",
             "adoption_share": float(ev.mean()) if len(ev) else float("nan"),
             "median_hours_to_adopt": median,
             # Greenwood's interval, only where the median is reached; an upper bound the band never reaches is NaN

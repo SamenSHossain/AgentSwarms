@@ -344,13 +344,20 @@ def test_synth_cli_writes_the_autogen_format(tmp_path, capsys):
     assert not any("ts" in json.loads(line) for line in (tmp_path / "ag.jsonl").read_text().splitlines())
 
 
-def test_truth_score_on_message_order(autogen):
-    """The scorecard on the untimed swarm: no A2 (its latency outcome needs a wall clock), A4 under the one-bin rule
-    on both sides, and `task` left out of identity."""
-    from swarmprov import truthscore
+def test_truth_score_on_message_order(autogen, capsys, monkeypatch):
+    """The scorecard on the untimed swarm: an A2 row that says it is not estimated (its latency outcome needs a wall
+    clock), A4 under the one-bin rule on both sides, and `task` left out of identity."""
+    from swarmprov import report, truthscore
     run, _, path = autogen
     r = truthscore.score(run, path.parent)
-    assert r["A2"] is None and r["D"]["accuracy_vs_earlier_copy"] == 1.0
+    a2 = r["A2"]
+    assert a2["note"] == truthscore.SEQ_NOTE and a2["beta"] is None and a2["covers"] is None and a2["true_effect"] > 0
+    assert r["D"]["accuracy_vs_earlier_copy"] == 1.0
+    row = report._truth_block(r, {})[1]
+    assert "| A2 `y_instant ~ D_cons` | not estimated: the latency outcome needs a wall clock |" in row
+    monkeypatch.setattr(report, "build", lambda *a, **k: None)   # the printed line, without rebuilding the reports
+    assert truthscore.main(run, path.parent) == 0
+    assert "; A2 not estimated: the latency outcome needs a wall clock\n" in capsys.readouterr().out
     assert r["A4"]["slots"] == r["A4"]["status_agrees"] == r["A4"]["outcome_agrees"]
     assert r["identity"]["merged"] == {"agents": 60, "true_agents": 60, "purity": 1.0, "true_agents_split": 0}
     integrity = json.loads((run.path / "summary.json").read_text())["integrity"]

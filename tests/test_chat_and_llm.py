@@ -108,13 +108,38 @@ def test_chat_without_families_reaches_a1_through_the_catch_all_family(familyles
 
 
 def test_a3_pools_every_agent_when_no_task_family_restricts_the_set(familyless):
-    for name, why in (("catchall", "(every post is in the catch-all family `all`, so for a technique without families "
-                                   "of its own that is every agent active after its first post"),
-                      ("unmatched", "every agent active after the technique's first post, because no post has a task family")):
+    """The at-risk set is decided once (``at_risk_basis``) and both the A3 text and its key finding say it."""
+    for name, basis, why in (
+            ("catchall", "catch_all", "every agent active after the technique's first post, as every post is in the "
+                                      "catch-all family `all` and the technique names no families of its own"),
+            ("unmatched", "all_active", "every agent active after the technique's first post, because no post has a "
+                                        "task family")):
         run = familyless[name]
-        a3 = json.loads((run.path / "summary.json").read_text())["A3"][0]
-        assert (a3["originator"], a3["at_risk"], a3["adopters"]) == ("researcher-2", 3, 2), name
+        s = json.loads((run.path / "summary.json").read_text())
+        a3 = s["A3"][0]
+        assert (a3["originator"], a3["at_risk"], a3["adopters"], a3["at_risk_basis"]) == ("researcher-2", 3, 2, basis)
         assert why in _text(run), name
+        assert "the agents at risk (active after its first post)" in s["headline"][2], name
+
+
+def test_a3_with_only_the_task_message_in_a_family(tmp_path):
+    """A framework trace whose task message names the family but no agent's post does: the posts set the pool, so
+    the A3 text and the key finding both count every agent active after the first post."""
+    from swarmprov import pipeline
+    msgs = [{"role": "system", "content": "alpha-task: research the 2023 change for each country."}]
+    for i in range(12):
+        who = ("ann", "bob", "cy", "dee")[i % 4]
+        msgs.append({"role": "assistant", "name": who, "content": f"Using TRICK-A I found Poland {i}.5 for round {i}"
+                     if i % 3 == 0 else f"note {i} from {who}"})
+    (tmp_path / "trace.json").write_text(json.dumps(msgs))
+    (tmp_path / "cfg.json").write_text(json.dumps({"families": {"alpha-task": "alpha-task"}, "bootstrap_reps": 0,
+                                                   "techniques": [{"name": "TRICK-A", "pattern": "TRICK-A"}]}))
+    run = pipeline.run_all(tmp_path / "trace.json", tmp_path / "run", config=str(tmp_path / "cfg.json"))
+    s = json.loads((run.path / "summary.json").read_text())
+    assert s["funnel"]["posts_with_family"] == 1 and s["A3"][0]["at_risk_basis"] == "all_active"
+    assert "At-risk set: every agent active after the technique's first post, because no post has a task family" \
+        in (run.path / "report.md").read_text()
+    assert "the agents at risk (active after its first post)" in s["headline"][2]
 
 
 def test_configured_families_leave_unmatched_posts_familyless_and_say_why_a1_is_missing(familyless):

@@ -76,8 +76,9 @@ def run_crosssite(wiki_run: str | Path, corpus_path: str | Path, out: str | Path
     L = ["# Cross-site view\n",
          f"{len(ev):,} posts across {ev['site'].nunique()} surfaces: {len(ev_w):,} from the primary wiki run "
          f"`{wiki.path}` and {len(ev_c):,} from the corpus `{corpus_path}` "
-         f"({bundle.notes.get('n_origins_with_time', '?')} timed origins out of {bundle.notes.get('n_origins', '?')}; "
-         f"{n_dup_sites} corpus rows dropped as redacted copies of wikis already in the dump).\n",
+         f"({_count(bundle.notes.get('n_origins_with_time'))} timed origins out of "
+         f"{_count(bundle.notes.get('n_origins'))}; "
+         f"{n_dup_sites:,} corpus rows dropped as redacted copies of wikis already in the dump).\n",
          "## Posts per surface\n"]
     per_site = ev.groupby("site").agg(posts=("event_id", "size"), authors=("author_raw", "nunique"),
                                       first=("ts", "min"), last=("ts", "max")).sort_values("posts", ascending=False)
@@ -104,6 +105,11 @@ def run_crosssite(wiki_run: str | Path, corpus_path: str | Path, out: str | Path
     from .html import build_html
     build_html(run)
     return run
+
+
+def _count(n) -> str:
+    """A corpus count with thousands separators, '?' when the corpus did not record it."""
+    return "?" if n is None else f"{n:,}"
 
 
 def _md(df: pd.DataFrame, index: bool = True) -> str:
