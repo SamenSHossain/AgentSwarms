@@ -5,6 +5,7 @@ doesn't re-ingest)."""
 from __future__ import annotations
 
 import dataclasses
+import hashlib
 import json
 import time
 import warnings
@@ -23,18 +24,32 @@ def _log(msg: str) -> None:
     print(f"[swarmprov {time.strftime('%H:%M:%S')}] {msg}", flush=True)
 
 
-def load_config(run: RunDir, with_mined: bool = True):
-    """The adapter's built-in config, overridden by a --config file if one was given at ingest; under
-    ``auto_techniques`` with no techniques configured, the techniques extract mined (``with_mined``)."""
+def load_config(run: RunDir, with_mined: bool = True, stage: str | None = None):
+    """The adapter's built-in config, overridden by a --config file if one was given at ingest (and its fields by
+    the ones ingest used); under ``auto_techniques`` with no techniques configured, the techniques extract mined
+    (``with_mined``).  A ``stage`` records the settings it runs with (``record_config``)."""
     prof = json.loads((run.path / "profile.json").read_text())
     cfg = adapters.get(prof["adapter"]).config()
     if prof.get("config_path"):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")   # ingest logged them, and the report lists them
             cfg = adapters.AdapterConfig.from_file(prof["config_path"], base=cfg)
+    if "fields" in prof:
+        cfg.fields = prof["fields"] or {}
+    if stage:
+        (run.path / "profile.json").write_text(json.dumps(record_config(prof, cfg, stage), indent=2, default=str))
     if with_mined and cfg.auto_techniques and not cfg.techniques:
         cfg.techniques = mined_techniques(run)
     return cfg
+
+
+def record_config(prof: dict, cfg, stage: str) -> dict:
+    """``prof`` with the settings ``stage`` runs with: ``config_settings`` (``AdapterConfig.settings``, as the latest
+    stage read them) and per stage a hash of them (``config_stages``), so ``compare`` reads a run's config as its
+    stages used it, not as its file reads now, and sees a file edited between two stages."""
+    s = cfg.settings()
+    digest = hashlib.sha1(json.dumps(s, sort_keys=True).encode()).hexdigest()[:12]
+    return prof | {"config_settings": s, "config_stages": (prof.get("config_stages") or {}) | {stage: digest}}
 
 
 def mined_techniques(run: RunDir) -> list[adapters.Technique]:
@@ -106,6 +121,7 @@ def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | N
         "events_per_day": ev["ts"].dt.strftime("%Y-%m-%d").value_counts().sort_index().to_dict() if has_ts else {},
         "notes": b.notes, "warnings": warns,
     }
+    profile = record_config(profile, cfg, "ingest")
     (run.path / "profile.json").write_text(json.dumps(profile, indent=2, default=str))
     if ros is not None:
         _log(f"  roster: {len(ros)} goals for {ros['agent_id'].nunique()} agents in {ros['role'].nunique()} roles")
@@ -116,7 +132,7 @@ def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | N
 
 
 def extract(run: RunDir, llm: str | None = None) -> None:
-    cfg = load_config(run, with_mined=False)
+    cfg = load_config(run, with_mined=False, stage="extract")
     (run.path / MINED_FILE).unlink(missing_ok=True)
     ev = run.read("events")
     if not len(ev):
@@ -235,7 +251,7 @@ def build_graph(run: RunDir) -> None:
     if not run.has("mentions"):
         return
     import networkx as nx
-    cfg = load_config(run)
+    cfg = load_config(run, stage="graph")
     prof = json.loads((run.path / "profile.json").read_text())
     mn, agents, tags, events = run.read("mentions"), run.read("agents"), run.read("tags"), run.read("events")
     seq = prof.get("clock") == "sequence"

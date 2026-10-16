@@ -58,12 +58,14 @@ def test_a_run_against_itself_has_no_changes(synth_run, tmp_path, capsys):
 
 
 def test_summary_rows_are_keyed_by_meaning_within_a_tolerance():
-    sa = {"mapping": "merged", "A3": [{"technique": "x", "adopters": 3}, {"technique": "y", "adopters": 5}],
+    sa = {"mapping": "merged", "A3": [{"technique": "x", "adopters": 3, "first_seen": "2026-06-20 05:10:21+00:00"},
+                                      {"technique": "y", "adopters": 5}],
           "A4": {"rows": [{"slot": "s1", "status": "held"}, {"slot": "s2", "status": "overturned"}]},
           "A2": [{"outcome": "y_instant", "treatment": "D_cons", "beta": 0.1, "note": None}],
           "A5": {"attribution": [{"rule": "first source", "answers": "all exposed", "top10_share": 0.7}]},
           "agents": {"top_suppliers": [{"label": "Mar16|t", "answers_supplied": 4}]}, "validation": {"n": 3}}
-    sb = {"mapping": "strict", "A3": [{"technique": "y", "adopters": 5}, {"technique": "x", "adopters": 3}],
+    sb = {"mapping": "strict", "A3": [{"technique": "y", "adopters": 5},   # one time, spelt another way
+                                      {"technique": "x", "adopters": 3, "first_seen": "2026-06-20T05:10:21+00:00"}],
           "A4": {"rows": [{"slot": "s2", "status": "overturned"}]},
           "A2": [{"outcome": "y_instant", "treatment": "D_cons", "beta": 0.1 * (1 + 1e-9), "note": float("nan")}],
           "A5": {"attribution": [{"rule": "first source", "answers": "all exposed", "top10_share": 0.6}]},
@@ -76,6 +78,8 @@ def test_summary_rows_are_keyed_by_meaning_within_a_tolerance():
     assert d["largest_within_tol"]["path"] == "A2[y_instant | D_cons].beta"
     assert d["largest_within_tol"]["rel_delta"] == pytest.approx(1e-9, rel=1e-3)
     assert compare.summary_diff(sa, sb, tol=0.2, labels_b={"mar16scout": "Mar16|t"})["changed"] == []
+    later = {**sb, "A3": [{"technique": "x", "adopters": 3, "first_seen": "2026-06-20T05:10:22+00:00"}]}
+    assert [c["path"] for c in compare.summary_diff(sa, later, tol=0.2)["changed"]] == ["A3[x].first_seen"]
     assert compare.summary_diff(sa, sb)["rows_only_b"] == ["agents.top_suppliers[mar16scout]"]   # untranslated
 
 
@@ -143,3 +147,34 @@ def test_regrouped_author_strings_and_duplicate_posts():
     ev = pd.DataFrame({"ts": [t, t, t], "author_raw": ["x", "y", "y"], "text": ["hi", "dup", "dup"]})
     pairs, n_coll = compare.align_events(ev.assign(event_id=["a1", "a2", "a3"]), ev.assign(event_id=["b1", "b2", "b3"]))
     assert pairs == {"b1": "a1"} and n_coll == 4   # the two identical posts on each side are flagged, not paired
+
+
+def test_the_config_is_read_as_each_run_used_it(tmp_path, capsys):
+    """A config file edited in place between two runs shows in the setup, since each run's stages recorded the
+    settings they ran with; a stage rerun after an edit is noted; a run recorded before that reads the file as it
+    is now, and says so, and two identical unreadable configs are no change."""
+    posts = [{"ts": f"2026-05-04T10:0{i}:00Z", "author": a, "text": f"R1 Poland: 41.{i}"} for i, a in enumerate("abcab")]
+    (tmp_path / "t.jsonl").write_text("\n".join(map(json.dumps, posts)))
+    cfg = tmp_path / "iter.json"
+    for name, k in (("A", 2), ("B", 600)):
+        cfg.write_text(json.dumps({"instant_threshold_s": k}))
+        pipeline.ingest(tmp_path / "t.jsonl", RunDir(tmp_path / name), "chat", str(cfg))
+        pipeline.extract(RunDir(tmp_path / name))
+    res = compare.compare(tmp_path / "A", tmp_path / "B")
+    assert res["setup"] == [{"field": "config.instant_threshold_s", "a": 2, "b": 600}] and res["n_changes"] == 1
+    assert res["config"]["a"] == {"recorded": True, "stages_differ": None}
+    cfg.write_text(json.dumps({"instant_threshold_s": 30}))
+    pipeline.extract(RunDir(tmp_path / "B"))
+    assert cli.main(["compare", str(tmp_path / "A"), str(tmp_path / "B"), "-o", str(tmp_path / "cmp")]) == 0
+    assert "note: B's stages ran with different settings (ingest ≠ extract)" in capsys.readouterr().out
+    assert "1 change**" in (tmp_path / "cmp" / "compare.md").read_text()   # 2 → 30, the latest stage's
+    prof = json.loads((tmp_path / "A" / "profile.json").read_text())
+    for k in ("config_settings", "config_stages"):
+        prof.pop(k)
+    (tmp_path / "A" / "profile.json").write_text(json.dumps(prof))
+    old = compare.compare(tmp_path / "A", tmp_path / "A")
+    assert old["n_changes"] == 0 and old["config"]["a"]["recorded"] is False
+    assert "A's settings are its config as it reads now" in compare.to_markdown(old)
+    cfg.unlink()
+    gone = compare.compare(tmp_path / "A", tmp_path / "A")
+    assert gone["n_changes"] == 0 and not gone["setup"]

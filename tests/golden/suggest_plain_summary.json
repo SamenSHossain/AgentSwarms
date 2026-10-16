@@ -1,0 +1,86 @@
+{
+ "mapping": "merged",
+ "profile": {
+  "adapter": "chat",
+  "n_events": 24,
+  "n_authors": 5,
+  "first_ts": "2026-05-04T10:00:00+00:00",
+  "last_ts": "2026-05-04T12:41:00+00:00",
+  "clock": "wall"
+ },
+ "funnel": {
+  "posts": 24,
+  "posts_with_family": 24,
+  "answer_posts": 0,
+  "answer_claims": 0,
+  "answer_claims_no_item": 0,
+  "answer_claims_no_value": 0,
+  "answer_claims_no_family": 0,
+  "agent_rounds": 0,
+  "agent_rounds_untimed": 0,
+  "catch_all_family": "all"
+ },
+ "skipped": {
+  "A1": "needs agent-rounds (an agent's answer to an item in a task family); no answer claims were extracted (see the funnel; set `families` and `extra_items`, or use `--llm`)",
+  "A2": "needs more than 20 agent-rounds; this run has 0",
+  "A3": "needs configured techniques (config `techniques`: a name and a regex each; `swarmprov suggest RUN` proposes URL ones from the posts, and `auto_techniques` mines them at extract)",
+  "agents": "needs agent-rounds (see A1)"
+ },
+ "A4": {
+  "n_value_slots_disputed": 0,
+  "n_sequence_slots_disputed": 0,
+  "rule": {
+   "bin_hours": 3.0,
+   "tail_share": 0.3333333333333333,
+   "min_tail": 5
+  },
+  "consensus_disagrees": {
+   "slots": [],
+   "n_value_slots": 0,
+   "answer_rounds_stating_winner": 0,
+   "of_them_y_consensus_0": 0
+  },
+  "rows": []
+ },
+ "A5": {
+  "n_nodes": 2,
+  "n_edges": 1,
+  "n_exposure_edges": 0,
+  "n_relay_edges": 1,
+  "n_xchannel_edges": 1,
+  "n_citation_edges": 0,
+  "n_reply_edges": 0,
+  "exposure_sources": 0,
+  "gini_exposure_outdegree": null,
+  "top10_share_exposure": null,
+  "top10_share_exposure_loo": [
+   null,
+   null
+  ],
+  "gini_exposure_outdegree_loo": [
+   null,
+   null
+  ],
+  "gini_relay_outdegree": 0.0,
+  "betweenness_sampled_sources": null,
+  "mean_chain_depth": null,
+  "mean_agents_per_fact": null
+ },
+ "A6": {
+  "urls": {
+   "facts": 10,
+   "repeated": 1,
+   "mean_repeaters": 0.2,
+   "p90_repeaters": 0.1999999999999993,
+   "max_hops": 1,
+   "mean_hops_repeated": 1.0,
+   "mean_repeaters_lo": 0.0,
+   "mean_repeaters_hi": 0.6
+  }
+ },
+ "integrity": {
+  "n_checks": 9,
+  "n_pass": 9,
+  "failing": []
+ }
+}

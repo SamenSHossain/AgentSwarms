@@ -148,6 +148,15 @@ def analyze(edges: pd.DataFrame, chains: pd.DataFrame, top_k: int = 10, ex: pd.D
     return res
 
 
+def domain_reach(mentions: pd.DataFrame, agent_col: str = "agent_merged") -> pd.DataFrame | None:
+    """A6's ``url domains``: each domain's distinct agents (``n_agents``) over its timed URL mentions, by domain (the
+    order the seeded resamples draw from); None without any."""
+    m = mentions[(mentions["family"] == "url") & mentions["ts"].notna()] if len(mentions) else mentions
+    if m.empty:
+        return None
+    return m.assign(domain=m["item"].map(url_domain)).groupby("domain")[agent_col].nunique().rename("n_agents").to_frame()
+
+
 def reach(chains: pd.DataFrame, boot: int = 0, seed: int = 0, mentions: pd.DataFrame | None = None,
           agent_col: str = "agent_merged") -> dict:
     """A6: for every fact (item+value, or URL): how many agents repeated it, how many hops.  ``boot`` > 0 adds a
@@ -158,9 +167,7 @@ def reach(chains: pd.DataFrame, boot: int = 0, seed: int = 0, mentions: pd.DataF
     if chains.empty:
         return {}
     out = {}
-    m = mentions[(mentions["family"] == "url") & mentions["ts"].notna()] if mentions is not None and len(mentions) else None
-    domains = None if m is None or m.empty else (
-        m.assign(domain=m["item"].map(url_domain)).groupby("domain")[agent_col].nunique().rename("n_agents").to_frame())
+    domains = domain_reach(mentions, agent_col) if mentions is not None else None
     for kind, g in [("task values", chains[chains["family"] != "url"]), ("urls", chains[chains["family"] == "url"]),
                     ("url domains", domains)]:
         if g is None or g.empty:

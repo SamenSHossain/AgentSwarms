@@ -177,6 +177,11 @@ class AdapterConfig:
     def from_file(cls, path, base: "AdapterConfig | None" = None) -> "AdapterConfig":
         return cls.from_dict(cls.read_file(path), base)
 
+    def settings(self) -> dict:
+        """Every setting as plain JSON (a callable by its qualified name), as profile.json records a run's config."""
+        return json.loads(json.dumps({f.name: _plain(getattr(self, f.name)) for f in dataclasses.fields(self)},
+                                     default=str))
+
     def family_of_text(self, text: str) -> str:
         best, best_pos = "", None
         for fam, rx in self.families.items():
@@ -184,6 +189,18 @@ class AdapterConfig:
             if m and (best_pos is None or m.start() < best_pos):
                 best, best_pos = fam, m.start()
         return best
+
+
+def _plain(v):
+    if callable(v):
+        return getattr(v, "__qualname__", str(v))
+    if dataclasses.is_dataclass(v):
+        return _plain(dataclasses.asdict(v))
+    if isinstance(v, dict):
+        return {str(k): _plain(x) for k, x in v.items()}
+    if isinstance(v, (list, tuple)):
+        return [_plain(x) for x in v]
+    return v
 
 
 def config_snippet(**settings) -> str:

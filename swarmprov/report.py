@@ -273,7 +273,7 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
     strict report writes its files with a ``_strict`` suffix (``schema.suffix``), beside the merged one."""
     prof = json.loads((run.path / "profile.json").read_text())
     from .pipeline import load_config, mined_techniques
-    cfg = load_config(run)
+    cfg = load_config(run, stage="report")
     boot = cfg.bootstrap_reps if boot is None else boot
     if isinstance(boot, bool) or not isinstance(boot, (int, np.integer)) or boot < 0:
         raise SystemExit(f"bootstrap_reps (the config setting, or report --boot) must be a whole number, 0 or more "
@@ -565,7 +565,9 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
                              "needs configured techniques (config `techniques`: a name and a regex each; `swarmprov suggest "
                              "RUN` proposes URL ones from the posts, and `auto_techniques` mines them at extract)")
                       if not cfg.techniques else
-                      f"none of the {len(cfg.techniques)} configured techniques appears in a post with a timestamp", summary)
+                      f"none of the {len(cfg.techniques)} "
+                      + ("mined" if {t.name for t in cfg.techniques} == {t.name for t in mined_techniques(run)} else "configured")
+                      + " techniques appears in a post with a timestamp", summary)
 
     # A4
     if timed_mn:
@@ -727,10 +729,14 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
         L.append(md_table(_with_ci(pd.DataFrame(r6).T, ("mean_repeaters",), fmt="{:.2f}"), floatfmt="{:.2f}"))
         if "url domains" in r6:
             d = r6["url domains"]
+            top = structure.domain_reach(mentions, agent_col).sort_values("n_agents", ascending=False, kind="stable").head(3)
+            summary["A6"]["url domains"] = d | {"top": [{"domain": k, "agents": int(n)} for k, n in top["n_agents"].items()]}
             L.append(f"The `url domains` row counts the distinct agents that posted any URL on each domain "
-                     f"({d['facts']:,} domain{'s' * (d['facts'] != 1)}, {d['repeated']:,} posted by two or more agents), "
-                     "so agents who fetched different pages of one source count together although no exact URL "
-                     "repeats; it has no relay hops, and its interval resamples domains.\n")
+                     f"({d['facts']:,} domain{'s' * (d['facts'] != 1)}, {d['repeated']:,} posted by two or more agents; "
+                     "most shared: " + ", ".join(f"`{k}` {n:,} agent{'s' * (n != 1)}" for k, n in top["n_agents"].items())
+                     + "), so agents who fetched different pages of one source count together although no exact URL "
+                     "repeats; it has no relay hops" + (", and its interval resamples domains" if "mean_repeaters_lo" in d
+                                                        else "") + ".\n")
         if any("mean_repeaters_lo" in r for r in r6.values()):
             L.append(f"The interval on mean_repeaters is the 95% percentile interval from {boot:,} resamples of the "
                      "facts: sampling noise only.\n")

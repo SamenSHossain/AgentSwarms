@@ -1,0 +1,1310 @@
+{
+ "mapping": "merged",
+ "profile": {
+  "adapter": "chat",
+  "n_events": 300,
+  "n_authors": 60,
+  "first_ts": "2026-06-16T08:08:13.368388+00:00",
+  "last_ts": "2026-06-17T13:25:04.504514+00:00",
+  "clock": "wall"
+ },
+ "funnel": {
+  "posts": 300,
+  "posts_with_family": 300,
+  "answer_posts": 300,
+  "answer_claims": 300,
+  "answer_claims_no_item": 0,
+  "answer_claims_no_value": 0,
+  "answer_claims_no_family": 0,
+  "agent_rounds": 300,
+  "agent_rounds_untimed": 0,
+  "catch_all_family": null
+ },
+ "A1": {
+  "n_answers": 300,
+  "n_independent": 58,
+  "share_exposed": 0.8066666666666666,
+  "share_exposed_10m": 0.7933333333333333,
+  "share_exposed_60m": 0.76,
+  "share_self_prepared": 0.0,
+  "median_gap_h": 9.585616474166667,
+  "n_agents": 60,
+  "share_exposed_ci": [
+   0.7833152173913044,
+   0.8279335969311217
+  ],
+  "share_exposed_10m_ci": [
+   0.7687003222341567,
+   0.8166104382929642
+  ],
+  "share_exposed_60m_ci": [
+   0.7248209500320155,
+   0.7919356359018117
+  ],
+  "share_self_prepared_ci": [
+   0.0,
+   0.0
+  ],
+  "median_gap_h_ci": [
+   8.250236345475694,
+   10.823116813388888
+  ],
+  "bootstrap": {
+   "reps": 1000,
+   "cluster": "item_fe",
+   "level": 0.95,
+   "seed": 0,
+   "min_clusters": 5
+  },
+  "threshold_curve": {
+   "label": "public at least t before the report",
+   "hours": [
+    0,
+    0.16666666666666666,
+    0.5,
+    1,
+    3,
+    6,
+    12,
+    24,
+    48
+   ],
+   "min_n": 40,
+   "curves": [
+    {
+     "answers": "all answers",
+     "n": 300,
+     "share": [
+      0.8066666666666666,
+      0.7933333333333333,
+      0.78,
+      0.76,
+      0.6666666666666666,
+      0.54,
+      0.33,
+      0.016666666666666666,
+      0.0
+     ]
+    },
+    {
+     "answers": "alpha-task",
+     "n": 150,
+     "share": [
+      0.8066666666666666,
+      0.7933333333333333,
+      0.7866666666666666,
+      0.7533333333333333,
+      0.6466666666666666,
+      0.5266666666666666,
+      0.30666666666666664,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "answers": "beta-task",
+     "n": 150,
+     "share": [
+      0.8066666666666666,
+      0.7933333333333333,
+      0.7733333333333333,
+      0.7666666666666667,
+      0.6866666666666666,
+      0.5533333333333333,
+      0.35333333333333333,
+      0.03333333333333333,
+      0.0
+     ]
+    }
+   ]
+  },
+  "instant_sweep": {
+   "n_answers": 300,
+   "n_stated_latency": 126,
+   "n_instant_by_wording": 174,
+   "n_delayed_by_wording": 0,
+   "ks": [
+    1,
+    2,
+    5,
+    10
+   ],
+   "share_instant": [
+    0.58,
+    0.58,
+    0.5933333333333334,
+    0.6466666666666666
+   ],
+   "n_class_differs_at_configured": 0,
+   "k_configured": 2.0
+  }
+ },
+ "A2": [
+  {
+   "outcome": "y_instant",
+   "outcome_label": "Answered instantly (<= 2 s claimed)",
+   "treatment": "D_cons",
+   "treatment_label": "Consensus public before report",
+   "n": 300,
+   "agents": 60,
+   "items": 49,
+   "agents_with_D_variation": 24,
+   "mean_y_D0": 0.0,
+   "mean_y_D1": 0.6987951807228916,
+   "beta": 0.6982103226339524,
+   "se": 0.10278957814233904,
+   "p": 6.065362878615588e-09,
+   "ci_lo": 0.4925288518554892,
+   "ci_hi": 0.9038917934124157,
+   "note": null
+  },
+  {
+   "outcome": "y_instant",
+   "outcome_label": "Answered instantly (<= 2 s claimed)",
+   "treatment": "D_cons_w60m",
+   "treatment_label": "Consensus public >= 1 h before",
+   "n": 300,
+   "agents": 60,
+   "items": 49,
+   "agents_with_D_variation": 29,
+   "mean_y_D0": 0.14285714285714285,
+   "mean_y_D1": 0.6962025316455697,
+   "beta": 0.5418803159007547,
+   "se": 0.11465889689399572,
+   "p": 1.4624045035827038e-05,
+   "ci_lo": 0.31244839315917,
+   "ci_hi": 0.7713122386423394,
+   "note": null
+  },
+  {
+   "outcome": "y_instant|known",
+   "outcome_label": "Answered instantly, rounds with stated latency",
+   "treatment": "D_cons",
+   "treatment_label": "Consensus public before report",
+   "n": 300,
+   "agents": 60,
+   "items": 49,
+   "agents_with_D_variation": 24,
+   "mean_y_D0": 0.0,
+   "mean_y_D1": 0.6987951807228916,
+   "beta": 0.6982103226339524,
+   "se": 0.10278957814233904,
+   "p": 6.065362878615588e-09,
+   "ci_lo": 0.4925288518554892,
+   "ci_hi": 0.9038917934124157,
+   "note": null
+  },
+  {
+   "outcome": "y_instant|known",
+   "outcome_label": "Answered instantly, rounds with stated latency",
+   "treatment": "D_cons_w60m",
+   "treatment_label": "Consensus public >= 1 h before",
+   "n": 300,
+   "agents": 60,
+   "items": 49,
+   "agents_with_D_variation": 29,
+   "mean_y_D0": 0.14285714285714285,
+   "mean_y_D1": 0.6962025316455697,
+   "beta": 0.5418803159007547,
+   "se": 0.11465889689399572,
+   "p": 1.4624045035827038e-05,
+   "ci_lo": 0.31244839315917,
+   "ci_hi": 0.7713122386423394,
+   "note": null
+  },
+  {
+   "outcome": "y_consensus",
+   "outcome_label": "Answer matches the consensus value",
+   "treatment": "D_cons",
+   "treatment_label": "Consensus public before report",
+   "n": 300,
+   "agents": 60,
+   "items": 49,
+   "agents_with_D_variation": 24,
+   "mean_y_D0": 0.9607843137254902,
+   "mean_y_D1": 0.9437751004016064,
+   "beta": 0.033224617743143586,
+   "se": 0.05696334984766368,
+   "p": 0.5619392175141886,
+   "ci_lo": -0.08075878202245647,
+   "ci_hi": 0.14720801750874363,
+   "note": null
+  },
+  {
+   "outcome": "y_consensus",
+   "outcome_label": "Answer matches the consensus value",
+   "treatment": "D_cons_w60m",
+   "treatment_label": "Consensus public >= 1 h before",
+   "n": 300,
+   "agents": 60,
+   "items": 49,
+   "agents_with_D_variation": 29,
+   "mean_y_D0": 0.9682539682539683,
+   "mean_y_D1": 0.9409282700421941,
+   "beta": 0.05349123198372005,
+   "se": 0.044700204646686365,
+   "p": 0.2362231503715404,
+   "ci_lo": -0.035953670913899075,
+   "ci_hi": 0.14293613488133916,
+   "note": null
+  }
+ ],
+ "A2_dose": {
+  "label": "exploratory: dose response among exposed rounds",
+  "ref": "<1h",
+  "min_within_sd": 0.25,
+  "min_bin_agents": 10,
+  "min_informative": 10,
+  "rows": [
+   {
+    "outcome": "y_instant|known",
+    "outcome_label": "Answered instantly, rounds with stated latency",
+    "n": 244,
+    "agents": 55,
+    "items": 47,
+    "within_sd": 0.4335644975308164,
+    "bin_agents": 27,
+    "term": "log1p(head h)",
+    "n_term": 244,
+    "mean_y": 0.7008196721311475,
+    "agents_spanning": 55,
+    "agents_informative": 44,
+    "beta": -0.16373784511840797,
+    "se": 0.11569922094473926,
+    "p": 0.162750432331201,
+    "ci_lo": -0.3957008168500096,
+    "ci_hi": 0.0682251266131936,
+    "loo_lo": -0.22964613242746132,
+    "loo_hi": -0.087007788542573,
+    "var_share_top2": 0.4549673986594799,
+    "note": null
+   },
+   {
+    "outcome": "y_instant|known",
+    "outcome_label": "Answered instantly, rounds with stated latency",
+    "n": 244,
+    "agents": 55,
+    "items": 47,
+    "within_sd": 0.4335644975308164,
+    "bin_agents": 27,
+    "term": "<1h",
+    "n_term": 11,
+    "mean_y": 0.8181818181818182,
+    "agents_spanning": 10,
+    "agents_informative": 7,
+    "beta": null,
+    "se": null,
+    "p": null,
+    "ci_lo": null,
+    "ci_hi": null,
+    "loo_lo": null,
+    "loo_hi": null,
+    "var_share_top2": null,
+    "note": "not identified: only 7 of the 10 agents with a round here and in another bin vary in the outcome"
+   },
+   {
+    "outcome": "y_instant|known",
+    "outcome_label": "Answered instantly, rounds with stated latency",
+    "n": 244,
+    "agents": 55,
+    "items": 47,
+    "within_sd": 0.4335644975308164,
+    "bin_agents": 27,
+    "term": "1-6h",
+    "n_term": 61,
+    "mean_y": 0.6721311475409836,
+    "agents_spanning": 23,
+    "agents_informative": 20,
+    "beta": null,
+    "se": null,
+    "p": null,
+    "ci_lo": null,
+    "ci_hi": null,
+    "loo_lo": null,
+    "loo_hi": null,
+    "var_share_top2": null,
+    "note": "not identified: the <1h reference bin is not"
+   },
+   {
+    "outcome": "y_instant|known",
+    "outcome_label": "Answered instantly, rounds with stated latency",
+    "n": 244,
+    "agents": 55,
+    "items": 47,
+    "within_sd": 0.4335644975308164,
+    "bin_agents": 27,
+    "term": "6-24h",
+    "n_term": 166,
+    "mean_y": 0.6987951807228916,
+    "agents_spanning": 23,
+    "agents_informative": 21,
+    "beta": null,
+    "se": null,
+    "p": null,
+    "ci_lo": null,
+    "ci_hi": null,
+    "loo_lo": null,
+    "loo_hi": null,
+    "var_share_top2": null,
+    "note": "not identified: the <1h reference bin is not"
+   },
+   {
+    "outcome": "y_instant|known",
+    "outcome_label": "Answered instantly, rounds with stated latency",
+    "n": 244,
+    "agents": 55,
+    "items": 47,
+    "within_sd": 0.4335644975308164,
+    "bin_agents": 27,
+    "term": ">24h",
+    "n_term": 6,
+    "mean_y": 0.8333333333333334,
+    "agents_spanning": 4,
+    "agents_informative": 4,
+    "beta": null,
+    "se": null,
+    "p": null,
+    "ci_lo": null,
+    "ci_hi": null,
+    "loo_lo": null,
+    "loo_hi": null,
+    "var_share_top2": null,
+    "note": "not identified: only 4 agents have a round here and in another bin"
+   },
+   {
+    "outcome": "y_instant",
+    "outcome_label": "Answered instantly (<= 2 s claimed)",
+    "n": 244,
+    "agents": 55,
+    "items": 47,
+    "within_sd": 0.4335644975308164,
+    "bin_agents": 27,
+    "term": "log1p(head h)",
+    "n_term": 244,
+    "mean_y": 0.7008196721311475,
+    "agents_spanning": 55,
+    "agents_informative": 44,
+    "beta": -0.16373784511840797,
+    "se": 0.11569922094473926,
+    "p": 0.162750432331201,
+    "ci_lo": -0.3957008168500096,
+    "ci_hi": 0.0682251266131936,
+    "loo_lo": -0.22964613242746132,
+    "loo_hi": -0.087007788542573,
+    "var_share_top2": 0.4549673986594799,
+    "note": null
+   },
+   {
+    "outcome": "y_instant",
+    "outcome_label": "Answered instantly (<= 2 s claimed)",
+    "n": 244,
+    "agents": 55,
+    "items": 47,
+    "within_sd": 0.4335644975308164,
+    "bin_agents": 27,
+    "term": "<1h",
+    "n_term": 11,
+    "mean_y": 0.8181818181818182,
+    "agents_spanning": 10,
+    "agents_informative": 7,
+    "beta": null,
+    "se": null,
+    "p": null,
+    "ci_lo": null,
+    "ci_hi": null,
+    "loo_lo": null,
+    "loo_hi": null,
+    "var_share_top2": null,
+    "note": "not identified: only 7 of the 10 agents with a round here and in another bin vary in the outcome"
+   },
+   {
+    "outcome": "y_instant",
+    "outcome_label": "Answered instantly (<= 2 s claimed)",
+    "n": 244,
+    "agents": 55,
+    "items": 47,
+    "within_sd": 0.4335644975308164,
+    "bin_agents": 27,
+    "term": "1-6h",
+    "n_term": 61,
+    "mean_y": 0.6721311475409836,
+    "agents_spanning": 23,
+    "agents_informative": 20,
+    "beta": null,
+    "se": null,
+    "p": null,
+    "ci_lo": null,
+    "ci_hi": null,
+    "loo_lo": null,
+    "loo_hi": null,
+    "var_share_top2": null,
+    "note": "not identified: the <1h reference bin is not"
+   },
+   {
+    "outcome": "y_instant",
+    "outcome_label": "Answered instantly (<= 2 s claimed)",
+    "n": 244,
+    "agents": 55,
+    "items": 47,
+    "within_sd": 0.4335644975308164,
+    "bin_agents": 27,
+    "term": "6-24h",
+    "n_term": 166,
+    "mean_y": 0.6987951807228916,
+    "agents_spanning": 23,
+    "agents_informative": 21,
+    "beta": null,
+    "se": null,
+    "p": null,
+    "ci_lo": null,
+    "ci_hi": null,
+    "loo_lo": null,
+    "loo_hi": null,
+    "var_share_top2": null,
+    "note": "not identified: the <1h reference bin is not"
+   },
+   {
+    "outcome": "y_instant",
+    "outcome_label": "Answered instantly (<= 2 s claimed)",
+    "n": 244,
+    "agents": 55,
+    "items": 47,
+    "within_sd": 0.4335644975308164,
+    "bin_agents": 27,
+    "term": ">24h",
+    "n_term": 6,
+    "mean_y": 0.8333333333333334,
+    "agents_spanning": 4,
+    "agents_informative": 4,
+    "beta": null,
+    "se": null,
+    "p": null,
+    "ci_lo": null,
+    "ci_hi": null,
+    "loo_lo": null,
+    "loo_hi": null,
+    "var_share_top2": null,
+    "note": "not identified: only 4 agents have a round here and in another bin"
+   }
+  ],
+  "stated_latency_slope": {},
+  "other_mapping": [
+   {
+    "outcome": "y_instant|known",
+    "outcome_label": "Answered instantly, rounds with stated latency",
+    "n": 244,
+    "agents": 55,
+    "items": 47,
+    "within_sd": 0.4335644975308164,
+    "bin_agents": 27,
+    "term": "log1p(head h)",
+    "n_term": 244,
+    "mean_y": 0.7008196721311475,
+    "agents_spanning": 55,
+    "agents_informative": 44,
+    "beta": -0.16373784511840797,
+    "se": 0.11569922094473926,
+    "p": 0.162750432331201,
+    "ci_lo": -0.3957008168500096,
+    "ci_hi": 0.0682251266131936,
+    "loo_lo": -0.22964613242746132,
+    "loo_hi": -0.087007788542573,
+    "var_share_top2": 0.4549673986594799,
+    "note": null
+   },
+   {
+    "outcome": "y_instant|known",
+    "outcome_label": "Answered instantly, rounds with stated latency",
+    "n": 244,
+    "agents": 55,
+    "items": 47,
+    "within_sd": 0.4335644975308164,
+    "bin_agents": 27,
+    "term": "<1h",
+    "n_term": 11,
+    "mean_y": 0.8181818181818182,
+    "agents_spanning": 10,
+    "agents_informative": 7,
+    "beta": null,
+    "se": null,
+    "p": null,
+    "ci_lo": null,
+    "ci_hi": null,
+    "loo_lo": null,
+    "loo_hi": null,
+    "var_share_top2": null,
+    "note": "not identified: only 7 of the 10 agents with a round here and in another bin vary in the outcome"
+   },
+   {
+    "outcome": "y_instant|known",
+    "outcome_label": "Answered instantly, rounds with stated latency",
+    "n": 244,
+    "agents": 55,
+    "items": 47,
+    "within_sd": 0.4335644975308164,
+    "bin_agents": 27,
+    "term": "1-6h",
+    "n_term": 61,
+    "mean_y": 0.6721311475409836,
+    "agents_spanning": 23,
+    "agents_informative": 20,
+    "beta": null,
+    "se": null,
+    "p": null,
+    "ci_lo": null,
+    "ci_hi": null,
+    "loo_lo": null,
+    "loo_hi": null,
+    "var_share_top2": null,
+    "note": "not identified: the <1h reference bin is not"
+   },
+   {
+    "outcome": "y_instant|known",
+    "outcome_label": "Answered instantly, rounds with stated latency",
+    "n": 244,
+    "agents": 55,
+    "items": 47,
+    "within_sd": 0.4335644975308164,
+    "bin_agents": 27,
+    "term": "6-24h",
+    "n_term": 166,
+    "mean_y": 0.6987951807228916,
+    "agents_spanning": 23,
+    "agents_informative": 21,
+    "beta": null,
+    "se": null,
+    "p": null,
+    "ci_lo": null,
+    "ci_hi": null,
+    "loo_lo": null,
+    "loo_hi": null,
+    "var_share_top2": null,
+    "note": "not identified: the <1h reference bin is not"
+   },
+   {
+    "outcome": "y_instant|known",
+    "outcome_label": "Answered instantly, rounds with stated latency",
+    "n": 244,
+    "agents": 55,
+    "items": 47,
+    "within_sd": 0.4335644975308164,
+    "bin_agents": 27,
+    "term": ">24h",
+    "n_term": 6,
+    "mean_y": 0.8333333333333334,
+    "agents_spanning": 4,
+    "agents_informative": 4,
+    "beta": null,
+    "se": null,
+    "p": null,
+    "ci_lo": null,
+    "ci_hi": null,
+    "loo_lo": null,
+    "loo_hi": null,
+    "var_share_top2": null,
+    "note": "not identified: only 4 agents have a round here and in another bin"
+   },
+   {
+    "outcome": "y_instant",
+    "outcome_label": "Answered instantly (<= 2 s claimed)",
+    "n": 244,
+    "agents": 55,
+    "items": 47,
+    "within_sd": 0.4335644975308164,
+    "bin_agents": 27,
+    "term": "log1p(head h)",
+    "n_term": 244,
+    "mean_y": 0.7008196721311475,
+    "agents_spanning": 55,
+    "agents_informative": 44,
+    "beta": -0.16373784511840797,
+    "se": 0.11569922094473926,
+    "p": 0.162750432331201,
+    "ci_lo": -0.3957008168500096,
+    "ci_hi": 0.0682251266131936,
+    "loo_lo": -0.22964613242746132,
+    "loo_hi": -0.087007788542573,
+    "var_share_top2": 0.4549673986594799,
+    "note": null
+   },
+   {
+    "outcome": "y_instant",
+    "outcome_label": "Answered instantly (<= 2 s claimed)",
+    "n": 244,
+    "agents": 55,
+    "items": 47,
+    "within_sd": 0.4335644975308164,
+    "bin_agents": 27,
+    "term": "<1h",
+    "n_term": 11,
+    "mean_y": 0.8181818181818182,
+    "agents_spanning": 10,
+    "agents_informative": 7,
+    "beta": null,
+    "se": null,
+    "p": null,
+    "ci_lo": null,
+    "ci_hi": null,
+    "loo_lo": null,
+    "loo_hi": null,
+    "var_share_top2": null,
+    "note": "not identified: only 7 of the 10 agents with a round here and in another bin vary in the outcome"
+   },
+   {
+    "outcome": "y_instant",
+    "outcome_label": "Answered instantly (<= 2 s claimed)",
+    "n": 244,
+    "agents": 55,
+    "items": 47,
+    "within_sd": 0.4335644975308164,
+    "bin_agents": 27,
+    "term": "1-6h",
+    "n_term": 61,
+    "mean_y": 0.6721311475409836,
+    "agents_spanning": 23,
+    "agents_informative": 20,
+    "beta": null,
+    "se": null,
+    "p": null,
+    "ci_lo": null,
+    "ci_hi": null,
+    "loo_lo": null,
+    "loo_hi": null,
+    "var_share_top2": null,
+    "note": "not identified: the <1h reference bin is not"
+   },
+   {
+    "outcome": "y_instant",
+    "outcome_label": "Answered instantly (<= 2 s claimed)",
+    "n": 244,
+    "agents": 55,
+    "items": 47,
+    "within_sd": 0.4335644975308164,
+    "bin_agents": 27,
+    "term": "6-24h",
+    "n_term": 166,
+    "mean_y": 0.6987951807228916,
+    "agents_spanning": 23,
+    "agents_informative": 21,
+    "beta": null,
+    "se": null,
+    "p": null,
+    "ci_lo": null,
+    "ci_hi": null,
+    "loo_lo": null,
+    "loo_hi": null,
+    "var_share_top2": null,
+    "note": "not identified: the <1h reference bin is not"
+   },
+   {
+    "outcome": "y_instant",
+    "outcome_label": "Answered instantly (<= 2 s claimed)",
+    "n": 244,
+    "agents": 55,
+    "items": 47,
+    "within_sd": 0.4335644975308164,
+    "bin_agents": 27,
+    "term": ">24h",
+    "n_term": 6,
+    "mean_y": 0.8333333333333334,
+    "agents_spanning": 4,
+    "agents_informative": 4,
+    "beta": null,
+    "se": null,
+    "p": null,
+    "ci_lo": null,
+    "ci_hi": null,
+    "loo_lo": null,
+    "loo_hi": null,
+    "var_share_top2": null,
+    "note": "not identified: only 4 agents have a round here and in another bin"
+   }
+  ]
+ },
+ "skipped": {
+  "A3": "needs configured techniques (config `techniques`: a name and a regex each; `swarmprov suggest RUN` proposes URL ones from the posts, and `auto_techniques` mines them at extract)"
+ },
+ "A4": {
+  "n_value_slots_disputed": 3,
+  "n_sequence_slots_disputed": 0,
+  "rule": {
+   "bin_hours": 3.0,
+   "tail_share": 0.3333333333333333,
+   "min_tail": 5
+  },
+  "consensus_disagrees": {
+   "slots": [
+    "beta-task | Belgium",
+    "alpha-task | Hawaii",
+    "beta-task | Norway"
+   ],
+   "n_value_slots": 3,
+   "answer_rounds_stating_winner": 9,
+   "of_them_y_consensus_0": 9
+  },
+  "rows": [
+   {
+    "slot": "beta-task | Belgium",
+    "kind": "value",
+    "variants (agents)": "92.14 (3), 94.88 (6)",
+    "agents carrying both": 0,
+    "first variant": "94.88",
+    "winner": "92.14",
+    "status": "contested",
+    "late carriers (winner/total)": "2/3",
+    "winner first seen": "2026-06-16T20:26:52.260105+00:00",
+    "winner majority from": null,
+    "hours to overtake": null,
+    "reference (analyst input)": "94.88",
+    "outcome": "unresolved (truth first)",
+    "independent / after-public rounds": "92.14: 1 / 2; 94.88: 1 / 5",
+    "consensus \u2260 winner": "yes (94.88)",
+    "precision variants": "no",
+    "featured": true,
+    "tail counts": {
+     "92.14": 2,
+     "94.88": 1
+    },
+    "tie": false,
+    "first seen tie": false,
+    "corrected": false,
+    "consensus": "94.88",
+    "precision_variants": false,
+    "variant_provenance": {
+     "by_variant": {
+      "94.88": {
+       "answer_rounds": 6,
+       "derived_independently": 1,
+       "independent_dissent": 0,
+       "adopted_after_public": 5,
+       "median_head_start_h": 2.4779943569444445
+      },
+      "92.14": {
+       "answer_rounds": 3,
+       "derived_independently": 1,
+       "independent_dissent": 1,
+       "adopted_after_public": 2,
+       "median_head_start_h": 0.22585394083333332
+      }
+     },
+     "n_inherited": 0,
+     "n_other_value": 0
+    }
+   },
+   {
+    "slot": "alpha-task | Hawaii",
+    "kind": "value",
+    "variants (agents)": "93.29 (3), 94.53 (5)",
+    "agents carrying both": 0,
+    "first variant": "94.53",
+    "winner": "93.29",
+    "status": "contested (small n)",
+    "late carriers (winner/total)": "3/3",
+    "winner first seen": "2026-06-16T22:13:37.964574+00:00",
+    "winner majority from": "2026-06-16T22:13:37.964574+00:00",
+    "hours to overtake": 0.0,
+    "reference (analyst input)": "94.53",
+    "outcome": "unresolved (truth first)",
+    "independent / after-public rounds": "93.29: 1 / 2; 94.53: 1 / 4",
+    "consensus \u2260 winner": "yes (94.53)",
+    "precision variants": "no",
+    "featured": true,
+    "tail counts": {
+     "93.29": 3
+    },
+    "tie": false,
+    "first seen tie": false,
+    "corrected": false,
+    "consensus": "94.53",
+    "precision_variants": false,
+    "variant_provenance": {
+     "by_variant": {
+      "94.53": {
+       "answer_rounds": 5,
+       "derived_independently": 1,
+       "independent_dissent": 0,
+       "adopted_after_public": 4,
+       "median_head_start_h": 3.494099622222222
+      },
+      "93.29": {
+       "answer_rounds": 3,
+       "derived_independently": 1,
+       "independent_dissent": 1,
+       "adopted_after_public": 2,
+       "median_head_start_h": 8.382491104861112
+      }
+     },
+     "n_inherited": 0,
+     "n_other_value": 0
+    }
+   },
+   {
+    "slot": "beta-task | Norway",
+    "kind": "value",
+    "variants (agents)": "76.08 (3), 76.78 (5)",
+    "agents carrying both": 0,
+    "first variant": "76.78",
+    "winner": "76.08",
+    "status": "contested (small n)",
+    "late carriers (winner/total)": "3/3",
+    "winner first seen": "2026-06-16T17:25:36.442982+00:00",
+    "winner majority from": "2026-06-16T17:25:36.442982+00:00",
+    "hours to overtake": 0.0,
+    "reference (analyst input)": "76.08",
+    "outcome": "unresolved (error first)",
+    "independent / after-public rounds": "76.08: 1 / 2; 76.78: 1 / 4",
+    "consensus \u2260 winner": "yes (76.78)",
+    "precision variants": "no",
+    "featured": true,
+    "tail counts": {
+     "76.08": 3
+    },
+    "tie": false,
+    "first seen tie": false,
+    "corrected": false,
+    "consensus": "76.78",
+    "precision_variants": false,
+    "variant_provenance": {
+     "by_variant": {
+      "76.78": {
+       "answer_rounds": 5,
+       "derived_independently": 1,
+       "independent_dissent": 0,
+       "adopted_after_public": 4,
+       "median_head_start_h": 4.029630261666667
+      },
+      "76.08": {
+       "answer_rounds": 3,
+       "derived_independently": 1,
+       "independent_dissent": 1,
+       "adopted_after_public": 2,
+       "median_head_start_h": 8.415950436944444
+      }
+     },
+     "n_inherited": 0,
+     "n_other_value": 0
+    }
+   }
+  ],
+  "references_unknown": [
+   "alpha-task|Alaska"
+  ],
+  "references_outside_table": []
+ },
+ "A5": {
+  "n_nodes": 60,
+  "n_edges": 218,
+  "n_exposure_edges": 242,
+  "n_relay_edges": 242,
+  "n_xchannel_edges": 0,
+  "n_citation_edges": 0,
+  "n_reply_edges": 0,
+  "exposure_sources": 26,
+  "gini_exposure_outdegree": 0.4179910998092816,
+  "top10_share_exposure": 0.7024793388429752,
+  "top10_share_exposure_loo": [
+   0.6923076923076923,
+   0.723404255319149
+  ],
+  "gini_exposure_outdegree_loo": [
+   0.40066390041493777,
+   0.43741851368970014
+  ],
+  "gini_relay_outdegree": 0.142877153662978,
+  "betweenness_sampled_sources": null,
+  "mean_chain_depth": 4.566037735849057,
+  "mean_agents_per_fact": 5.566037735849057,
+  "gini_item_exposures": 0.19092595715972338,
+  "items_exposed": 49,
+  "items_one_source": 45,
+  "attribution": [
+   {
+    "rule": "first source",
+    "answers": "all exposed",
+    "n": 242,
+    "sources": 26,
+    "top10_share": 0.7024793388429752,
+    "gini": 0.4179910998092816,
+    "unmatched": 0,
+    "top10_share_loo_lo": 0.6923076923076923,
+    "top10_share_loo_hi": 0.723404255319149,
+    "gini_loo_lo": 0.40066390041493777,
+    "gini_loo_hi": 0.43741851368970014
+   },
+   {
+    "rule": "latest source",
+    "answers": "all exposed",
+    "n": 242,
+    "sources": 59,
+    "top10_share": 0.2066115702479339,
+    "gini": 0.142877153662978,
+    "unmatched": 0,
+    "top10_share_loo_lo": 0.2074688796680498,
+    "top10_share_loo_hi": 0.21367521367521367,
+    "gini_loo_lo": 0.1345118579950531,
+    "gini_loo_hi": 0.1602201941184992
+   },
+   {
+    "rule": "same-page relay parent",
+    "answers": "all exposed",
+    "n": 242,
+    "sources": 59,
+    "top10_share": 0.2066115702479339,
+    "gini": 0.142877153662978,
+    "unmatched": 0,
+    "top10_share_loo_lo": 0.2074688796680498,
+    "top10_share_loo_hi": 0.21367521367521367,
+    "gini_loo_lo": 0.1345118579950531,
+    "gini_loo_hi": 0.1602201941184992
+   },
+   {
+    "rule": "first source",
+    "answers": "instant only",
+    "n": 174,
+    "sources": 26,
+    "top10_share": 0.7011494252873564,
+    "gini": 0.39920424403183025,
+    "unmatched": 0,
+    "top10_share_loo_lo": 0.6904761904761905,
+    "top10_share_loo_hi": 0.7176470588235294,
+    "gini_loo_lo": 0.38335260115606934,
+    "gini_loo_hi": 0.4176788124156545
+   },
+   {
+    "rule": "latest source",
+    "answers": "instant only",
+    "n": 174,
+    "sources": 57,
+    "top10_share": 0.25862068965517243,
+    "gini": 0.2300867110304497,
+    "unmatched": 0,
+    "top10_share_loo_lo": 0.25146198830409355,
+    "top10_share_loo_hi": 0.26785714285714285,
+    "gini_loo_lo": 0.2160609857978279,
+    "gini_loo_hi": 0.24394319131161235
+   },
+   {
+    "rule": "same-page relay parent",
+    "answers": "instant only",
+    "n": 174,
+    "sources": 57,
+    "top10_share": 0.25862068965517243,
+    "gini": 0.2300867110304497,
+    "unmatched": 0,
+    "top10_share_loo_lo": 0.25146198830409355,
+    "top10_share_loo_hi": 0.26785714285714285,
+    "gini_loo_lo": 0.2160609857978279,
+    "gini_loo_hi": 0.24394319131161235
+   }
+  ],
+  "origins": {
+   "by_mapping": {
+    "merged": {
+     "first source": {
+      "computed": 242,
+      "no answer round observed": 0,
+      "dissent": 0,
+      "relayed": 0
+     },
+     "latest source": {
+      "computed": 53,
+      "no answer round observed": 0,
+      "dissent": 0,
+      "relayed": 189
+     }
+    },
+    "strict": {
+     "first source": {
+      "computed": 242,
+      "no answer round observed": 0,
+      "dissent": 0,
+      "relayed": 0
+     },
+     "latest source": {
+      "computed": 53,
+      "no answer round observed": 0,
+      "dissent": 0,
+      "relayed": 189
+     }
+    }
+   },
+   "mapping": "merged",
+   "roots": {
+    "first source": {
+     "computed": 242,
+     "no answer round observed": 0,
+     "dissent": 0,
+     "posted before its own source": 0,
+     "chain cut (its latest source posted after it)": 0
+    },
+    "latest source": {
+     "computed": 242,
+     "no answer round observed": 0,
+     "dissent": 0,
+     "posted before its own source": 0,
+     "chain cut (its latest source posted after it)": 0
+    }
+   },
+   "max depth": {
+    "first source": 1,
+    "latest source": 8
+   },
+   "no answer round observed, top sources": []
+  }
+ },
+ "agents": {
+  "mapping": "merged",
+  "n_agents": 60,
+  "n_answering": 60,
+  "n_answers": 300,
+  "n_all_no_prior_copy": 2,
+  "n_all_no_prior_copy_min3": 2,
+  "n_all_exposed": 30,
+  "n_sources": 26,
+  "n_sources_answering": 26,
+  "n_sources_with_no_prior_copy": 26,
+  "top_no_prior_copy": [
+   {
+    "label": "Oct07|beta-task",
+    "n_author_strings": 1,
+    "n_answers": 5,
+    "n_no_prior_copy": 5,
+    "n_exposed": 0,
+    "n_self_prepared": 0,
+    "answers_supplied": 27
+   },
+   {
+    "label": "Sep26|alpha-task",
+    "n_author_strings": 1,
+    "n_answers": 5,
+    "n_no_prior_copy": 5,
+    "n_exposed": 0,
+    "n_self_prepared": 0,
+    "answers_supplied": 25
+   },
+   {
+    "label": "Apr24|beta-task",
+    "n_author_strings": 1,
+    "n_answers": 5,
+    "n_no_prior_copy": 4,
+    "n_exposed": 1,
+    "n_self_prepared": 0,
+    "answers_supplied": 20
+   },
+   {
+    "label": "Feb11|beta-task",
+    "n_author_strings": 1,
+    "n_answers": 5,
+    "n_no_prior_copy": 4,
+    "n_exposed": 1,
+    "n_self_prepared": 0,
+    "answers_supplied": 20
+   },
+   {
+    "label": "Jul12|alpha-task",
+    "n_author_strings": 1,
+    "n_answers": 5,
+    "n_no_prior_copy": 4,
+    "n_exposed": 1,
+    "n_self_prepared": 0,
+    "answers_supplied": 23
+   },
+   {
+    "label": "Jun19|beta-task",
+    "n_author_strings": 1,
+    "n_answers": 5,
+    "n_no_prior_copy": 3,
+    "n_exposed": 2,
+    "n_self_prepared": 0,
+    "answers_supplied": 18
+   },
+   {
+    "label": "Aug21|alpha-task",
+    "n_author_strings": 1,
+    "n_answers": 5,
+    "n_no_prior_copy": 2,
+    "n_exposed": 3,
+    "n_self_prepared": 0,
+    "answers_supplied": 5
+   },
+   {
+    "label": "Feb15|alpha-task",
+    "n_author_strings": 1,
+    "n_answers": 5,
+    "n_no_prior_copy": 2,
+    "n_exposed": 3,
+    "n_self_prepared": 0,
+    "answers_supplied": 7
+   },
+   {
+    "label": "Jan13|beta-task",
+    "n_author_strings": 1,
+    "n_answers": 5,
+    "n_no_prior_copy": 2,
+    "n_exposed": 3,
+    "n_self_prepared": 0,
+    "answers_supplied": 5
+   },
+   {
+    "label": "Jul14|beta-task",
+    "n_author_strings": 1,
+    "n_answers": 5,
+    "n_no_prior_copy": 2,
+    "n_exposed": 3,
+    "n_self_prepared": 0,
+    "answers_supplied": 12
+   }
+  ],
+  "top_suppliers": [
+   {
+    "label": "Oct07|beta-task",
+    "n_author_strings": 1,
+    "answers_supplied": 27,
+    "items_first_sourced": 5,
+    "n_answers": 5,
+    "n_no_prior_copy": 5,
+    "n_exposed": 0
+   },
+   {
+    "label": "Sep26|alpha-task",
+    "n_author_strings": 1,
+    "answers_supplied": 25,
+    "items_first_sourced": 5,
+    "n_answers": 5,
+    "n_no_prior_copy": 5,
+    "n_exposed": 0
+   },
+   {
+    "label": "Jul12|alpha-task",
+    "n_author_strings": 1,
+    "answers_supplied": 23,
+    "items_first_sourced": 4,
+    "n_answers": 5,
+    "n_no_prior_copy": 4,
+    "n_exposed": 1
+   },
+   {
+    "label": "Apr24|beta-task",
+    "n_author_strings": 1,
+    "answers_supplied": 20,
+    "items_first_sourced": 4,
+    "n_answers": 5,
+    "n_no_prior_copy": 4,
+    "n_exposed": 1
+   },
+   {
+    "label": "Feb11|beta-task",
+    "n_author_strings": 1,
+    "answers_supplied": 20,
+    "items_first_sourced": 4,
+    "n_answers": 5,
+    "n_no_prior_copy": 4,
+    "n_exposed": 1
+   },
+   {
+    "label": "Jun19|beta-task",
+    "n_author_strings": 1,
+    "answers_supplied": 18,
+    "items_first_sourced": 3,
+    "n_answers": 5,
+    "n_no_prior_copy": 3,
+    "n_exposed": 2
+   },
+   {
+    "label": "Jul14|beta-task",
+    "n_author_strings": 1,
+    "answers_supplied": 12,
+    "items_first_sourced": 2,
+    "n_answers": 5,
+    "n_no_prior_copy": 2,
+    "n_exposed": 3
+   },
+   {
+    "label": "Jun20|alpha-task",
+    "n_author_strings": 1,
+    "answers_supplied": 11,
+    "items_first_sourced": 2,
+    "n_answers": 5,
+    "n_no_prior_copy": 2,
+    "n_exposed": 3
+   },
+   {
+    "label": "Dec12|alpha-task",
+    "n_author_strings": 1,
+    "answers_supplied": 7,
+    "items_first_sourced": 1,
+    "n_answers": 5,
+    "n_no_prior_copy": 1,
+    "n_exposed": 4
+   },
+   {
+    "label": "Feb15|alpha-task",
+    "n_author_strings": 1,
+    "answers_supplied": 7,
+    "items_first_sourced": 2,
+    "n_answers": 5,
+    "n_no_prior_copy": 2,
+    "n_exposed": 3
+   }
+  ]
+ },
+ "A6": {
+  "task values": {
+   "facts": 58,
+   "repeated": 53,
+   "mean_repeaters": 4.172413793103448,
+   "p90_repeaters": 7.0,
+   "max_hops": 8,
+   "mean_hops_repeated": 4.566037735849057,
+   "mean_repeaters_lo": 3.6379310344827585,
+   "mean_repeaters_hi": 4.706896551724138
+  },
+  "window_sensitivity": [
+   {
+    "W_s": 600.0,
+    "relay": 10,
+    "relay_xchannel": 0,
+    "unattributed": 232,
+    "mean_linked_repeaters": 0.1724137931034483,
+    "mean_max_depth": 0.18867924528301888
+   },
+   {
+    "W_s": 3600.0,
+    "relay": 53,
+    "relay_xchannel": 0,
+    "unattributed": 189,
+    "mean_linked_repeaters": 0.9137931034482759,
+    "mean_max_depth": 0.7924528301886793
+   },
+   {
+    "W_s": 21600.0,
+    "relay": 191,
+    "relay_xchannel": 0,
+    "unattributed": 51,
+    "mean_linked_repeaters": 3.293103448275862,
+    "mean_max_depth": 2.981132075471698
+   },
+   {
+    "W_s": 86400.0,
+    "relay": 242,
+    "relay_xchannel": 0,
+    "unattributed": 0,
+    "mean_linked_repeaters": 4.172413793103448,
+    "mean_max_depth": 4.566037735849057
+   },
+   {
+    "W_s": null,
+    "relay": 242,
+    "relay_xchannel": 0,
+    "unattributed": 0,
+    "mean_linked_repeaters": 4.172413793103448,
+    "mean_max_depth": 4.566037735849057
+   }
+  ]
+ },
+ "integrity": {
+  "n_checks": 19,
+  "n_pass": 19,
+  "failing": []
+ }
+}

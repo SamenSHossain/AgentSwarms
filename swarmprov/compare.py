@@ -2,7 +2,9 @@
 
 Three layers, each keyed by meaning rather than position:
 
-* the setup: adapter, source, config file and the settings it changes, capabilities, posts, roster, mapping;
+* the setup: adapter, source, config file and every setting that differs, as each run's stages recorded them in
+  profile.json (a run recorded before that is read from its config as it reads now, and the report says so),
+  capabilities, posts, roster, mapping;
 * ``summary.json`` (``summary_strict.json`` under the strict mapping), flattened to one value per path, with the
   report's list rows keyed by what they describe (A3 by technique, A4 by slot, A5 attribution by rule, top
   sources by agent, ...).  Numbers match within a relative tolerance and missing (null) equals missing; the
@@ -19,10 +21,10 @@ and originators are compared.
 
 from __future__ import annotations
 
-import dataclasses
 import hashlib
 import json
 import math
+import re
 from pathlib import Path
 
 import pandas as pd
@@ -31,6 +33,7 @@ from .schema import RunDir, suffix
 
 TOL = 1e-6
 LIMIT = 10
+TS_RE = re.compile(r"\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}")
 LOW_OVERLAP = 0.5   # below this share of shared event ids, align posts on (ts, author_raw, text hash)
 SETUP = ("adapter", "source", "config_path", "roster", "n_events", "clock")
 # summary lists whose rows are keyed by what they describe, not by position
@@ -38,7 +41,7 @@ KEYS = {"A2": ("outcome", "treatment"), "A2_dose.rows": ("outcome", "term"), "A2
         "A3": ("technique",), "A4.rows": ("slot",), "A5.attribution": ("rule", "answers"),
         "A5.origins.no answer round observed, top sources": ("source",), "agents.top_suppliers": ("label",),
         "agents.top_no_prior_copy": ("label",), "A1.threshold_curve.curves": ("answers",),
-        "A6.window_sensitivity": ("W_s",), "integrity.failing": ("check", "table")}
+        "A6.window_sensitivity": ("W_s",), "A6.url domains.top": ("domain",), "integrity.failing": ("check", "table")}
 AGENT_ROWS = {"agents.top_suppliers", "agents.top_no_prior_copy", "A5.origins.no answer round observed, top sources"}
 CLAIM_FIELDS = ("item", "value_norm", "episode", "family", "event_type")
 FLAGS = ("D", "D_w60m", "D_visible", "D_cons", "y_instant", "y_consensus")
@@ -79,6 +82,16 @@ def _delta(a, b) -> float | None:
     return abs(a - b) / max(abs(a), abs(b))
 
 
+def _ts(v):
+    """A timestamp string in one spelling (``2026-06-20 05:10:21+00:00`` and ``2026-06-20T05:10:21+00:00`` alike)."""
+    if isinstance(v, str) and TS_RE.match(v):
+        try:
+            return pd.Timestamp(v).isoformat()
+        except ValueError:
+            pass
+    return v
+
+
 def summary_diff(sa: dict, sb: dict, tol: float = TOL, labels_a: dict | None = None, labels_b: dict | None = None) -> dict:
     """Sections only in one summary, keyed rows only in one, and every shared value that differs (numbers beyond
     ``tol`` relative); ``largest_within_tol`` is the biggest difference the tolerance hid.  ``labels_*`` rename
@@ -97,7 +110,7 @@ def summary_diff(sa: dict, sb: dict, tol: float = TOL, labels_a: dict | None = N
             continue   # the whole row is only on one side
         out["n_compared"] += 1
         d = _delta(va, vb)
-        if d is None and va == vb or d is not None and d <= tol:
+        if d is None and _ts(va) == _ts(vb) or d is not None and d <= tol:
             if d and d > hidden[0]:
                 hidden = (d, p)
             continue
@@ -107,28 +120,29 @@ def summary_diff(sa: dict, sb: dict, tol: float = TOL, labels_a: dict | None = N
     return out
 
 
-def _norm(v):
-    if callable(v):
-        return getattr(v, "__qualname__", str(v))
-    if dataclasses.is_dataclass(v):
-        return _norm(dataclasses.asdict(v))
-    if isinstance(v, dict):
-        return {str(k): _norm(x) for k, x in v.items()}
-    if isinstance(v, (list, tuple)):
-        return [_norm(x) for x in v]
-    return v
-
-
-def _config(run: RunDir):
+def _settings(run: RunDir, prof: dict):
+    """The settings the run's stages last ran with, as profile.json records them (True); for a run recorded before
+    that, the config file as it reads now (False), or why it cannot be read."""
+    if "config_settings" in prof:
+        return prof["config_settings"], True
     from .pipeline import load_config
     try:
-        return load_config(run)
+        return load_config(run, with_mined=False).settings(), False
     except (OSError, ValueError) as e:
-        return f"unreadable ({e})"
+        return f"unreadable ({e})", False
 
 
-def setup_diff(run_a: RunDir, run_b: RunDir, mapping_a: str, mapping_b: str) -> list[dict]:
-    """The setup fields, capabilities and config settings that differ."""
+def _stages(prof: dict) -> str | None:
+    """The stages that ran with different settings, grouped (``ingest, extract ≠ report``), or None when all agree."""
+    groups: dict[str, list[str]] = {}
+    for stage, digest in (prof.get("config_stages") or {}).items():
+        groups.setdefault(digest, []).append(stage)
+    return " ≠ ".join(map(", ".join, groups.values())) if len(groups) > 1 else None
+
+
+def setup_diff(run_a: RunDir, run_b: RunDir, mapping_a: str, mapping_b: str) -> tuple[list[dict], dict]:
+    """The setup fields, capabilities and config settings that differ; and per side whether its settings were
+    recorded by its stages or read from its file now, and which stages ran with different ones."""
     pa, pb = (json.loads((r.path / "profile.json").read_text()) for r in (run_a, run_b))
     rows = [{"field": k, "a": pa.get(k), "b": pb.get(k)} for k in SETUP if pa.get(k) != pb.get(k)]
     if mapping_a != mapping_b:
@@ -136,15 +150,15 @@ def setup_diff(run_a: RunDir, run_b: RunDir, mapping_a: str, mapping_b: str) -> 
     ca, cb = pa.get("capabilities") or {}, pb.get("capabilities") or {}
     rows += [{"field": f"capabilities.{k}", "a": ca.get(k), "b": cb.get(k)} for k in sorted(set(ca) | set(cb))
              if ca.get(k) != cb.get(k)]
-    fa, fb = _config(run_a), _config(run_b)
+    (fa, rec_a), (fb, rec_b) = _settings(run_a, pa), _settings(run_b, pb)
+    info = {"a": {"recorded": rec_a, "stages_differ": _stages(pa)}, "b": {"recorded": rec_b, "stages_differ": _stages(pb)}}
     if isinstance(fa, str) or isinstance(fb, str):
-        return rows + [{"field": "config", "a": fa if isinstance(fa, str) else "read",
-                        "b": fb if isinstance(fb, str) else "read"}]
-    for f in dataclasses.fields(fa):
-        va, vb = _norm(getattr(fa, f.name)), _norm(getattr(fb, f.name, None))
-        if json.dumps(va, sort_keys=True, default=str) != json.dumps(vb, sort_keys=True, default=str):
-            rows.append({"field": f"config.{f.name}", "a": va, "b": vb})
-    return rows
+        if fa != fb:
+            rows.append({"field": "config", "a": fa if isinstance(fa, str) else "read", "b": fb if isinstance(fb, str) else "read"})
+        return rows, info
+    rows += [{"field": f"config.{k}", "a": fa.get(k), "b": fb.get(k)} for k in list(fa) + [k for k in fb if k not in fa]
+             if json.dumps(fa.get(k), sort_keys=True) != json.dumps(fb.get(k), sort_keys=True)]
+    return rows, info
 
 
 def _text_key(ev: pd.DataFrame) -> pd.Series:
@@ -282,7 +296,8 @@ def compare(run_a, run_b, mapping_a: str = "merged", mapping_b: str = "merged", 
     """Everything ``compare.json`` holds; ``n_changes`` is 0 when nothing differs."""
     ra, rb = RunDir(run_a), RunDir(run_b)
     res = {"a": {"run": str(ra.path), "mapping": mapping_a}, "b": {"run": str(rb.path), "mapping": mapping_b},
-           "tolerance": tol, "setup": setup_diff(ra, rb, mapping_a, mapping_b)}
+           "tolerance": tol}
+    res["setup"], res["config"] = setup_diff(ra, rb, mapping_a, mapping_b)
     # across mappings, labels compare in one namespace: the strict side's read as merged (merged is a function of strict)
     side = ra if mapping_a == "strict" else rb
     to_merged = _merged_labels(side.read("agents")) if mapping_a != mapping_b and side.has("agents") else {}
@@ -334,18 +349,34 @@ def _ids(xs) -> str:
     return ", ".join(map(_code, xs))
 
 
+def _config_notes(info: dict) -> list[str]:
+    """Where each side's settings come from, when not from what its stages recorded, and stages that disagree."""
+    out = []
+    for side in ("a", "b"):
+        i = info[side]
+        if not i["recorded"]:
+            out.append(f"{side.upper()}'s settings are its config as it reads now (the adapter's built-in one and any "
+                       "config file): the run predates the settings its stages record")
+        if i["stages_differ"]:
+            out.append(f"{side.upper()}'s stages ran with different settings ({i['stages_differ']}); the config rows "
+                       "give the latest stage's")
+    return out
+
+
 def to_markdown(res: dict, limit: int = LIMIT) -> str:
     a, b, s, al = res["a"], res["b"], res["summary"], res["alignment"]
     hid = s.get("largest_within_tol")
     L = ["# What changed between two runs\n",
          f"A: `{a['run']}` ({a['mapping']} mapping); B: `{b['run']}` ({b['mapping']} mapping). "
-         f"**{res['n_changes']:,} changes** in all: setup fields, summary values and rows, each counted once.\n",
+         f"**{res['n_changes']:,} change{'s' * (res['n_changes'] != 1)}** in all: setup fields, summary values and "
+         "rows, each counted once.\n",
          "## Setup\n"]
     if res["setup"]:
         L += ["| field | A | B |\n|---|---|---|", *(f"| {r['field']} | {_show(r['a'])} | {_show(r['b'])} |"
                                                    for r in res["setup"]), ""]
     else:
         L.append("Same adapter, source, config, capabilities, posts, roster, clock and mapping.\n")
+    L += [f"{note}.\n" for note in _config_notes(res["config"])]
     L.append("## Summary\n")
     if "missing" in s:
         L.append("Not compared: no " + " and no ".join(map(_code, s["missing"]))
@@ -402,8 +433,9 @@ def headline(res: dict) -> list[str]:
     """The terminal summary."""
     s, al = res["summary"], res["alignment"]
     out = [f"compare {res['a']['run']} ({res['a']['mapping']}) vs {res['b']['run']} ({res['b']['mapping']}): "
-           f"{res['n_changes']:,} changes",
-           "  setup: " + (", ".join(r["field"] for r in res["setup"]) or "same")]
+           f"{res['n_changes']:,} change{'s' * (res['n_changes'] != 1)}",
+           "  setup: " + (", ".join(r["field"] for r in res["setup"]) or "same"),
+           *(f"  note: {n}" for n in _config_notes(res["config"]))]
     if "missing" in s:
         out.append("  summary: not compared (no " + ", ".join(s["missing"]) + ")")
     else:
