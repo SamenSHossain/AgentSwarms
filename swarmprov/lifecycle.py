@@ -62,7 +62,7 @@ def recreation_check(revs: pd.DataFrame, lifecycle: pd.DataFrame, posts: pd.Data
         "pipeline_edges": len(pipe), "overlap": len(overlap),
         "pipeline_only": len(pipe_only), "pipeline_only_after_cutoff": len(outside),
         "dump_only": len(dump - set(pipe)),
-        "cutoff": str(cutoff) if cutoff is not None else None,
+        "cutoff": cutoff.isoformat() if cutoff is not None else None,
     }
     # restored vs fresh posts on the recreation revisions
     first_del: dict[str, pd.Timestamp] = {}

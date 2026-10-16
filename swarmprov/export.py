@@ -45,16 +45,24 @@ def export(run_path, out, tables=DEFAULT, fmt: str = "csv", mapping: str = "merg
         table, per_mapping, cols, kinds = EXPORTS[name]
         src = f"{table}_{mapping}" if per_mapping else table
         if not run.has(src):
-            print(f"[swarmprov] {name}: no {src}.parquet in {run.path} (written by `swarmprov {STAGES.get(table, 'report')}`"
-                  + (f", and not when {NONE_WHEN[table]}" if table in NONE_WHEN else "") + "), skipped")
+            other = "strict" if mapping == "merged" else "merged"
+            why = (f"the report was built under the {other} mapping; run `swarmprov report {run.path} --mapping {mapping}` "
+                   "first, which rewrites report.md and summary.json under this one"
+                   if table in REPORT_TABLES and run.has(f"{table}_{other}") else
+                   f"written by `swarmprov {STAGES.get(table, 'report')}`"
+                   + (f", and not when {NONE_WHEN[table]}" if table in NONE_WHEN else ""))
+            print(f"[swarmprov] {name}: no {src}.parquet in {run.path} ({why}), skipped")
             continue
         df = run.read(src)
         if kinds:
             df = df[df["kind"].isin(kinds)]
         if cols and not all_columns:
-            df = df[[c for c in cols if c in df.columns]]
+            df = df.reindex(columns=cols)   # the mirror's full header, even for an empty table
         path = out / f"{name}_{mapping}.{fmt}" if per_mapping else out / f"{name}.{fmt}"
-        df.to_csv(path, index=False) if fmt == "csv" else df.to_parquet(path, index=False)
+        if fmt == "csv":
+            df.to_csv(path, index=False)
+        else:
+            df.to_parquet(path, index=False)
         print(f"[swarmprov] wrote {path} ({len(df):,} rows)")
         written += 1
     return 0 if written else 1

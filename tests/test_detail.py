@@ -67,13 +67,13 @@ def test_adoption_after_exposure_reads_as_contagion():
     rows = [(0, "o", "f", "P", "blobtrick")]
     for i in range(1, 11):
         rows += [(10 * i + k, f"a{i}", "f", f"Q{k}", "no") for k in range(4)] + [(10 * i + 5, f"a{i}", "f", "P", "blobtrick")]
-    rows.append((3, "a1", "f", "P", "reading the page first"))   # a1 was on the carrying page before adopting
+    rows += [(4, "a1", "f", "P", "reading the page first"), (3, "a1", "f", "P", "and before that")]   # a1 was there twice
     c = _contagion(rows)
     assert (c["n_adopters"], c["n_on_carrying"], c["share_on_carrying"]) == (10, 10, 1.0)
     agents = c["agents"].set_index("agent")
-    assert agents.loc["a2", "baseline_share"] == pytest.approx(1 / 5) and agents.loc["a1", "baseline_share"] == 2 / 6
-    assert c["baseline"] == pytest.approx((9 / 5 + 2 / 6) / 10) and c["p"] < 1e-6
-    assert agents.loc["a1", "t_exposed"] == T0 + pd.Timedelta(minutes=3) and c["n_exposed_before"] == 1
+    assert agents.loc["a2", "baseline_share"] == pytest.approx(1 / 5) and agents.loc["a1", "baseline_share"] == 3 / 7
+    assert c["baseline"] == pytest.approx((9 / 5 + 3 / 7) / 10) and c["p"] < 1e-6 and c["p_holm"] == c["p"]
+    assert agents.loc["a1", "t_exposed"] == T0 + pd.Timedelta(minutes=3) and c["n_exposed_before"] == 1   # the first
     assert agents["adoption_channel"].eq("P").all() and agents.loc["a2", "n_eligible_posts"] == 5
 
 
@@ -97,10 +97,37 @@ def test_a_page_carries_only_what_another_agent_posted_strictly_before():
     assert agents.loc["d", "baseline_share"] == 0 and pd.isna(agents.loc["d", "t_exposed"])
 
 
+def test_a_page_carries_for_its_first_poster_once_another_agent_posts_there():
+    """a is the first to post the technique on R; R carries it for a only after b has posted it there too."""
+    rows = [(0, "o", "f", "P", "blobtrick"), (10, "a", "f", "R", "blobtrick"), (15, "a", "f", "R", "no"),
+            (20, "b", "f", "R", "blobtrick"), (30, "a", "f", "R", "no")]
+    tags, ev = _posts(rows)
+    agents = diffusion.contagion(tags, ev, [BLOB], "agent_merged")["blob"]["agents"].set_index("agent")
+    assert not agents.loc["a", "adopted_on_carrying_page"] and agents.loc["b", "adopted_on_carrying_page"]
+    first = pd.DataFrame({"agent_merged": ["a"], "ts": [T0 + pd.Timedelta(minutes=10)],
+                          "ts2": [T0 + pd.Timedelta(minutes=20)]}, index=pd.Index(["R"], name="channel"))
+    mine = tags.assign(channel=ev["channel"])[lambda d: d["agent_merged"] == "a"]
+    assert diffusion._carrying(mine, first, "agent_merged").tolist() == [False, False, True]   # at 10, 15 and 30
+    assert agents.loc["a", "baseline_share"] == pytest.approx(1 / 3) and agents.loc["b", "baseline_share"] == 1
+
+
+def test_holm_adjusts_for_the_techniques_tested():
+    p = pd.Series({"rng": 0.0033, "clock": 0.0058, "blob": 0.0382, "beacon": 0.0868, "tooltip": 0.8146})
+    assert diffusion.holm(p).round(4).to_dict() == {"rng": 0.0165, "clock": 0.0232, "blob": 0.1146, "beacon": 0.1736,
+                                                    "tooltip": 0.8146}
+    assert diffusion.holm(pd.Series({"a": 0.4, "b": 0.3})).tolist() == [0.6, 0.6]       # step-down keeps the order
+    rows = [(0, "o", "f", "P", "blobtrick")]
+    rows += [r for i in range(1, 4) for r in ((10 * i, f"a{i}", "f", f"Q{i}", "no"), (10 * i + 1, f"a{i}", "f", "P", "blobtrick"))]
+    tags, ev = _posts(rows)
+    tags["techniques"] = tags["techniques"].replace("blob", "blob,blob2")
+    c = diffusion.contagion(tags, ev, [BLOB, Technique("blob2", "blobtrick", ("f",))], "agent_merged")
+    assert c["blob"]["p"] == c["blob2"]["p"] == 0.5 ** 3 and c["blob"]["p_holm"] == c["blob2"]["p_holm"] == 0.25
+
+
 def test_a_technique_nobody_adopted_has_no_test():
     c = _contagion([(0, "o", "f", "P", "blobtrick"), (1, "a", "f", "P", "no")])
     assert (c["n_adopters"], c["n_on_carrying"], c["n_exposed_before"]) == (0, 0, 0) and np.isnan(c["p"])
-    assert c["agents"].empty and np.isnan(c["baseline"])
+    assert c["agents"].empty and np.isnan(c["baseline"]) and "p_holm" not in c
 
 
 def test_a_pattern_that_matches_page_names_is_not_tested():
@@ -113,6 +140,24 @@ def test_a_pattern_that_matches_page_names_is_not_tested():
     assert c["n_posts_page_name_only"] == 1 and "1 of its 2 posts match its pattern only by naming a page" in c["excluded"]
     assert "agents" not in c
     assert diffusion._names_only(ev["text"], "ZZZ", ["dse/Other"]).sum() == 0   # no page name matches: nothing to strip
+
+
+def test_a_pattern_that_also_names_pages_is_tested_and_flagged():
+    """Every post matches on its own words, so the technique is tested, but the report says which adoptions landed on
+    a page whose name matches the pattern."""
+    from swarmprov.report import _contagion_note
+    beacon = Technique("beacon", "beacon", ("f",))
+    rows = [(0, "o", "f", "P", "beacon trick"), (1, "o", "f", "dse/BeaconAlert", "beacon trick"),
+            (2, "a1", "f", "Q", "no"), (3, "a1", "f", "dse/BeaconAlert", "a beacon here"),
+            (5, "a2", "f", "Q", "beacon too"), (6, "a3", "f", "dse/BeaconAlert", "no"), (7, "a3", "f", "P", "beacon")]
+    tags, ev = _posts(rows)
+    tags["techniques"] = np.where(ev["text"].str.contains("beacon"), "beacon", "")
+    c = diffusion.contagion(tags, ev, [beacon], "agent_merged")
+    b = c["beacon"]
+    assert b["excluded"] is None and b["n_posts_page_name_only"] == 0 and b["n_page_names"] == 1
+    assert (b["n_adopters"], b["n_on_carrying"], b["n_adopted_on_named_page"], b["n_carrying_on_named_page"]) == (3, 2, 1, 1)
+    assert ("beacon's pattern also matches 1 page name, where a post can match because of the page: 1 of its 3 "
+            "adoptions landed on one, 1 of the 2 on a carrying page.") in _contagion_note(c)
 
 
 def _slot(spec, kind="value"):
@@ -160,18 +205,20 @@ def test_y_winner_scores_overturned_slots_only_beside_y_consensus():
     t = T0 + pd.Timedelta(hours=1)
     rounds = pd.DataFrame([{"claim_id": f"c{k}", "report_event_id": f"r{k}", "agent": f"a{k}", "family": "f",
                             "episode": 1, "item": item, "value_norm": v, "t_report": t, "latency_class": None,
-                            "wrong_flag": wrong, "correct_flag": False}
-                           for k, (item, v, wrong) in enumerate([("i", "9.69", False), ("i", "9.7", False),
-                                                                 ("i", None, False), ("i", "9.69", True),
-                                                                 ("j", "3", False)])])
+                            "wrong_flag": wrong, "correct_flag": right}
+                           for k, (item, v, wrong, right) in enumerate([
+                               ("i", "9.69", False, False), ("i", "9.7", False, False), ("i", None, False, False),
+                               ("i", "9.69", True, False), ("j", "3", False, False), ("i", None, False, True),
+                               ("i", "9.7", False, True)])])
     mentions = pd.DataFrame([{"event_id": "m0", "ts": T0, "agent_merged": "z", "channel": "P", "family": "f",
                               "item": "i", "value_norm": "9.7", "value_key": "9.7", "source_kind": None}])
     ex = exposure.build(rounds, mentions, {("f", "i"): "9.7", ("f", "j"): "3"}, "agent_merged",
                         winners={("f", "i"): "9.69"})
     y = ex["y_winner"]
-    assert (y[0], y[1], y[3]) == (1.0, 0.0, 0.0) and np.isnan(y[2])   # a report's own wrong flag comes first
+    assert (y[0], y[1], y[3]) == (1.0, 0.0, 1.0) and np.isnan(y[2])   # the stated value, whatever the report's flag
+    assert np.isnan(y[5]) and y[6] == 0.0                              # a correct flag grades the task, not the winner
     assert np.isnan(y[4]) and ex["y_consensus"][4] == 1.0             # j is not overturned
-    assert ex["y_consensus"].iloc[[0, 1, 3]].tolist() == [0.0, 1.0, 0.0]          # unchanged: scored on the consensus
+    assert ex["y_consensus"].iloc[[0, 1, 3, 5, 6]].tolist() == [0.0, 1.0, 0.0, 1.0, 1.0]   # scored as before
     no_win = exposure.build(rounds, mentions, {("f", "i"): "9.7", ("f", "j"): "3"}, "agent_merged")
     assert no_win["y_winner"].isna().all() and no_win["y_consensus"].equals(ex["y_consensus"])
 
@@ -293,9 +340,91 @@ def test_report_a3_shows_contagion_and_persists_adoptions(tech_run):
 
 def test_contagion_note_warns_on_small_n_and_names_untested_techniques():
     from swarmprov.report import _contagion_note
-    row = {"excluded": None, "n_adopters": 6, "n_on_carrying": 6, "share_on_carrying": 1.0, "baseline": 0.5, "p": 0.016}
+    row = {"excluded": None, "n_adopters": 6, "n_on_carrying": 6, "share_on_carrying": 1.0, "baseline": 0.5, "p": 0.016,
+           "p_holm": 0.048, "n_page_names": 0}
     note = _contagion_note({"few": row, "zzz": {"excluded": "3 of its 4 posts match its pattern only by naming a page"},
-                            "many": row | {"n_adopters": 40, "p": 0.2}})
-    assert "**consistent with contagion** (none here)" in note       # few is too small, many is not significant
+                            "many": row | {"n_adopters": 40, "p": 0.2, "p_holm": 0.4},
+                            "lost": row | {"n_adopters": 40, "p": 0.03, "p_holm": 0.06}})
+    assert "with p < 0.05 after Holm's correction for the 3 techniques tested is **consistent with contagion** " \
+           "(none here)" in note                                    # few is too small, many and lost fail Holm
+    assert "Below 0.05 only before the correction: lost (p = 0.030, 0.060 after it)." in note
     assert "zzz is not tested: 3 of its 4 posts match its pattern only by naming a page." in note
-    assert note.endswith("Fewer than 10 adopters, too few to read: few (6).\n")
+    assert note.endswith("Fewer than 10 adopters, too few to read: few (6).\n") and "page name" not in note
+    one = _contagion_note({"many": row | {"n_adopters": 40, "p": 0.01, "p_holm": 0.01}})
+    assert "with p < 0.05 is **consistent with contagion** (many)" in one and "Holm" not in one   # one test: no correction
+
+
+def test_export_of_an_empty_exposure_table_keeps_the_mirror_header(tech_run, tmp_path):
+    assert tech_run.read("exposures_merged").empty
+    assert cli.main(["export", str(tech_run.path), "-o", str(tmp_path), "--tables", "exposures"]) == 0
+    assert list(pd.read_csv(tmp_path / "exposures_merged.csv").columns) == export_mod.EXPOSURE_COLUMNS
+
+
+@pytest.fixture(scope="module")
+def win_run(tmp_path_factory):
+    """A timed chat with three overturned value slots: Poland (answer rounds, the consensus wins), Chile (predictions
+    only: no answer rounds) and Hungary (the consensus 9.90 loses to 9.91; one 9.91 report says it scored); and a
+    family of three answers, too small for A1's printed table."""
+    d = tmp_path_factory.mktemp("winners")
+
+    def post(h, m, i, channel, text):
+        return {"timestamp": f"2026-05-04T{h:02d}:{m:02d}:00Z", "name": f"agent-{i}", "channel": channel, "content": text}
+    msgs = [post(0 if i < 4 else 6, i, i, "big", f"R1 CONFIRMED: Poland arrived; answered {'16.40' if i < 4 else '16.38'} "
+                 "at +3s.") for i in range(15)]
+    msgs += [post(1 if i < 4 else 7, i, i, "big", f"expected Chile {'3.10' if i < 4 else '3.15'} on the board")
+             for i in range(13)]
+    msgs += [post(9 if i < 10 else 14, i, i, "big", f"R2 CONFIRMED: Hungary arrived; answered {'9.90' if i < 10 else '9.91'} "
+                  "instantly." + (" Scored." if i == 15 else "")) for i in range(16)]
+    msgs += [post(10, i, i, "small", "R1 CONFIRMED: Norway arrived; answered 4.4 at +3s.") for i in range(3)]
+    (d / "chat.json").write_text(json.dumps(msgs))
+    (d / "cfg.json").write_text(json.dumps({"family_from_channel": True, "extra_items": {"big": ["Chile"]},
+                                            "bootstrap_reps": 0}))
+    return pipeline.run_all(d / "chat.json", d / "run", adapter="chat", config=str(d / "cfg.json"))
+
+
+def test_a2_counts_every_overturned_slot_and_what_y_consensus_scores(win_run):
+    text = (win_run.path / "report.md").read_text()
+    summary = json.loads((win_run.path / "summary.json").read_text())
+    over = [r["slot"] for r in summary["A4"]["rows"] if r["status"] == "overturned"]
+    assert sorted(over) == ["big | Chile", "big | Hungary", "big | Poland"]
+    ex = win_run.read("exposures_merged")
+    assert ex.loc[ex["y_winner"].notna(), "item"].value_counts().to_dict() == {"Hungary": 16, "Poland": 15}
+    assert "on the value slots A4 calls overturned only (3 here, 2 with answer rounds that state a value, 31 rounds in " \
+           "all)" in text
+    assert "and 5 of the 6 answer rounds there that state the winner score y_consensus = 0, the rest 1 by their report's " \
+           "own correct flag (see A4)" in text
+    assert "**1 of 3 slots: consensus differs from the later majority (6 rounds).**" in text
+    assert summary["A4"]["consensus_disagrees"] | {"slots": None} == {
+        "slots": None, "n_value_slots": 3, "answer_rounds_stating_winner": 6, "of_them_y_consensus_0": 5}
+    hu = ex[(ex["item"] == "Hungary") & (ex["value_norm"] == "9.91")]
+    assert (hu["y_consensus"] == 0).sum() == 5 and hu["y_winner"].eq(1).all()
+
+
+def test_a1_names_the_families_its_table_leaves_out(win_run):
+    text = (win_run.path / "report.md").read_text()
+    a1 = text.split("## A1")[1].split("## A2")[0]
+    assert "| big | 31 |" in a1 and "| small |" not in a1
+    assert "1 smaller family (fewer than 10 answers, 3 answers in all) is not shown; `a1_by_family_merged.parquet` " \
+           "lists all 2." in a1
+    fam = win_run.read("a1_by_family_merged").set_index("family")
+    assert fam["n"].to_dict() == {"big": 31, "small": 3}
+
+
+def test_export_says_which_report_to_run_for_the_other_mapping(win_run, tmp_path, capsys):
+    assert cli.main(["export", str(win_run.path), "-o", str(tmp_path), "--mapping", "strict",
+                     "--tables", "disputes,exposures"]) == 0
+    out = capsys.readouterr().out
+    assert (f"disputes: no disputes_strict.parquet in {win_run.path} (the report was built under the merged mapping; run "
+            f"`swarmprov report {win_run.path} --mapping strict` first, which rewrites report.md and summary.json under "
+            "this one), skipped") in out
+    assert "exposures_strict.csv" in out
+
+
+def test_a4_header_without_a_split_slot_says_so():
+    from swarmprov.report import _variant_note, _zero_clause
+    note = _variant_note([{}, {}], [], 0, 0, {}, "merged")
+    assert note.startswith("**0 of 2 slots: consensus differs from the later majority (0 rounds).**")
+    assert "on no value slot here is it a value other than the winner (*consensus ≠ winner*)." in note
+    assert "it is not the winner" not in note and "score y_consensus = 0" not in note
+    assert _zero_clause(1, 1) == "the 1 answer round there that states the winner scores y_consensus = 0"
+    assert _zero_clause(68, 68) == "the 68 answer rounds there that state the winner score y_consensus = 0"

@@ -14,7 +14,7 @@ from . import graph, identity, lifecycle as lifecycle_mod, roster as roster_mod,
 from .adapters.base import read_capabilities
 from .adapters.chat import no_author_warning
 from .analysis import agents as agents_mod, causal, diffusion, errors, origins, provenance, structure, uncertainty
-from .claims import agent_rounds, consensus, public
+from .claims import agent_rounds, consensus, public, value_key
 from .schema import TABLES, RunDir
 
 
@@ -300,8 +300,9 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
     events = run.read("events")
     notes = prof.get("notes") or {}
     seq = prof.get("clock") == "sequence"   # posts ordered by message position: nothing measured in hours
-    figs, summary = {}, {"mapping": mapping, "profile": {k: prof.get(k) for k in ("adapter", "n_events", "n_authors", "first_ts",
-                                                                                   "last_ts", "clock")}}
+    figs, summary = {}, {"mapping": mapping, "profile": {
+        k: pd.Timestamp(prof[k]).isoformat() if k.endswith("_ts") and prof.get(k) else prof.get(k)
+        for k in ("adapter", "n_events", "n_authors", "first_ts", "last_ts", "clock")}}
     # the framework pseudo-authors, when they wrote no agent's post: the task and unattributed tool output
     posts = public(events)
     pseudo = [a for a in ("task", "tool") if a in set(events["author_raw"]) - set(posts["author_raw"])]
@@ -433,7 +434,12 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
     cons = consensus(claims, mentions) if vs and len(claims) else {}
     prov = {s["slot"]: errors.variant_provenance(s, ex, cons.get((s["family"], s["item"]))) for s in vs} if len(ex) else {}
     split = [s for s in vs if errors.consensus_disagrees(s, cons.get((s["family"], s["item"])))]
-    n_split_rounds = sum(prov[s["slot"]]["by_variant"][s["winner"]]["answer_rounds"] for s in split if s["slot"] in prov)
+    # the answer rounds on those slots that state the winner, and how many of them y_consensus scores 0
+    key = ex["value_norm"].map(value_key) if len(ex) else None
+    on_winner = [ex[(ex["family"] == s["family"]) & (ex["item"] == s["item"]) & (key == s["winner"])]
+                 for s in split] if len(ex) else []
+    n_split_rounds = sum(map(len, on_winner))
+    n_split_zero = sum(int((g["y_consensus"] == 0).sum()) for g in on_winner)
 
     # A2
     if len(ex) > 20:
@@ -458,15 +464,17 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
                             "agents_with_D_variation", "mean_y_D0", "mean_y_D1", "note"] if c in est]
         L.append(md_table(est[cols], index=False, floatfmt="{:.3f}"))
         if "y_winner" in set(est["outcome"]):
-            won = ex[ex["y_winner"].notna()]
-            L.append("`y_winner` is an extra row; the reading above stays on `y_consensus` and `y_instant`. It scores the "
-                     "same answers against A4's winner (the most common value among a slot's late carriers) instead of "
-                     f"the consensus, on the slots A4 calls overturned only ({won['item_fe'].nunique():,} here, with "
-                     f"{len(won):,} answer rounds that state a value or a verdict); every other round is left out.\n")
+            won, n_over = ex[ex["y_winner"].notna()], sum(s["status"] == "overturned" for s in vs)
+            L.append("`y_winner` is an extra row; the reading above stays on `y_consensus` and `y_instant`. It asks whether "
+                     "an answer states A4's winner (the most common value among a slot's late carriers) instead of the "
+                     f"consensus, on the value slots A4 calls overturned only ({n_over:,} here, "
+                     f"{won['item_fe'].nunique():,} with answer rounds that state a value, {len(won):,} rounds in all); "
+                     "every other round is left out, and so is a report's own correct or wrong flag, which grades the "
+                     "answer against the task, not the winner.\n")
         if n_split_rounds:
             L.append(f"**Warning:** on {len(split)} disputed slot{'s' * (len(split) != 1)} the consensus value that "
-                     "`y_consensus` scores against is not A4's winner (the later majority), and the "
-                     f"{n_split_rounds:,} answer rounds there that state the winner score y_consensus = 0 (see A4).\n")
+                     "`y_consensus` scores against is not A4's winner (the later majority), and "
+                     f"{_zero_clause(n_split_rounds, n_split_zero)} (see A4).\n")
         if len(ex_alt) > 20:
             est_alt = causal.estimate(ex_alt, wall_clock=not seq)
             if len(est_alt):
@@ -502,6 +510,8 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
                 ad = ad.merge(pd.concat(per, ignore_index=True), on=["technique", "agent"], how="left").astype(
                     {"adopted_on_carrying_page": "boolean", "n_eligible_posts": "Int64"})
             tbl = tbl.assign(**_contagion_cells(tbl["technique"], con))
+        if seq:   # positions are not hours
+            ad[["hours_from_first_seen", "censored_at_h"]] = np.nan
         run.write(f"adoptions_{mapping}", ad)
         if not seq:
             tbl["median_hours_to_adopt"] = [_median_cell(*v) for v in zip(
@@ -528,7 +538,8 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
                  "The contagion test compares the pages agents adopted on, and every post here is on one page or channel, "
                  "so it does not run.\n")
         L.append(f"`adoptions_{mapping}.parquet` lists every at-risk agent and every user of each technique: first use, "
-                 "hours from the first appearance or the hour of censoring"
+                 + ("as a message position (2000-01-01 + *i* s; the hour columns are empty, since positions are not hours)"
+                    if seq else "hours from the first appearance or the hour of censoring")
                  + (", and for each adopter the page, whether it carried the technique, its baseline and its first earlier "
                     "post on a carrying page (`t_exposed`)" if con else "") + ".\n")
     else:
@@ -572,7 +583,8 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
                          "rule": {"bin_hours": None if seq else errors.BIN_H, "tail_share": errors.TAIL_SHARE,
                                   "min_tail": errors.MIN_TAIL},
                          "consensus_disagrees": {"slots": [s["slot"] for s in split], "n_value_slots": len(vs),
-                                                 "answer_rounds_stating_winner": n_split_rounds},
+                                                 "answer_rounds_stating_winner": n_split_rounds,
+                                                 "of_them_y_consensus_0": n_split_zero},
                          "rows": [{k: _cell(v) for k, v in r.items()}
                                   | {"featured": s in feat, "tail counts": s["tail_counts"], "tie": s["tie"],
                                      "first seen tie": s["first_tie"],
@@ -620,7 +632,7 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
         if ds:
             L.append("Analyst-declared disputes (config `disputes`: a context pattern plus one pattern per variant) are listed first.\n")
         if vs:
-            L.append(_variant_note(vs, split, n_split_rounds, prov, mapping))
+            L.append(_variant_note(vs, split, n_split_rounds, n_split_zero, prov, mapping))
         if figs["errors"]:
             L.append(f"![errors](figures/{run.figure('a4_errors.png').name})\n")
         L.append(md_table(pd.DataFrame(rows), index=False, floatfmt="{:.1f}"))
@@ -776,14 +788,25 @@ def _rounds_cell(s: dict, prov: dict | None) -> str | None:
     return "; ".join(f"{v}: {by[v]['derived_independently']} / {by[v]['adopted_after_public']}" for v in s["agents_per_variant"])
 
 
-def _variant_note(vs: list[dict], split: list[dict], k: int, prov: dict, mapping: str) -> str:
+def _zero_clause(k: int, z: int) -> str:
+    """How many of the ``k`` answer rounds that state the winner on a split slot score y_consensus = 0 (``z``): all,
+    unless a report's own correct flag scores one 1."""
+    if z == k:
+        return f"the {k:,} answer round{'s' * (k != 1)} there that state{'s' * (k == 1)} the winner score{'s' * (k == 1)} " \
+               "y_consensus = 0"
+    return f"{z:,} of the {k:,} answer rounds there that state the winner score y_consensus = 0, the rest 1 by their " \
+           "report's own correct flag"
+
+
+def _variant_note(vs: list[dict], split: list[dict], k: int, z: int, prov: dict, mapping: str) -> str:
     """A4's header on the consensus against the later majority, and what the answer-round columns mean."""
     inherited = sum(p["n_inherited"] for p in prov.values())
     dissent = sum(v["independent_dissent"] for p in prov.values() for v in p["by_variant"].values())
     return (f"**{len(split)} of {len(vs)} slots: consensus differs from the later majority ({k:,} rounds).** The consensus "
-            "is the value most distinct agents carried over the whole run, the one A2's `y_consensus` scores against; on "
-            f"{'these value slots' if len(split) != 1 else 'this value slot'} it is not the winner, and the {k:,} answer "
-            "rounds that state the winner score y_consensus = 0 (*consensus ≠ winner*). "
+            "is the value most distinct agents carried over the whole run, the one A2's `y_consensus` scores against; "
+            + (f"on {'these value slots' if len(split) != 1 else 'this value slot'} it is not the winner, and "
+               f"{_zero_clause(k, z)} (*consensus ≠ winner*). " if split else
+               "on no value slot here is it a value other than the winner (*consensus ≠ winner*). ")
             + ("*Independent / after-public rounds* = per variant, the answer rounds (agents' answers to the item) that "
                "state it with nothing carrying it public before the report (D = 0) / with it already public (D = 1). "
                "They count answer rounds, not the carriers in *variants (agents)*, which count every agent that posted "
@@ -814,19 +837,32 @@ def _contagion_note(con: dict) -> str:
     """What the contagion columns mean, which rows are consistent with contagion, and the rows not to read."""
     tested = {t: c for t, c in con.items() if not c["excluded"] and c["n_adopters"]}
     small = [f"{t} ({c['n_adopters']})" for t, c in tested.items() if c["n_adopters"] < diffusion.MIN_ADOPTERS]
-    hits = [t for t, c in tested.items() if c["share_on_carrying"] > c["baseline"] and c["p"] < diffusion.ALPHA
-            and c["n_adopters"] >= diffusion.MIN_ADOPTERS]
+    above = {t: c for t, c in tested.items() if c["share_on_carrying"] > c["baseline"]
+             and c["n_adopters"] >= diffusion.MIN_ADOPTERS and c["p"] < diffusion.ALPHA}
+    hits = [t for t, c in above.items() if c["p_holm"] < diffusion.ALPHA]
+    lost = [f"{t} (p = {c['p']:.3f}, {c['p_holm']:.3f} after it)" for t, c in above.items() if t not in hits]
+    m = len(tested)
     out = ("**Contagion.** Did adopters adopt where the technique was already posted? *Adopted on carrying page* = the "
            "adopters above (the originator aside) whose first use landed on a page another agent had already posted the "
            "technique on; the adoption post never makes its own page a carrying one. *Baseline* = the share expected if "
            "each adopter's adoption had been any one of its own posts from the technique's first appearance on, in the "
            "adoption post's family, each judged against the pages carrying it at that post's time; *p* = the exact "
-           "chance of at least as many adoptions on carrying pages under that within-agent shuffle. Within the family, "
-           "so an agent's move onto a task's pages is not read as contagion. A share above the baseline with p < "
-           f"{diffusion.ALPHA:g} is **consistent with contagion**"
-           + (f" ({', '.join(hits)})" if hits else " (none here)")
+           "chance of at least as many adoptions on carrying pages under that within-agent shuffle, per technique. "
+           "Within the family, so an agent's move onto a task's pages is not read as contagion. A share above the "
+           f"baseline with p < {diffusion.ALPHA:g}"
+           + (f" after Holm's correction for the {m} techniques tested" if m > 1 else "")
+           + " is **consistent with contagion**" + (f" ({', '.join(hits)})" if hits else " (none here)")
            + ", not proof of it: posting on a page is not reading it, the task can send agents to the pages that carry a "
              "technique, and the regex detection adds false positives. ")
+    if lost:
+        out += f"Below {diffusion.ALPHA:g} only before the correction: {', '.join(lost)}. "
+    for t, c in tested.items():
+        if c["n_page_names"]:
+            n, k = c["n_page_names"], c["n_adopted_on_named_page"]
+            out += (f"{t}'s pattern also matches {n:,} page name{'s' * (n != 1)}, where a post can match because of the "
+                    f"page: {f'{k:,}' if k else 'none'} of its {c['n_adopters']:,} adoptions landed on one"
+                    + (f", {c['n_carrying_on_named_page']:,} of the {c['n_on_carrying']:,} on a carrying page" if k else "")
+                    + ". ")
     for t, c in con.items():
         if c["excluded"]:
             out += f"{t} is not tested: {c['excluded']}. "

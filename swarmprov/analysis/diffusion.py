@@ -13,7 +13,8 @@ inputs are exactly its at-risk rows.
 ``contagion`` asks whether adopters adopted where the technique was already
 posted: the share of adoptions on a page another agent had already posted it
 on, against each adopter's own posts in the adoption's family, with a
-within-agent permutation p-value.
+within-agent permutation p-value and its Holm adjustment over the techniques
+tested.
 """
 
 from __future__ import annotations
@@ -31,7 +32,7 @@ from .uncertainty import km_greenwood, km_median
 ADOPTION_COLS = ["technique", "agent", "in_at_risk", "is_originator", "t_first_use", "hours_from_first_seen", "adopted",
                  "censored_at_h"]
 MIN_ADOPTERS = 10   # fewer adopters in the contagion test get a small-n warning
-ALPHA = 0.05        # the p-value under which a share above its baseline reads "consistent with contagion"
+ALPHA = 0.05        # the Holm-adjusted p-value under which a share above its baseline reads "consistent with contagion"
 
 
 def familyless(tags: pd.DataFrame) -> bool:
@@ -85,9 +86,9 @@ def analyze(tags: pd.DataFrame, techniques, agent_col: str) -> dict:
                  for a, t in first_use.items() if a not in active.index]
         ad = (pd.DataFrame(rows).assign(technique=tech.name)[ADOPTION_COLS]
               .sort_values(["t_first_use", "agent"], na_position="last", kind="stable").reset_index(drop=True))
-        risk = ad[ad["in_at_risk"]]
-        dur = np.where(risk["adopted"], risk["hours_from_first_seen"], risk["censored_at_h"]).astype(float)
-        ev = risk["adopted"].to_numpy(dtype=int)
+        risk_rows = ad[ad["in_at_risk"]]
+        dur = np.where(risk_rows["adopted"], risk_rows["hours_from_first_seen"], risk_rows["censored_at_h"]).astype(float)
+        ev = risk_rows["adopted"].to_numpy(dtype=int)
         km = km_greenwood(dur, ev)
         median, lo, hi = km_median(km)
         out[tech.name] = {
@@ -111,6 +112,12 @@ def permutation_p(probs, k: int) -> float:
     for p in probs:
         dist = np.convolve(dist, [1 - p, p])
     return float(min(1.0, dist[k:].sum()))
+
+
+def holm(p: pd.Series) -> pd.Series:
+    """Holm's step-down adjustment of ``p`` (one p-value per test) for running all of them."""
+    s = p.sort_values(kind="stable")
+    return (s * (len(s) - np.arange(len(s)))).cummax().clip(upper=1).reindex(p.index)
 
 
 def _carrying(p: pd.DataFrame, first: pd.DataFrame, agent_col: str) -> np.ndarray:
@@ -141,9 +148,11 @@ def contagion(tags: pd.DataFrame, events: pd.DataFrame, techniques, agent_col: s
     on, in the adoption post's family, that landed on a page carrying it at the time (the adoption post included:
     within family, so moving onto a task's pages is not read as contagion).  ``p`` is the exact within-agent
     permutation p-value of that many adoptions or more on carrying pages, were the adoption a uniform draw from each
-    agent's eligible posts.  ``agents`` holds the per-adopter rows, with ``t_exposed``, the adopter's first post on
-    a carrying page strictly before adopting.  A technique with a post that matches its pattern only by naming a page
-    (``_names_only``) is not tested (``excluded``): being on that page can produce the match."""
+    agent's eligible posts, and ``p_holm`` its Holm adjustment over every technique with a p-value.  ``agents`` holds
+    the per-adopter rows, with ``t_exposed``, the adopter's first post on a carrying page strictly before adopting.
+    A technique with a post that matches its pattern only by naming a page (``_names_only``) is not tested
+    (``excluded``); for a tested one whose pattern matches page names, ``n_page_names`` counts them and
+    ``n_adopted_on_named_page`` / ``n_carrying_on_named_page`` the adoptions (on a carrying page) that landed there."""
     ev = events.drop_duplicates("event_id").set_index("event_id")
     text, channels = ev["text"], ev["channel"].dropna().unique()
     tags = _timed(tags)
@@ -155,11 +164,13 @@ def contagion(tags: pd.DataFrame, events: pd.DataFrame, techniques, agent_col: s
         if risk is None:
             continue
         hit, active = risk
-        n_named = int(_names_only(hit["event_id"].map(text), tech.pattern, channels).sum())
-        res = {"n_carrying_pages": int(hit["channel"].nunique()), "n_posts_page_name_only": n_named, "excluded": None}
+        named = [c for c in channels if re.search(tech.pattern, str(c), re.I)]
+        n_named = int(_names_only(hit["event_id"].map(text), tech.pattern, named).sum())
+        res = {"n_carrying_pages": int(hit["channel"].nunique()), "n_posts_page_name_only": n_named,
+               "n_page_names": len(named), "excluded": None}
         if n_named:
             out[tech.name] = res | {"excluded": f"{n_named} of its {len(hit)} posts match its pattern only by naming a "
-                                                "page, so a post on that page can match because of where it is"}
+                                                "page, so the match can come from the page's name rather than the technique"}
             continue
         firsts = hit[hit["channel"].notna()].drop_duplicates(["channel", agent_col])
         k = firsts.groupby("channel").cumcount()
@@ -179,11 +190,17 @@ def contagion(tags: pd.DataFrame, events: pd.DataFrame, techniques, agent_col: s
                                "baseline_share": base["mean"].reindex(adopt.index),
                                "t_exposed": pre.groupby(agent_col)["ts"].min().reindex(adopt.index)}).reset_index(drop=True)
         n, k_on = len(agents), int(on.sum())
+        there = adopt["channel"].isin(named)
         out[tech.name] = res | {
             "n_adopters": n, "n_on_carrying": k_on, "share_on_carrying": k_on / n if n else float("nan"),
             "baseline": float(agents["baseline_share"].mean()) if n else float("nan"),
             "p": permutation_p(agents["baseline_share"], k_on) if n else float("nan"),
-            "n_exposed_before": int(agents["t_exposed"].notna().sum()), "agents": agents}
+            "n_exposed_before": int(agents["t_exposed"].notna().sum()),
+            "n_adopted_on_named_page": int(there.sum()), "n_carrying_on_named_page": int((there & on).sum()),
+            "agents": agents}
+    ps = pd.Series({t: r["p"] for t, r in out.items() if r.get("n_adopters")}, dtype=float)
+    for t, p in holm(ps).items():
+        out[t]["p_holm"] = float(p)
     return out
 
 

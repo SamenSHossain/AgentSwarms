@@ -21,8 +21,10 @@ with a wiki timestamp.
   ``t_cons`` is that first public consensus copy and ``gap_cons_s`` its head start
   over the report (NaN when D_cons = 0), the dose A2's exploratory block reads.
 * ``y_consensus``  the answer matches the consensus value (the value most distinct
-  agents carried); ``y_winner`` scores it the same way against A4's winner (the
-  later majority), only on slots A4 calls overturned (``winners``), NaN elsewhere.
+  agents carried); ``y_winner`` whether the stated value is A4's winner (the later
+  majority), only on slots A4 calls overturned (``winners``), NaN elsewhere and for
+  a round that states no value: a report's own correct / wrong flag grades it against
+  the task, not against the winner.
 * ``D_visible`` like D, but a copy whose channel was deleted before the report
   (``visible_until <= t_report``) does not count: the earliest copy *still
   readable* at report time.  Deletion ends public visibility, not knowledge an
@@ -157,7 +159,8 @@ def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: s
             "t_cons": t_cons, "gap_cons_s": gap_c,
             "y_instant": int(r.latency_class == "instant"),
             "latency_known": int(r.latency_class is not None),
-            "y_consensus": _score(r, cv), "y_winner": _score(r, win) if win is not None else np.nan,
+            "y_consensus": _score(r, cv),
+            "y_winner": float(value_key(r.value_norm) == win) if win is not None and r.value_norm is not None else np.nan,
             "consensus_value": cv,
             "latency_class": r.latency_class, "wrong_flag": r.wrong_flag,
             "t_public_visible": t_vis, "D_visible": int(t_vis is not None),

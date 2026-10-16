@@ -153,7 +153,11 @@ def test_sequence_clock_keeps_a4_status_and_a3_counts_without_hours(runs):
            "agent active after its first post" in text
     assert "Times to adoption (hours, the Kaplan–Meier median) and the first-seen time need a wall clock" in text
     assert "The contagion test compares the pages agents adopted on, and every post here is on one page or channel" in text
-    assert "contagion" not in a3 and run.read("adoptions_merged")["in_at_risk"].sum() == 14
+    ad = run.read("adoptions_merged")
+    assert "contagion" not in a3 and ad["in_at_risk"].sum() == 14 and ad["t_first_use"].notna().any()
+    assert ad[["hours_from_first_seen", "censored_at_h"]].isna().all().all()     # positions are not hours
+    assert "first use, as a message position (2000-01-01 + *i* s; the hour columns are empty, since positions are not " \
+           "hours)." in text
     assert "a3_diffusion.png" not in text and "a4_errors.png" not in text
     assert {(r["outcome"], r["treatment"]) for r in summary["A2"]} == {("y_consensus", "D_cons")}
     assert "On a message-order run only the consensus outcome under `D_cons` is estimated: the ≥1 h treatment needs a " \
