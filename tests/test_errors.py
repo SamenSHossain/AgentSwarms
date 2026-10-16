@@ -191,8 +191,8 @@ def test_synthetic_a4_against_truth(synth_run):
     true_vals = _true_values(truth)
     assert all(cfg["reference_values"][f"{f}|{i}"] == v for (f, i), v in true_vals.items())
     summary = json.loads((run.path / "summary.json").read_text())["A4"]
-    rows = summary["featured"]
-    assert rows
+    rows = summary["rows"]
+    assert rows and [r["featured"] for r in rows] == [True] * min(4, len(rows)) + [False] * (len(rows) - 4)
     for r in rows:
         fam, item = r["slot"].split(" | ")
         ref = r["reference (analyst input)"]

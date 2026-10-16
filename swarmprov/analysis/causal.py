@@ -22,7 +22,10 @@ OUTCOMES = {
     "y_instant": ("Answered instantly (<= 2 s claimed)", None),
     "y_instant|known": ("Answered instantly, rounds with stated latency", "latency_known"),
     "y_consensus": ("Answer matches the consensus value", None),
+    # an extra row, not the headline: the later majority A4 finds, on the slots it calls overturned only
+    "y_winner": ("Answer matches the A4 winner (overturned slots only)", None),
 }
+OPTIONAL = ("y_winner",)   # estimated only where some round has a value (a run with an overturned slot)
 # Treatment = consensus value public before the report (independent of the agent's own answer).
 TREATMENTS = {"D_cons": "Consensus public before report", "D_cons_w60m": "Consensus public >= 1 h before"}
 
@@ -46,6 +49,8 @@ def estimate(ex: pd.DataFrame, min_switchers: int = MIN_SWITCHERS, wall_clock: b
     treatments = TREATMENTS if wall_clock else {"D_cons": TREATMENTS["D_cons"]}
     for key, (ylab, subset) in outcomes.items():
         y = key.split("|")[0]
+        if key in OPTIONAL and (y not in ex or ex[y].isna().all()):
+            continue
         for d, dlab in treatments.items():
             df = ex.dropna(subset=[y]).copy()
             if subset:

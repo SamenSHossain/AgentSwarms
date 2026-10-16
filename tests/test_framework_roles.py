@@ -252,7 +252,7 @@ def test_a4_declared_disputes_count_agents_posts_only(tmp_path):
     (tmp_path / "config.json").write_text(json.dumps({"disputes": [
         {"family": "all", "slot": "Peru prep", "context": "Peru prep", "variants": {"low": r"prep 1\.5", "high": r"prep 2\.5"}}]}))
     run = pipeline.run_all(tmp_path / "trace.json", tmp_path / "run", adapter="chat", config=str(tmp_path / "config.json"))
-    feat = json.loads((run.path / "summary.json").read_text())["A4"]["featured"][0]
+    feat = json.loads((run.path / "summary.json").read_text())["A4"]["rows"][0]
     assert feat["kind"] == "declared" and feat["variants (agents)"] == "high (3), low (1)" and feat["agents carrying both"] == 0
 
 

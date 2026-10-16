@@ -141,7 +141,7 @@ def test_sequence_clock_keeps_a4_status_and_a3_counts_without_hours(runs):
     text, summary = _report(run), json.loads((run.path / "summary.json").read_text())
     a4 = summary["A4"]
     assert a4["rule"]["bin_hours"] is None
-    row = a4["featured"][0]
+    row = a4["rows"][0]
     assert row["slot"] == "all | Poland" and row["first variant"] == "16.4" and row["winner"] == "16.38"
     assert row["status"] == "overturned"                    # 11 of 15 carriers: the majority of all of them
     assert not {"winner first seen", "winner majority from", "hours to overtake"} & set(row)
@@ -152,6 +152,8 @@ def test_sequence_clock_keeps_a4_status_and_a3_counts_without_hours(runs):
     assert "(every post is in the catch-all family `all`, so for a technique without families of its own that is every " \
            "agent active after its first post" in text
     assert "Times to adoption (hours, the Kaplan–Meier median) and the first-seen time need a wall clock" in text
+    assert "The contagion test compares the pages agents adopted on, and every post here is on one page or channel" in text
+    assert "contagion" not in a3 and run.read("adoptions_merged")["in_at_risk"].sum() == 14
     assert "a3_diffusion.png" not in text and "a4_errors.png" not in text
     assert {(r["outcome"], r["treatment"]) for r in summary["A2"]} == {("y_consensus", "D_cons")}
     assert "On a message-order run only the consensus outcome under `D_cons` is estimated: the ≥1 h treatment needs a " \

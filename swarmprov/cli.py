@@ -15,6 +15,7 @@
     swarmprov trace    runs/wiki --agent "Mar16|oecd-equity" --item "Czech Republic"   # one answer's sources
     swarmprov trace    runs/wiki --fact "oecd-equity|Hungary|9.9" --png hungary.png     # one fact's relay tree
     swarmprov agent    runs/wiki May28                                                 # one agent's profile and links
+    swarmprov export   runs/wiki -o out/ [--tables exposures,adoptions] [--format csv|parquet] [--mapping strict]
     swarmprov synth    -o data/synth.jsonl            # synthetic swarm with known provenance
     swarmprov synth    -o data/ag/autogen.jsonl --format autogen   # the same as an AutoGen stream with tool calls
 """
@@ -53,6 +54,16 @@ def _fields(v: str) -> dict[str, str]:
         return check_fields({k.strip(): key for k, key in pairs})
     except ValueError as e:
         raise argparse.ArgumentTypeError(str(e)) from None
+
+
+def _tables(v: str) -> list[str]:
+    from .export import EXPORTS
+    names = [t.strip() for t in v.split(",") if t.strip()]
+    bad = [t for t in names if t not in EXPORTS]
+    if bad or not names:
+        raise argparse.ArgumentTypeError(f"unknown table{'s' * (len(bad) > 1)} {', '.join(bad) or repr(v)}; "
+                                         f"choose from {', '.join(EXPORTS)}")
+    return names
 
 
 def _add_fields(s: argparse.ArgumentParser) -> None:
@@ -143,6 +154,16 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--mapping", choices=["merged", "strict"], default="merged")
     s.add_argument("--json", metavar="FILE", help="also write the result as JSON")
 
+    s = sub.add_parser("export", help="write a run's tables (exposures, edges, adoptions, disputes, ...) as CSV or Parquet")
+    s.add_argument("run")
+    s.add_argument("-o", "--out", required=True, help="directory to write the files to")
+    s.add_argument("--tables", type=_tables, default=None, metavar="T1,T2,...",
+                   help="comma-separated (default: exposures,edges_exposure_citation,adoptions,disputes,a1_by_family)")
+    s.add_argument("--format", choices=["csv", "parquet"], default="csv")
+    s.add_argument("--mapping", choices=["merged", "strict"], default="merged")
+    s.add_argument("--all-columns", action="store_true",
+                   help="exposures and edges_exposure_citation with every column, not only those of the results/ mirrors")
+
     s = sub.add_parser("synth", help="generate a synthetic swarm transcript with known provenance")
     s.add_argument("-o", "--out", default="data/synth/transcript.jsonl")
     s.add_argument("--agents", type=int, default=60)
@@ -190,6 +211,9 @@ def main(argv: list[str] | None = None) -> int:
     elif a.cmd == "agent":
         from . import query
         return query.agent(a.run, a.name, mapping=a.mapping, json_path=a.json)
+    elif a.cmd == "export":
+        from . import export
+        return export.export(a.run, a.out, a.tables or export.DEFAULT, a.format, a.mapping, a.all_columns)
     elif a.cmd == "synth":
         from . import synth
         synth.write(a.out, n_agents=a.agents, copy_rate=a.copy_rate, seed=a.seed, copy_from=a.copy_from, fmt=a.format)

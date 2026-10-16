@@ -86,7 +86,8 @@ def _slot_stats(carriers: pd.DataFrame, slot: str, bin_h: float | None = BIN_H, 
         "status": _status(first, winner, t50, n_tail, min_tail),
         "t_winner_first": t_first, "t_winner_majority": t50,
         "hours_to_overtake": (t50 - t_first).total_seconds() / 3600 if later else np.nan,
-        "share_by_bin": frac, "new_by_bin": new, "bin_edges_h": bins, "t0": t0, "carriers": c[["ts", "variant"]],
+        "share_by_bin": frac, "new_by_bin": new, "bin_edges_h": bins, "t0": t0,
+        "carriers": c[["ts", agent_col, "variant"]].rename(columns={agent_col: "agent"}),
     }
 
 
@@ -134,6 +135,18 @@ def _rounds_to(a: str, b: str) -> bool:
         x, y = y, x
     ex = x.as_tuple().exponent
     return ex > y.as_tuple().exponent and y.quantize(Decimal(1).scaleb(ex), ROUND_HALF_UP) == x
+
+
+def precision_variants(variants: list[str]) -> bool:
+    """Every pair of the slot's values is one number rounded from the other (9.69 and 9.7): the dispute may be one
+    quantity at two precisions, so who carried which speaks to provenance, not correctness."""
+    return len(variants) > 1 and all(_rounds_to(a, b) for i, a in enumerate(variants) for b in variants[i + 1:])
+
+
+def consensus_disagrees(s: dict, consensus: str | None) -> bool:
+    """A value slot whose consensus (the value most distinct agents carried over the run, which A2's y_consensus scores
+    against) is not its winner, the later majority."""
+    return s["kind"] == "value" and s["winner"] is not None and consensus is not None and consensus != s["winner"]
 
 
 def outcome(s: dict, ref) -> str:
@@ -231,6 +244,46 @@ def regex_slots(events: pd.DataFrame, agents: pd.DataFrame, disputes: list[dict]
                   agents_per_variant=car.groupby("variant")[agent_col].nunique().to_dict())
         out.append(st)
     return out
+
+
+DISPUTE_COLS = ["slot", "kind", "family", "item", "variant", "agent", "t_first", "is_first_variant", "is_winner",
+                "carried_both", "status"]
+
+
+def dispute_rows(slots: list[dict]) -> pd.DataFrame:
+    """One row per slot, variant and carrier: when the agent first carried the variant (a value slot's from item-value
+    mentions, a sequence slot's from round claims, a declared slot's from its patterns), whether the variant is the
+    first or the winner, whether the agent carried two or more of the slot's variants, and the slot's status."""
+    parts = []
+    for s in slots:
+        c = s["carriers"]
+        parts.append(c.assign(slot=s["slot"], kind=s["kind"], family=s["family"], item=s["item"], t_first=c["ts"],
+                              is_first_variant=c["variant"] == s["first_variant"],
+                              is_winner=c["variant"] == s["winner"],
+                              carried_both=c.groupby("agent")["variant"].transform("nunique") > 1,
+                              status=s["status"])[DISPUTE_COLS])
+    return pd.concat(parts, ignore_index=True) if parts else pd.DataFrame(columns=DISPUTE_COLS)
+
+
+def variant_provenance(s: dict, ex: pd.DataFrame, consensus: str | None) -> dict:
+    """A value slot's answer rounds (``exposures``) per variant: ``answer_rounds`` that state it,
+    ``derived_independently`` (D = 0: nothing carrying it was public before the report), ``independent_dissent``
+    (D = 0 while the consensus was public, D_cons = 1, for a value other than the consensus), ``adopted_after_public``
+    (D = 1) and their median head start in hours.  Rounds that state no value inherit the consensus in exposure, which
+    would inflate its count, so they are left out and counted (``n_inherited``).  D searches captured posts only, so
+    ``derived_independently`` is an upper bound on independence."""
+    e = ex[(ex["family"] == s["family"]) & (ex["item"] == s["item"])]
+    key = e["value_norm"].map(value_key)
+    out = {}
+    for v in s["variants"]:
+        g = e[key == v]
+        ind, after = g["D"] == 0, g["D"] == 1
+        out[v] = {"answer_rounds": len(g), "derived_independently": int(ind.sum()),
+                  "independent_dissent": int((ind & (g["D_cons"] == 1)).sum()) if v != consensus else 0,
+                  "adopted_after_public": int(after.sum()),
+                  "median_head_start_h": float(g.loc[after, "gap_s"].median() / 3600) if after.any() else float("nan")}
+    return {"by_variant": out, "n_inherited": int(key.isna().sum()),
+            "n_other_value": int((key.notna() & ~key.isin(s["variants"])).sum())}
 
 
 def pick_featured(vslots: list[dict], sslots: list[dict], featured: list[tuple[str, str]], k: int = 4,

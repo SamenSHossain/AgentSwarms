@@ -13,7 +13,7 @@ import pandas as pd
 
 from . import adapters, claims as claims_mod, exposure, graph, identity, remote, roster as roster_mod, rules, village
 from .adapters.base import check_fields, read_capabilities
-from .analysis import agents as agents_mod
+from .analysis import agents as agents_mod, errors
 from .analysis.agents import AGENT_COLS
 from .schema import RunDir, conform, empty
 
@@ -199,7 +199,11 @@ def expose(run: RunDir) -> None:
         aud = village.audience(_lists(channels), agents, col, directory) if channels is not None else None
         if aud:
             _log(f"  [{name}] {len(aud)} restricted channels limit who could read a mention")
-        ex = exposure.build(rounds, mn, cons, col, audience=aud, wall_clock=wall) if len(rounds) else pd.DataFrame()
+        # A4's overturned value slots, the ones y_winner scores (the report finds the same slots from the same mentions)
+        slots = errors.value_slots(claims_mod.public(mn), col, **({} if wall else {"bin_h": None})) if len(rounds) else []
+        winners = {(s["family"], s["item"]): s["winner"] for s in slots if s["status"] == "overturned"}
+        ex = exposure.build(rounds, mn, cons, col, audience=aud, wall_clock=wall, winners=winners) \
+            if len(rounds) else pd.DataFrame()
         if len(rounds) and rounds["t_report"].isna().any():
             _log(f"  [{name}] {int(rounds['t_report'].isna().sum())} agent-rounds have no timestamp: left out of exposure")
         run.write(f"exposures_{name}", ex if len(ex) else empty("exposures"))

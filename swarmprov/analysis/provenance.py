@@ -18,6 +18,7 @@ KS = (1, 2, 5, 10)
 HEADLINE = ("share_exposed", "share_exposed_10m", "share_exposed_60m", "share_self_prepared", "median_gap_h")
 TABLE_SHARES = {"exposed": "D", "exposed_60m": "D_w60m"}
 CLUSTER = "item_fe"
+FAMILY_MIN_N = 10   # answers a family needs for a row in the printed table (``by_family_all`` keeps every one)
 
 
 def _headline(d: pd.DataFrame, w: np.ndarray) -> np.ndarray:
@@ -36,7 +37,7 @@ def _table_ci(ex: pd.DataFrame, by: pd.Series, groups, cols: list[str], boot: in
     return pd.DataFrame.from_dict(rows, orient="index")
 
 
-def summarize(ex: pd.DataFrame, min_n: int = 10, wall_clock: bool = True, boot: int = 0, seed: int = 0) -> dict:
+def summarize(ex: pd.DataFrame, min_n: int = FAMILY_MIN_N, wall_clock: bool = True, boot: int = 0, seed: int = 0) -> dict:
     """Without a wall clock (posts ordered by message position) the 10 min / 1 h shares and the head start
     in hours are None and the tables drop ``exposed_60m``: positions are not minutes.
 
@@ -44,7 +45,9 @@ def summarize(ex: pd.DataFrame, min_n: int = 10, wall_clock: bool = True, boot: 
     = [lo, hi] for each ``HEADLINE`` statistic, and ``exposed_lo`` / ``exposed_hi`` (and the same for
     ``exposed_60m``) in the family and round tables, whose items are resampled within each row (none for a row
     with fewer than ``uncertainty.MIN_CLUSTERS`` items, and none for the median head start when fewer items have an
-    exposed answer).  No interval is measured in hours without a wall clock."""
+    exposed answer).  No interval is measured in hours without a wall clock.
+
+    ``by_family`` keeps the families with ``min_n`` answers or more, ``by_family_all`` every family."""
     n = len(ex)
     out = {
         "n_answers": n,
@@ -56,11 +59,11 @@ def summarize(ex: pd.DataFrame, min_n: int = 10, wall_clock: bool = True, boot: 
         "median_gap_h": float(ex["gap_s"].median() / 3600) if ex["gap_s"].notna().any() else float("nan"),
         "n_agents": int(ex["agent"].nunique()),
     }
-    by_fam = (ex.groupby("family")
-                .agg(n=("D", "size"), items=(CLUSTER, "nunique"), agents=("agent", "nunique"), exposed=("D", "mean"),
-                     exposed_60m=("D_w60m", "mean"), self_prepared=("self_prepared", "mean"),
-                     instant=("y_instant", "mean"))
-                .query("n >= @min_n").sort_values("n", ascending=False))
+    fams = ex.groupby("family").agg(n=("D", "size"), items=(CLUSTER, "nunique"), agents=("agent", "nunique"),
+                                    exposed=("D", "mean"), exposed_60m=("D_w60m", "mean"),
+                                    self_prepared=("self_prepared", "mean"), instant=("y_instant", "mean"))
+    by_fam = fams.query("n >= @min_n").sort_values("n", ascending=False)
+    every = fams.sort_values("n", ascending=False, kind="stable")
     timed = ex.dropna(subset=["episode"]).assign(episode=lambda d: d["episode"].astype(int))
     by_ep = timed.groupby("episode").agg(n=("D", "size"), items=(CLUSTER, "nunique"), exposed=("D", "mean"),
                                          exposed_60m=("D_w60m", "mean"), instant=("y_instant", "mean"))
@@ -70,13 +73,15 @@ def summarize(ex: pd.DataFrame, min_n: int = 10, wall_clock: bool = True, boot: 
             lo[-1] = hi[-1] = np.nan
         out |= {f"{k}_ci": [float(a), float(b)] if a == a else None for k, a, b in zip(HEADLINE, lo, hi)}
         cols = list(TABLE_SHARES) if wall_clock else ["exposed"]
-        by_fam = by_fam.join(_table_ci(ex, ex["family"], by_fam.index, cols, boot, seed))
+        ci = _table_ci(ex, ex["family"], every.index, cols, boot, seed)   # each family is seeded alone: one pass serves both
+        by_fam, every = by_fam.join(ci), every.join(ci)
         by_ep = by_ep.join(_table_ci(timed, timed["episode"], by_ep.index, cols, boot, seed))
     if not wall_clock:
         hours = ("share_exposed_10m", "share_exposed_60m", "median_gap_h")
         out.update(dict.fromkeys(hours) | (dict.fromkeys(f"{k}_ci" for k in hours) if boot and n else {}))
-        by_fam, by_ep = by_fam.drop(columns="exposed_60m"), by_ep.drop(columns="exposed_60m")
+        by_fam, every, by_ep = (t.drop(columns="exposed_60m") for t in (by_fam, every, by_ep))
     out["by_family"] = by_fam
+    out["by_family_all"] = every
     out["by_episode"] = by_ep
     return out
 

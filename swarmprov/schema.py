@@ -90,6 +90,8 @@ TABLES: dict[str, list[str]] = {
         "claim_id", "agent", "family", "episode", "item", "value_norm", "t_report",
         "t_public", "src_agent", "t_self_prepared", "gap_s", "D", "D_w10m", "D_w60m", "D_cons", "D_cons_w60m",
         "y_instant", "y_consensus", "consensus_value", "latency_class", "wrong_flag",
+        # the answer matches A4's winner, on slots A4 calls overturned only (NaN elsewhere)
+        "y_winner",
         # visibility-aware variant: the earliest copy still visible at t_report (deleted copies skipped)
         "t_public_visible", "D_visible", "src_deleted_before_report", "t_src_deleted",
         # the posts behind the times: the report, the first public copy (and its channel), the first copy
@@ -116,6 +118,11 @@ TABLES: dict[str, list[str]] = {
     # the deepest relay hop and the time from first to last mention.
     "chains": ["family", "item", "value_key", "originator", "t0", "n_agents", "max_depth", "span_s"],
 }
+
+
+# the per-agent detail the report writes, one table per identity mapping: who adopted each technique (A3), who
+# carried each disputed variant (A4), and A1 by family with no size cut
+REPORT_TABLES = ("adoptions", "disputes", "a1_by_family")
 
 
 def empty(table: str) -> pd.DataFrame:
@@ -171,7 +178,8 @@ class RunDir:
     STAGE_OUTPUTS = ("agents", "claims", "tags", "mentions", "exposures_merged", "exposures_strict", "edges_merged",
                      "edges_strict", "chains_merged", "chains_strict", "agent_profiles_merged", "agent_profiles_strict",
                      "roster_events", "lifecycle", "reads", "roster", "directory", "channels", "activity", "probes",
-                     "eras", "summaries", "digest")
+                     "eras", "summaries", "digest",
+                     *(f"{t}_{m}" for t in REPORT_TABLES for m in ("merged", "strict")))
 
     def clear(self) -> None:
         """Remove every table a previous run left behind, so a re-ingest cannot mix runs."""

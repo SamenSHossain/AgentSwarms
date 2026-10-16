@@ -111,7 +111,7 @@ def test_a3_median_carries_greenwood_only_where_it_is_reached():
     for i, a in enumerate(agents[1:], start=1):   # a1-a6 adopt after i hours, a7-a9 post at 20 h without it
         rows.append({"ts": t0 + pd.Timedelta(hours=i if i <= 6 else 20), "agent_merged": a, "family": "f",
                      "techniques": "blob" if i <= 6 else ""})
-    tags = pd.DataFrame(rows)
+    tags = pd.DataFrame(rows).assign(event_id=lambda d: [f"e{i}" for i in range(len(d))])
     r = diffusion.analyze(tags, [Technique("blob", "x")], "agent_merged")["blob"]
     km = uncertainty.km_greenwood(*zip(*[(i, 1) for i in range(1, 7)] + [(20, 0)] * 3))
     assert (r["median_hours_to_adopt"], r["median_hours_to_adopt_lo"]) == uncertainty.km_median(km)[:2] == (5.0, 1.0)

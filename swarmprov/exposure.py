@@ -18,6 +18,9 @@ with a wiki timestamp.
 * ``D_cons``    the *consensus* value was public before the report.  This is the
   causal treatment: unlike D it does not depend on the agent's own answer, so
   "wrong answer => nothing matching was public" cannot manufacture an effect.
+* ``y_consensus``  the answer matches the consensus value (the value most distinct
+  agents carried); ``y_winner`` scores it the same way against A4's winner (the
+  later majority), only on slots A4 calls overturned (``winners``), NaN elsewhere.
 * ``D_visible`` like D, but a copy whose channel was deleted before the report
   (``visible_until <= t_report``) does not count: the earliest copy *still
   readable* at report time.  Deletion ends public visibility, not knowledge an
@@ -61,9 +64,22 @@ def match_key(value_norm, consensus) -> str | None:
     return value_key(value_norm) or (consensus if isinstance(consensus, str) else None)
 
 
+def _score(r, target) -> float:
+    """1 if the round's answer is ``target``: its report's own correct / wrong flag first, else its stated value
+    (NaN when it states none, or there is no target)."""
+    if r.correct_flag:
+        return 1.0
+    if r.wrong_flag:
+        return 0.0
+    return float(value_key(r.value_norm) == target) if r.value_norm is not None and target is not None else np.nan
+
+
 def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: str,
-          audience: dict[str, set[str]] | None = None, wall_clock: bool = True) -> pd.DataFrame:
-    """``audience`` maps a restricted channel to the agent labels that could read it;
+          audience: dict[str, set[str]] | None = None, wall_clock: bool = True,
+          winners: dict | None = None) -> pd.DataFrame:
+    """``winners`` maps an overturned A4 slot (family, item) to its winning value (``y_winner``).
+
+    ``audience`` maps a restricted channel to the agent labels that could read it;
     a mention there counts as public only for those agents (channels absent from
     the map are public to all).  A round whose report has no timestamp is dropped:
     nothing can be ordered against it (the report counts these)."""
@@ -81,7 +97,7 @@ def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: s
     rounds = rounds[rounds["t_report"].notna()]
     rounds = rounds.astype(object).where(rounds.notna(), None)
     for r in rounds.itertuples(index=False):
-        cv = cons.get((r.family, r.item))
+        cv, win = cons.get((r.family, r.item)), (winners or {}).get((r.family, r.item))
         target = match_key(r.value_norm, cv)
         t_pub = src = t_self = src_ev = src_ch = vis_ev = self_ev = t_last = src_last = last_ev = None
         g = groups.get((r.family, r.item, target)) if target else None
@@ -125,14 +141,6 @@ def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: s
             if len(oc):
                 t_cons = oc["ts"].iloc[0]
         gap_c = (r.t_report - t_cons).total_seconds() if t_cons is not None else np.nan
-        if r.correct_flag:
-            y_cons = 1.0
-        elif r.wrong_flag:
-            y_cons = 0.0
-        elif r.value_norm is not None and cv is not None:
-            y_cons = float(value_key(r.value_norm) == cv)
-        else:
-            y_cons = np.nan
         rows.append({
             "claim_id": r.claim_id, "report_event_id": getattr(r, "report_event_id", None),
             "agent": r.agent, "family": r.family, "episode": r.episode,
@@ -146,7 +154,8 @@ def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: s
             "D_cons_w60m": int(t_cons is not None and gap_c >= 3600),
             "y_instant": int(r.latency_class == "instant"),
             "latency_known": int(r.latency_class is not None),
-            "y_consensus": y_cons, "consensus_value": cv,
+            "y_consensus": _score(r, cv), "y_winner": _score(r, win) if win is not None else np.nan,
+            "consensus_value": cv,
             "latency_class": r.latency_class, "wrong_flag": r.wrong_flag,
             "t_public_visible": t_vis, "D_visible": int(t_vis is not None),
             "src_deleted_before_report": int(src_gone), "t_src_deleted": t_src_del,

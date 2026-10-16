@@ -194,7 +194,7 @@ def test_a3_pool_is_unchanged_when_tags_carry_families():
     from swarmprov.adapters.base import Technique
     from swarmprov.analysis import diffusion
     t = pd.Timestamp("2026-06-20T05:00:00Z")
-    tags = pd.DataFrame({"ts": [t + pd.Timedelta(minutes=m) for m in range(5)],
+    tags = pd.DataFrame({"event_id": [f"e{m}" for m in range(5)], "ts": [t + pd.Timedelta(minutes=m) for m in range(5)],
                          "agent_merged": ["A", "B", "C", "D", "B"],
                          "family": ["f", "f", "", "f", "f"],
                          "techniques": ["blob", "", "", "", "blob"]})
