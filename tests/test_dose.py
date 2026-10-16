@@ -234,7 +234,7 @@ def test_stated_latency_that_falls_with_the_head_start_is_reported(tmp_path):
     assert lat["beta"] < 0 and lat["p"] < 0.05 and lat["n"] == 120
     est = pd.DataFrame([{"outcome": "y_instant|known", "treatment": "D_cons", "agents_with_D_variation": 0}])
     summary = {}
-    block = "\n".join(report._dose_block(RunDir(tmp_path), df, pd.DataFrame(), est, summary))
+    block = "\n".join(report._dose_block(tmp_path / "a2_dose.png", df, pd.DataFrame(), est, summary))
     assert (f"the share of rounds stating one changes by {lat['beta']:+.3f} per unit of log1p(hours) "
             f"(SE {lat['se']:.3f}), which pushes its slope down.") in block
     assert ("`y_instant|known` avoids that scoring but keeps only the rounds that state a latency, and whether a round "

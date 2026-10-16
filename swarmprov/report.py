@@ -6,6 +6,7 @@ import json
 import math
 from datetime import datetime
 from fractions import Fraction
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -15,7 +16,7 @@ from .adapters.base import read_capabilities
 from .adapters.chat import no_author_warning
 from .analysis import agents as agents_mod, causal, diffusion, errors, origins, provenance, structure, uncertainty
 from .claims import agent_rounds, consensus, public, value_key
-from .schema import TABLES, RunDir
+from .schema import TABLES, RunDir, suffix
 
 
 # capability -> (consequence when the source has it, consequence when it does not)
@@ -254,16 +255,18 @@ def _warnings(prof: dict, summary: dict) -> list[str]:
     return [f"**Warning:** {w}\n" for w in warns or []]
 
 
-def _write(run: RunDir, L: list[str], summary: dict) -> str:
-    text = "\n".join(L)
-    (run.path / "report.md").write_text(text)
-    (run.path / "summary.json").write_text(json.dumps(_json_safe(summary), indent=2, default=str, allow_nan=False))
-    print(f"[swarmprov] wrote {run.path / 'report.md'}")
+def _write(run: RunDir, L: list[str], summary: dict, mapping: str) -> str:
+    """``report.md`` and ``summary.json``, or ``report_strict.md`` and ``summary_strict.json`` beside them."""
+    text, sfx = "\n".join(L), suffix(mapping)
+    (run.path / f"report{sfx}.md").write_text(text)
+    (run.path / f"summary{sfx}.json").write_text(json.dumps(_json_safe(summary), indent=2, default=str, allow_nan=False))
+    print(f"[swarmprov] wrote {run.path / f'report{sfx}.md'}")
     return text
 
 
 def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
-    """``boot``: bootstrap resamples behind the intervals (default: the config's ``bootstrap_reps``; 0 = none)."""
+    """``boot``: bootstrap resamples behind the intervals (default: the config's ``bootstrap_reps``; 0 = none).  A
+    strict report writes its files with a ``_strict`` suffix (``schema.suffix``), beside the merged one."""
     prof = json.loads((run.path / "profile.json").read_text())
     from .pipeline import load_config
     cfg = load_config(run)
@@ -278,7 +281,7 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
         notes = prof.get("notes") or {}
         if notes.get("swarmtraces"):
             L = _swarmtraces_block(prof, notes["swarmtraces"], summary)
-            return _write(run, L, summary)
+            return _write(run, L, summary, mapping)
         L = ["# Context report (no posts)\n",
              f"Source: `{prof['source']}` (adapter `{prof['adapter']}`) holds no posts, so there is no provenance to "
              "analyse. The tables below become task families, cohorts, channel lifecycle and audiences once a "
@@ -286,7 +289,7 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
         L += _village_block(run, prof, summary)
         if run.has("roster"):
             L += _roster_block(run, prof, summary)
-        return _write(run, L, summary)
+        return _write(run, L, summary, mapping)
     agent_col = "agent_merged" if mapping == "merged" else "agent_strict"
     ex = run.read(f"exposures_{mapping}")
     alt = "strict" if mapping == "merged" else "merged"
@@ -356,7 +359,7 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
     untimed = int(rounds["t_report"].isna().sum()) if len(rounds) else 0
     if len(ex):
         r1 = provenance.summarize(ex, wall_clock=not seq, boot=boot)
-        figs["provenance"] = provenance.figure(ex, r1, run.figure("a1_provenance.png"), wall_clock=not seq)
+        figs["provenance"] = provenance.figure(ex, r1, run.figure("a1_provenance.png", mapping), wall_clock=not seq)
         summary["A1"] = {k: v for k, v in r1.items() if not isinstance(v, pd.DataFrame)} | (
             {"n_rounds_untimed": untimed} if untimed else {})
         if boot:
@@ -402,7 +405,7 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
         elif "D_visible" in ex and caps.get("has_lifecycle"):
             L.append(_visibility_note(ex) + "\n")
             summary["A1"].update(_visibility_counts(ex))
-        L.append(f"![provenance](figures/{run.figure('a1_provenance.png').name})\n")
+        L.append(f"![provenance](figures/{run.figure('a1_provenance.png', mapping).name})\n")
         L.append(md_table(_with_ci(r1["by_family"], ("exposed", "exposed_60m")),
                           pct=("exposed", "exposed_60m", "self_prepared", "instant")))
         every = r1["by_family_all"]
@@ -419,7 +422,7 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
             L.append(f"\n_Sensitivity_: under the other identity mapping, {len(ex_alt):,} agent-rounds, "
                      f"{_pct(ex_alt['D'].mean())} exposed" + ("" if seq else f", {_pct(ex_alt['D_w60m'].mean())} exposed ≥1 h") + ".\n")
         if not seq:
-            L += _threshold_block(run, ex, bool(caps.get("has_lifecycle")), summary)
+            L += _threshold_block(run.figure("a1_threshold.png", mapping), ex, bool(caps.get("has_lifecycle")), summary)
         lat = ex.assign(latency_s=ex["claim_id"].map(rounds.set_index("claim_id")["latency_s"]))
         L += _instant_block(provenance.instant_sweep(lat, k_cfg=cfg.instant_threshold_s), summary)
     else:
@@ -444,7 +447,7 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
     # A2
     if len(ex) > 20:
         est = causal.estimate(ex, wall_clock=not seq)
-        figs["causal"] = causal.figure(est, run.figure("a2_causal.png"))
+        figs["causal"] = causal.figure(est, run.figure("a2_causal.png", mapping))
         summary["A2"] = est.to_dict("records")
         L.append(f"## {SECTIONS['A2']}\n")
         L.append("Two-way fixed effects on agent-rounds, `Y ~ D_cons | agent + item`, SEs clustered by agent "
@@ -459,7 +462,7 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
                     "Latency would be the discriminating outcome (a common cause explains the same answer, not a 1-second answer on a 14-second timer); "
                     "check `agents_with_D_variation` before reading it — when few agents switch exposure status the latency estimate is uninformative.")
                  + "\n")
-        L.append(f"![causal](figures/{run.figure('a2_causal.png').name})\n")
+        L.append(f"![causal](figures/{run.figure('a2_causal.png', mapping).name})\n")
         cols = [c for c in ["outcome", "treatment", "beta", "se", "p", "n", "agents", "items",
                             "agents_with_D_variation", "mean_y_D0", "mean_y_D1", "note"] if c in est]
         L.append(md_table(est[cols], index=False, floatfmt="{:.3f}"))
@@ -483,7 +486,7 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
                                                        "agents_with_D_variation", "note"] if c in est_alt]],
                                   index=False, floatfmt="{:.3f}"))
         L += ["\n" + _needs_clock("The exploratory dose-response estimates (how long the consensus had been public, in hours)")
-              + "\n"] if seq else _dose_block(run, ex, ex_alt, est, summary)
+              + "\n"] if seq else _dose_block(run.figure("a2_dose.png", mapping), ex, ex_alt, est, summary)
     else:
         L += _skipped("A2", f"needs more than 20 {'timed ' if untimed else ''}agent-rounds; this run has {len(ex):,}"
                       + (f" ({untimed:,} {'have' if untimed > 1 else 'has'} no timestamp)" if untimed else ""))
@@ -491,7 +494,7 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
     # A3
     r3 = diffusion.analyze(tags, cfg.techniques, agent_col) if len(tags) and cfg.techniques else {}
     if r3:
-        figs["diffusion"] = None if seq else diffusion.figure(r3, run.figure("a3_diffusion.png"),
+        figs["diffusion"] = None if seq else diffusion.figure(r3, run.figure("a3_diffusion.png", mapping),
                                                               {t.name: t.families for t in cfg.techniques})
         tbl = pd.DataFrame([{k: v for k, v in r.items() if k not in ("km", "adoptions")} | {"technique": n}
                             for n, r in r3.items()])
@@ -532,7 +535,7 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
         if seq:
             L.append(_needs_clock("Times to adoption (hours, the Kaplan–Meier median) and the first-seen time") + "\n")
         if figs["diffusion"]:
-            L.append(f"![diffusion](figures/{run.figure('a3_diffusion.png').name})\n")
+            L.append(f"![diffusion](figures/{run.figure('a3_diffusion.png', mapping).name})\n")
         L.append(md_table(tbl, index=False, pct=("adoption_share", "baseline"), floatfmt="{:.1f}"))
         L.append(_contagion_note(con) if con else
                  "The contagion test compares the pages agents adopted on, and every post here is on one page or channel, "
@@ -551,7 +554,7 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
         ss = errors.sequence_slots(claims, agent_col, **rule) if len(claims) else []
         ds = errors.regex_slots(posts, ag, cfg.disputes, agent_col, **rule) if cfg.disputes else []
         feat = errors.pick_featured(vs, ss, cfg.featured_disputes, declared=ds)
-        figs["errors"] = None if seq else errors.figure(feat, run.figure("a4_errors.png"))
+        figs["errors"] = None if seq else errors.figure(feat, run.figure("a4_errors.png", mapping))
         refs = errors.reference_keys(cfg.reference_values)
         slots = feat + [s for s in vs[:12] + ss[:6] if s not in feat]
         rows = []
@@ -634,7 +637,7 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
         if vs:
             L.append(_variant_note(vs, split, n_split_rounds, n_split_zero, prov, mapping))
         if figs["errors"]:
-            L.append(f"![errors](figures/{run.figure('a4_errors.png').name})\n")
+            L.append(f"![errors](figures/{run.figure('a4_errors.png', mapping).name})\n")
         L.append(md_table(pd.DataFrame(rows), index=False, floatfmt="{:.1f}"))
         if unknown:
             L.append("Reference values that name no item or disputed slot in this run (a mistyped `family|item` key, or an item "
@@ -660,7 +663,7 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
                                   btw=r5["betweenness"] if r5 else None)
     threading = bool(caps.get("has_threading"))
     if r5:
-        figs["structure"] = structure.figure(r5, chains, run.figure("a5_structure.png"))
+        figs["structure"] = structure.figure(r5, chains, run.figure("a5_structure.png", mapping))
         summary["A5"] = {k: v for k, v in r5.items() if not isinstance(v, (pd.Series, pd.DataFrame))}
         L.append(f"## {SECTIONS['A5']}\n")
         L.append(f"Graph: {r5['n_nodes']:,} agents, {r5['n_edges']:,} weighted links "
@@ -673,16 +676,16 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
                     "No answer had a first public source here, so there is no exposure concentration to report. ")
                  + _depth_sentence(r5, r6, edges, ws))
         if figs["structure"]:
-            L.append(f"![structure](figures/{run.figure('a5_structure.png').name})\n")
+            L.append(f"![structure](figures/{run.figure('a5_structure.png', mapping).name})\n")
         top = r5["top_sources"].rename("answers").to_frame()
         if r5.get("n_exposure_edges"):
             figs["supply"] = structure.supply_figure(edges, profiles.set_index("label"), r5,
-                                                     run.figure("a7_supply_network.png"))
+                                                     run.figure("a7_supply_network.png", mapping))
             L.append("Who supplied whom under one attribution rule, *first source*, which credits whoever first posted "
                      "the value before the report: each line joins an agent with an exposed answer (a dot, coloured by "
                      "task family) to that source (a grey disc sized by the answers it supplied). The rows below give "
                      "the other rules, and nothing records who read whom.\n")
-            L.append(f"![supply network](figures/{run.figure('a7_supply_network.png').name})\n")
+            L.append(f"![supply network](figures/{run.figure('a7_supply_network.png', mapping).name})\n")
             L += _attribution_block(r5, summary)
             lines, first = _origins_block({m: e for m, e in ((mapping, ex), (alt, ex_alt)) if len(e) and e["D"].any()},
                                          mapping, summary)
@@ -699,7 +702,7 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
         L += _skipped("A5", _a5_gap(mentions, agent_col, ex, untimed, notes.get("clock") == "none", threading))
     L += _agents_block(profiles, mapping, summary)
     if r5 and r6:
-        figs["reach"] = structure.reach_figure(chains, run.figure("a6_reach.png"))
+        figs["reach"] = structure.reach_figure(chains, run.figure("a6_reach.png", mapping))
         summary["A6"] = r6 | ({"window_sensitivity": [{k: _cell(v) for k, v in r.items()} for r in ws.to_dict("records")]}
                               if ws is not None else {})
         L.append(f"## {SECTIONS['A6']}\n")
@@ -707,7 +710,7 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
         if any("mean_repeaters_lo" in r for r in r6.values()):
             L.append(f"The interval on mean_repeaters is the 95% percentile interval from {boot:,} resamples of the "
                      "facts: sampling noise only.\n")
-        L.append(f"\n![reach](figures/{run.figure('a6_reach.png').name})\n")
+        L.append(f"\n![reach](figures/{run.figure('a6_reach.png', mapping).name})\n")
         if ws is not None:
             L += _window_block(ws, (r6.get("urls") or {}).get("facts", 0))
         elif seq:
@@ -726,7 +729,7 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
                  f"({rc['dump_edges_without_revision']} have no revision to match), {rc['pipeline_only']} extra"
                  + (f" ({rc['pipeline_only_after_cutoff']} after the source's cutoff)" if rc.get("cutoff") else "")
                  + f". {rc['restored_posts']} of {rc['posts_on_recreations']} posts on those revisions restore pre-deletion text.\n")
-    L += _integrity(checks.check_run(run, summary), summary)
+    L += _integrity(checks.check_run(run, summary), summary, mapping)
     vfiles = sorted(run.path.glob("validation*.json"))
     if vfiles:
         summary["validation"] = {}
@@ -783,22 +786,23 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
              + ("- **Derived text.** The posts are an LLM's daily digest of what agents did (one line per event, Pacific time), "
                 "not the agents' own messages: who-did-what-when and technique mentions are plausible, the provenance of specific "
                 "values is not, and anything the digest's author chose to omit is invisible.\n" if caps.get("derived_text") else ""))
-    return _write(run, L, summary)
+    return _write(run, L, summary, mapping)
 
 
-def _integrity(chk: pd.DataFrame, summary: dict) -> list[str]:
+def _integrity(chk: pd.DataFrame, summary: dict, mapping: str) -> list[str]:
     """One line: how many of ``checks.check_run``'s checks pass, naming those that do not."""
-    fail = chk[chk["n_violations"] > 0]
+    fail, sfx = chk[chk["n_violations"] > 0], suffix(mapping)
     summary["integrity"] = {"n_checks": len(chk), "n_pass": len(chk) - len(fail),
                             "failing": fail[["check", "table", "n_violations", "severity"]].to_dict("records")}
     named = []
     for c, g in fail.groupby("check", sort=False):
         where = ", ".join(f"{n:,} in {t}" for t, n in zip(g["table"], g["n_violations"]))
         named.append(f"`{c}` ({g['severity'].iloc[0]}; {where}: {checks.MEANING[c]})")
-    return [f"**Integrity: {len(chk) - len(fail)}/{len(chk)} checks pass** (`checks.json`; `swarmprov check RUN` reruns "
+    return [f"**Integrity: {len(chk) - len(fail)}/{len(chk)} checks pass** (`checks{sfx}.json`; `swarmprov check RUN"
+            + (f" --mapping {mapping}" if sfx else "") + "` reruns "
             "them): exposure re-derived from the mentions, flag nesting, relay hops and exposure edges against the "
             "chains and rounds, the posts behind edges and exposures, the strict mapping inside the merged one, "
-            "and summary.json against the tables. " + ("Not passing: " + "; ".join(named) + "." if named else
+            f"and summary{sfx}.json against the tables. " + ("Not passing: " + "; ".join(named) + "." if named else
                                                        "None fails.") + "\n"]
 
 
@@ -945,11 +949,10 @@ def _contagion_note(con: dict) -> str:
     return out.rstrip() + "\n"
 
 
-def _dose_block(run: RunDir, ex: pd.DataFrame, ex_alt: pd.DataFrame, est: pd.DataFrame, summary: dict) -> list[str]:
+def _dose_block(fig: Path, ex: pd.DataFrame, ex_alt: pd.DataFrame, est: pd.DataFrame, summary: dict) -> list[str]:
     """A2's exploratory dose response among exposed rounds (``causal.estimate_dose``), its figure and
     ``summary['A2_dose']``; kept apart from the table above, which stays A2's reading."""
     dose = causal.estimate_dose(ex)
-    fig = run.figure("a2_dose.png")
     causal.dose_figure(dose, fig)
     lat = causal.stated_latency_slope(ex)
     alt = causal.estimate_dose(ex_alt) if len(ex_alt) > 20 else pd.DataFrame()
@@ -1027,10 +1030,9 @@ def _dose_block(run: RunDir, ex: pd.DataFrame, ex_alt: pd.DataFrame, est: pd.Dat
     return L
 
 
-def _threshold_block(run: RunDir, ex: pd.DataFrame, visible: bool, summary: dict) -> list[str]:
+def _threshold_block(path: Path, ex: pd.DataFrame, visible: bool, summary: dict) -> list[str]:
     """A1's exposure by required head start (``provenance.threshold_curve``), its figure and ``summary['A1']``."""
     curve = provenance.threshold_curve(ex, visible=visible)
-    path = run.figure("a1_threshold.png")
     provenance.threshold_figure(ex, path, visible=visible)
     fams = [g for g in curve.index if g in set(ex["family"])]
     summary["A1"]["threshold_curve"] = {

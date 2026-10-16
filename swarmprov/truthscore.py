@@ -15,7 +15,7 @@ Reads ``truth.csv`` (and ``truth_techniques.csv`` and ``config.json``) beside th
   agents it splits.
 
 Every number holds under the synthetic generative model only: it says the analyses recover what this simulation
-planted, not that they are right on a real swarm.  ``truth-score`` then rebuilds the run's report, whose Validation
+planted, not that they are right on a real swarm.  ``truth-score`` then rebuilds the run's reports, whose Validation
 section shows the scorecard.
 """
 
@@ -32,7 +32,7 @@ from .analysis.uncertainty import km_greenwood, km_median
 from .claims import public, value_key
 from .report import _json_safe
 from .rules import norm_value
-from .schema import RunDir
+from .schema import RunDir, suffix
 
 LABEL = "under the synthetic generative model"
 RULES = {"first source": "src_agent", "latest source": "src_latest", "same-page relay parent": "relay_parent"}
@@ -220,9 +220,9 @@ def main(run: RunDir, truth_dir: str | Path, mapping: str = "merged") -> int:
              + ("not estimated" if a2["covers"] is None else "inside" if a2["covers"] else "outside") + " its 95% CI)"
              if a2 and a2["beta"] is not None else ""))
     print(f"wrote {run.path / 'truth_validation.json'}")
-    if (run.path / "summary.json").exists():   # rebuilt as it was built: the same mapping and bootstrap resamples
-        from . import report
-        built = json.loads((run.path / "summary.json").read_text())
-        report.build(run, mapping=built.get("mapping", "merged"),
-                     boot=((built.get("A1") or {}).get("bootstrap") or {}).get("reps", 0))
+    for m in ("merged", "strict"):   # each report rebuilt as it was built: its mapping and bootstrap resamples
+        if (run.path / f"summary{suffix(m)}.json").exists():
+            from . import report
+            built = json.loads((run.path / f"summary{suffix(m)}.json").read_text())
+            report.build(run, mapping=m, boot=((built.get("A1") or {}).get("bootstrap") or {}).get("reps", 0))
     return 0

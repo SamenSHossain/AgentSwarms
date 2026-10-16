@@ -127,6 +127,12 @@ TABLES: dict[str, list[str]] = {
 REPORT_TABLES = ("adoptions", "disputes", "a1_by_family")
 
 
+def suffix(mapping: str) -> str:
+    """The file-name suffix of what a report under ``mapping`` writes: none for the default (merged), so a strict
+    report (``report_strict.md``, ``summary_strict.json``, ``figures/*_strict.png``) never overwrites it."""
+    return "" if mapping == "merged" else f"_{mapping}"
+
+
 def empty(table: str) -> pd.DataFrame:
     return pd.DataFrame({c: pd.Series(dtype="object") for c in TABLES[table]})
 
@@ -174,8 +180,9 @@ class RunDir:
         df.to_csv(p, index=False)
         return p
 
-    def figure(self, name: str) -> Path:
-        return self.path / "figures" / name
+    def figure(self, name: str, mapping: str = "merged") -> Path:
+        p = Path(name)
+        return self.path / "figures" / f"{p.stem}{suffix(mapping)}{p.suffix}"
 
     STAGE_OUTPUTS = ("agents", "claims", "tags", "mentions", "exposures_merged", "exposures_strict", "edges_merged",
                      "edges_strict", "chains_merged", "chains_strict", "agent_profiles_merged", "agent_profiles_strict",
@@ -189,6 +196,7 @@ class RunDir:
             self.table_path(name).unlink(missing_ok=True)
         graphs = [f"provenance_{m}.{x}" for m in ("merged", "strict") for x in ("graphml", "json")]
         scores = [f.name for f in self.path.glob("validation*.json")]   # they score the claims of the earlier run
-        for f in ("items.json", "agent_aliases.csv", "report.md", "summary.json", "checks.json", "truth_validation.json",
-                  *graphs, *scores):
+        reports = [f"{f}{suffix(m)}.{x}" for m in ("merged", "strict")
+                   for f, x in (("report", "md"), ("summary", "json"), ("checks", "json"))]
+        for f in ("items.json", "agent_aliases.csv", "truth_validation.json", *reports, *graphs, *scores):
             (self.path / f).unlink(missing_ok=True)

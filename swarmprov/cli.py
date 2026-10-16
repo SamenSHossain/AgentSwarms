@@ -8,7 +8,7 @@
     swarmprov extract  runs/wiki [--llm claude-haiku-4-5]
     swarmprov expose   runs/wiki
     swarmprov graph    runs/wiki
-    swarmprov report   runs/wiki [--mapping merged|strict] [--boot 1000]
+    swarmprov report   runs/wiki [--mapping merged|strict] [--boot 1000]   # strict: report_strict.md beside report.md
     swarmprov sample-gold runs/wiki [-n 120]
     swarmprov validate runs/wiki gold.jsonl
     swarmprov run      data/raw -o runs/wiki --gold validation/   # also score the extractor on each label file
@@ -147,6 +147,8 @@ def main(argv: list[str] | None = None) -> int:
 
     s = sub.add_parser("check", help="integrity checks: do the run's tables agree with each other? (exit 1 on an error)")
     s.add_argument("run")
+    s.add_argument("--mapping", choices=["merged", "strict"], default="merged",
+                   help="whose report summary to check against the tables (strict: summary_strict.json)")
 
     s = sub.add_parser("truth-score", help="score a synthetic run against the truth synth wrote beside the transcript")
     s.add_argument("run")
@@ -248,7 +250,7 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(res, indent=2))
     elif a.cmd == "check":
         from . import checks
-        return checks.main(RunDir(a.run))
+        return checks.main(RunDir(a.run), a.mapping)
     elif a.cmd == "truth-score":
         from . import truthscore
         return truthscore.main(RunDir(a.run), a.truth, a.mapping)

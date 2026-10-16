@@ -1,3 +1,4 @@
+import shutil
 import sys
 from pathlib import Path
 
@@ -30,3 +31,15 @@ def synth_first(tmp_path_factory):
     pipeline.expose(run)
     pipeline.build_graph(run)
     return run, pd.read_csv(d / "truth.csv")
+
+
+@pytest.fixture(scope="session")
+def synth_strict(synth_run, tmp_path_factory):
+    """A copy of the seed-2 run with its strict report built beside the merged one (no resamples)."""
+    from swarmprov import report
+    from swarmprov.schema import RunDir
+    d = tmp_path_factory.mktemp("synth_strict") / "run"
+    shutil.copytree(synth_run[0].path, d)
+    run = RunDir(d)
+    report.build(run, mapping="strict", boot=0)
+    return run

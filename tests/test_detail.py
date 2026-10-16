@@ -415,7 +415,7 @@ def test_export_says_which_report_to_run_for_the_other_mapping(win_run, tmp_path
                      "--tables", "disputes,exposures"]) == 0
     out = capsys.readouterr().out
     assert (f"disputes: no disputes_strict.parquet in {win_run.path} (the report was built under the merged mapping; run "
-            f"`swarmprov report {win_run.path} --mapping strict` first, which rewrites report.md and summary.json under "
+            f"`swarmprov report {win_run.path} --mapping strict` first, which writes report_strict.md and summary_strict.json under "
             "this one), skipped") in out
     assert "exposures_strict.csv" in out
 

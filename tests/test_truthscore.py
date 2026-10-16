@@ -215,3 +215,18 @@ def test_scorecard_rows_for_deletions_techniques_and_aliases(scored):
     assert "A5 top-10 share of instant answers, first copy still visible (not an A5 rule)" in rows
     strict = r["identity"]["strict"]
     assert rows["identity, strict mapping"].endswith(f"| purity 100%, {strict['true_agents_split']} true agents split |")
+
+
+def test_truth_score_rebuilds_each_report_the_run_has(tmp_path, monkeypatch):
+    """A run with a merged and a strict report gets both rebuilt, each under its own mapping and resamples."""
+    run = RunDir(tmp_path / "run")
+    (tmp_path / "truth.csv").write_text("")
+    (run.path / "summary.json").write_text(json.dumps({"mapping": "merged", "A1": {"bootstrap": {"reps": 7}}}))
+    (run.path / "summary_strict.json").write_text(json.dumps({"mapping": "strict"}))
+    built = []
+    monkeypatch.setattr(truthscore, "score", lambda *a: {"D": {"accuracy_vs_public_at_arrival": 1,
+                                                               "accuracy_vs_earlier_copy": 1},
+                                                         "A2": None, "rounds": {"matched": 1, "truth": 1}})
+    monkeypatch.setattr(report, "build", lambda r, mapping, boot: built.append((mapping, boot)))
+    assert truthscore.main(run, tmp_path) == 0
+    assert built == [("merged", 7), ("strict", 0)]

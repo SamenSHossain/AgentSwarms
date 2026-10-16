@@ -126,3 +126,31 @@ def test_every_capability_has_two_distinct_consequences():
 def test_village_section_needs_village_data():
     assert village.section(village.summary(None, None), report.md_table) == []
     assert village.section({"family_from_roster": True, "unrecognised": ["x.csv"]}, report.md_table)
+
+
+def test_a_strict_report_writes_beside_the_merged_one(synth_run, synth_strict, capsys):
+    base, d = synth_run[0].path, synth_strict.path
+    for f in ["report.md", "summary.json", "checks.json", *(f"figures/{g.name}" for g in (base / "figures").glob("*.png"))]:
+        assert (d / f).stat().st_mtime_ns == (base / f).stat().st_mtime_ns, f   # copied, never rewritten
+    text = (d / "report_strict.md").read_text()
+    assert "Agent identity mapping: **strict**" in text and "Agent identity mapping: **merged**" in (d / "report.md").read_text()
+    links = re.findall(r"\]\((figures/[^)]+)\)", text)
+    assert links and all(f.endswith("_strict.png") and (d / f).exists() for f in links), links
+    assert json.loads((d / "summary_strict.json").read_text())["mapping"] == "strict"
+    assert "(`checks_strict.json`; `swarmprov check RUN --mapping strict` reruns them)" in text
+    assert "and summary_strict.json against the tables" in text
+    chk = json.loads((d / "checks_strict.json").read_text())
+    assert {c["table"] for c in chk["checks"] if c["check"] == "summary_matches_tables"} == {"summary_strict.json"}
+    assert all(synth_strict.has(f"{t}_strict") for t in ("a1_by_family", "disputes"))
+    from swarmprov import cli
+    assert cli.main(["check", str(d), "--mapping", "strict"]) == 0
+    assert "summary_matches_tables       summary_strict.json" in capsys.readouterr().out
+
+
+def test_clear_removes_both_mappings_reports(tmp_path):
+    run = RunDir(tmp_path / "run")
+    names = ["report.md", "summary.json", "checks.json", "report_strict.md", "summary_strict.json", "checks_strict.json"]
+    for n in names:
+        (run.path / n).write_text("{}")
+    run.clear()
+    assert not [n for n in names if (run.path / n).exists()]

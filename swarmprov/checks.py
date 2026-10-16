@@ -15,7 +15,7 @@
 Those are errors.  Warnings: exposed rounds the agent had itself posted before the first public copy
 (``t_self_prepared < t_public``: it was holding the answer), and ``summary.json``'s A1 and A5 numbers against a
 recomputation from the tables (within ``REL_TOL``; a stale report after a rerun stage shows here).  The result is one
-row per check and table, also written to ``checks.json``.
+row per check and table, also written to ``checks.json`` (``checks_strict.json`` against the strict report).
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ import pandas as pd
 
 from .analysis.agents import AGENT_COLS
 from .claims import PRIVATE_KINDS, value_key
-from .schema import RunDir
+from .schema import RunDir, suffix
 
 COLS = ["check", "table", "n_violations", "severity", "example_ids"]
 SEVERITY = {"exposure_matches_mentions": "error", "flag_nesting": "error", "relay_hops_per_chain": "error",
@@ -177,16 +177,18 @@ def _row(check: str, table: str, bad: list) -> dict:
             "example_ids": [str(b) for b in bad[:N_EXAMPLES]]}
 
 
-def check_run(run: RunDir, summary: dict | None = None) -> pd.DataFrame:
-    """One row per check and table (``COLS``); written to ``checks.json``.  ``summary`` is the report's (the
-    report passes the one it is writing); by default ``summary.json`` when the run has one, else that check is left
-    out."""
+def check_run(run: RunDir, summary: dict | None = None, mapping: str | None = None) -> pd.DataFrame:
+    """One row per check and table (``COLS``); written to ``checks.json`` (``checks_strict.json`` for a strict
+    summary).  ``summary`` is the report's (the report passes the one it is writing); by default the ``mapping``
+    report's ``summary.json`` (merged) or ``summary_strict.json`` when the run has one, else that check is left out."""
     from . import village
     from .pipeline import _lists
     prof = json.loads((run.path / "profile.json").read_text())
     wall = prof.get("clock") != "sequence"
-    if summary is None and (run.path / "summary.json").exists():
-        summary = json.loads((run.path / "summary.json").read_text())
+    mapping = mapping or (summary or {}).get("mapping", "merged")
+    sfx = suffix(mapping)
+    if summary is None and (run.path / f"summary{sfx}.json").exists():
+        summary = json.loads((run.path / f"summary{sfx}.json").read_text())
     rows = []
     if run.has("agents"):
         ag = run.read("agents")
@@ -216,22 +218,23 @@ def check_run(run: RunDir, summary: dict | None = None) -> pd.DataFrame:
                 if len(ex):
                     rows.append(_row("exposure_edges", t, _exposure_edges(ex, edges)))
     if summary and run.has("mentions"):
-        rows.append(_row("summary_matches_tables", "summary.json", _summary(summary, run)))
+        rows.append(_row("summary_matches_tables", f"summary{sfx}.json", _summary(summary, run)))
     out = pd.DataFrame(rows, columns=COLS)
     fail = out[out["n_violations"] > 0]
-    (run.path / "checks.json").write_text(json.dumps({
+    (run.path / f"checks{sfx}.json").write_text(json.dumps({
         "n_checks": len(out), "n_pass": int((out["n_violations"] == 0).sum()),
         "n_errors": int((fail["severity"] == "error").sum()), "n_warnings": int((fail["severity"] == "warning").sum()),
         "checks": out.to_dict("records")}, indent=2))
     return out
 
 
-def main(run: RunDir) -> int:
-    """``swarmprov check``: print each check, write ``checks.json``; exit status 1 when an error-level check fails."""
+def main(run: RunDir, mapping: str = "merged") -> int:
+    """``swarmprov check``: print each check, write ``checks.json`` (``checks_strict.json`` against the strict
+    report's summary); exit status 1 when an error-level check fails."""
     if not (run.path / "profile.json").exists():
         print(f"{run.path}: not a run directory (no profile.json); run `swarmprov run` or `ingest` first")
         return 2
-    out = check_run(run)
+    out = check_run(run, mapping=mapping)
     print(f"checks on {run.path}:")
     for r in out.itertuples(index=False):
         status = "ok" if not r.n_violations else ("ERROR" if r.severity == "error" else "warn")
@@ -240,5 +243,5 @@ def main(run: RunDir) -> int:
     fail = out[out["n_violations"] > 0]
     n_err = int((fail["severity"] == "error").sum())
     print(f"{len(out) - len(fail)} of {len(out)} checks pass: {n_err} error{'s' * (n_err != 1)}, "
-          f"{len(fail) - n_err} warning{'s' * (len(fail) - n_err != 1)}; written to {run.path / 'checks.json'}")
+          f"{len(fail) - n_err} warning{'s' * (len(fail) - n_err != 1)}; written to {run.path / f'checks{suffix(mapping)}.json'}")
     return 1 if n_err else 0
