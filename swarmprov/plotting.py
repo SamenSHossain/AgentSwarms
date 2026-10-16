@@ -33,10 +33,10 @@ def setup() -> None:
 
 
 def pct_axis(ax, axis: str = "y") -> None:
-    """A 0-1 share axis in percent: ticks on 1/2/2.5/5 steps, printed with the decimals the axis range needs, so a
-    tick at 0.025 reads 2.5%, not 2%."""
+    """A 0-1 share axis in percent: ticks on 1/2/2.5/5 steps, as many as the axis length fits, printed with the
+    decimals the axis range needs, so a tick at 0.025 reads 2.5%, not 2%."""
     a = ax.yaxis if axis == "y" else ax.xaxis
-    a.set_major_locator(MaxNLocator(steps=[1, 2, 2.5, 5, 10]))
+    a.set_major_locator(MaxNLocator(nbins="auto", steps=[1, 2, 2.5, 5, 10]))
     a.set_major_formatter(PercentFormatter(xmax=1, decimals=None))
 
 

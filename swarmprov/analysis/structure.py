@@ -12,6 +12,7 @@ from __future__ import annotations
 import networkx as nx
 import numpy as np
 import pandas as pd
+from matplotlib.ticker import MaxNLocator
 
 from .. import plotting
 from ..exposure import match_key
@@ -194,7 +195,7 @@ def figure(res: dict, chains: pd.DataFrame, path, top: int = 10) -> str | None:
                label=f"first sources (Gini {res['gini_exposure_outdegree']:.2f})")
         n = len(res["outdeg"])
         if n > top:
-            share = res[f"top{top}_share_exposure"]
+            share = res["outdeg"].nlargest(top).sum() / res["outdeg"].sum()
             ax.plot(1 - top / n, 1 - share, "o", color=plotting.SERIES[0], markersize=7,
                     label=f"top {top} of {n} from here: {share:.0%} of exposed\n"
                           "answers (credit: first to post the value)")
@@ -220,7 +221,6 @@ def figure(res: dict, chains: pd.DataFrame, path, top: int = 10) -> str | None:
 def reach_figure(chains: pd.DataFrame, path, cap: int = 20) -> str | None:
     """Facts by how many other agents repeated them: 0 to ``cap`` - 1 as a line, ``cap`` or more pooled into one
     marker labelled with its facts and their range."""
-    from matplotlib.ticker import MaxNLocator
     if chains.empty:
         return None
     plotting.setup()
@@ -237,10 +237,11 @@ def reach_figure(chains: pd.DataFrame, path, cap: int = 20) -> str | None:
         if len(big):
             pooled = True
             ax.plot([cap], [len(big)], marker="D", ls="", color=plotting.SERIES[i])
-            ax.annotate(f"{len(big):,} facts, {cap}–{big.max():,}", (cap, len(big)), xytext=(8, 0),
+            span = f"{cap}–{big.max():,}" if big.max() > cap else f"{cap}"
+            ax.annotate(f"{len(big):,} fact{'s' * (len(big) > 1)}, {span}", (cap, len(big)), xytext=(8, 0),
                         textcoords="offset points", va="center", fontsize=8, color=plotting.SERIES[i])
     if pooled:
-        ax.set_xticks(range(0, cap + 1, 5), [*map(str, range(0, cap, 5)), f"{cap}+"])
+        ax.set_xticks([*range(0, cap, 5), cap], [*map(str, range(0, cap, 5)), f"{cap}+"])
         ax.set_xlim(-0.8, cap + 5.5)
     else:
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
@@ -342,7 +343,8 @@ def supply_figure(edges: pd.DataFrame, nodes: pd.DataFrame, res: dict, path, top
                 break
             t.remove()
         placed.append(box)
-    n_exp, share = int(supplied.sum()), res[f"top{top}_share_exposure"]
+    n_exp = int(supplied.sum())
+    share = supplied.nlargest(top).sum() / n_exp
     ax.set_title(f"Who supplied whom, first-source rule: each exposed answer is credited to whoever first posted its "
                  f"value\nbefore the report; the top {top} sources supplied {share:.0%} of {n_exp:,} exposed answers",
                  loc="left", fontsize=11)
