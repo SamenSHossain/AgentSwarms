@@ -304,7 +304,8 @@ def test_a1_skip_names_what_kept_claims_from_agent_rounds():
 
 
 def test_the_skip_note_points_to_a_readme_section_that_exists():
-    assert "**What the rule extractor recognises.**" in (Path(__file__).resolve().parents[1] / "README.md").read_text()
+    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+    assert "\n### What the rule extractor recognises\n" in readme
 
 
 def test_the_report_stage_logs_each_phase(tmp_path, capsys):

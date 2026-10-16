@@ -99,6 +99,17 @@ Earliest activity in the whole corpus: publictestwiki sandbox edits from **2026-
 
 | host | first site | then |
 |---|---|---|
+| markdown.new | dse 05-26 09:50 | user/milk 13:55, ludism 14:35, paste.linuxiarz 15:16, probier 15:36, fractal 15:43, wiki4d 16:39, rmn.re 06-18; **6 sites within 7 h** |
+| pure.md | dse 05-26 13:25 | probier 06-01, rmn.re 06-18 |
+| allorigins.hexlet.app | **paste.linuxiarz 05-26 15:16** | dse 05-28, probier 06-01, rmn.re 06-18, fractal 06-18, wiki4d 06-18, tmcleod.org 07-07 |
+| jqp.vercel.app | dse 05-28 13:03 | rmn.re 06-18, wiki4d 06-18, probier 06-18, fractal 06-18 |
+| md.succ.ai | dse 05-29 22:28 | probier 06-18, rmn.re 06-18 |
+| r.jina.ai | **publictestwiki 05-17 21:30** | dse 06-01, probier 06-16, fractal 06-17, rmn.re 06-18, tmcleod.org 07-07 |
+| da.gd | dse 06-04 17:30 | paste.linuxiarz 06-16, rmn.re 06-18, wiki4d 06-18 |
+
+The rows are `results/crosssite/technique_spread.csv`, which `swarmprov crosssite` writes: dse comes from the wiki dump itself and the other sites from the corpus records' timed texts (the records' own dse portion is a redacted copy, which puts markdown.new on dse at 10:21 and jqp at 13:31). A time is given on the first site's day, a date after it. The task-level techniques (heartbeat beacons, seed cracking, clock.wait, the blob bypass, the live tooltip, ZZZ pages) appear on dse only.
+
+---|---|---|
 | markdown.new | dse 05-26 10:21 | user/milk 13:55, ludism 14:35, probier 15:36, fractal 15:43, linuxiarz 15:16, wiki4d 16:39: **6 sites in 6 h** |
 | pure.md | dse 05-26 13:25 | probier 06-01 |
 | allorigins.hexlet.app | **paste.linuxiarz.pl 05-26 15:16** | dse 05-28, probier 06-01, fractal/wiki4d 06-18 |
@@ -127,7 +138,7 @@ What it tells us:
 
 ## Consequences for the analysis
 
-1. **Exposure is a lower bound.** We only see what was public on dse (plus probier/fractal). An answer we label "independent" (83 of 1,108) may have been relayed through a surface we don't have: Discord, uncrawled wikis or pastebins. So the 93% "already public" share is a floor, and the 83 independent lookups are a ceiling.
+1. **Exposure is a lower bound.** We only see what was public on dse (plus probier/fractal). An answer we count as a possible independent lookup (at most 89 of 1,108: 83 with nothing public before the report, plus the agent's own first posts) may have been relayed through a surface we don't have: Discord, uncrawled wikis or pastebins. So the 93% "already public" share is a floor, and the 89 independent lookups are a ceiling.
 2. **Cross-site diffusion results are bounded samples.** "First seen on site X" means first seen *in the captured material*.
 3. **Absence is not evidence.** Sites with `no_selected_agent_text_in_compilation` were mostly not searched, not searched and found empty.
 4. If more data ever arrives, the highest-value gaps for provenance are **Discord** (an explicit coordination channel), the 12 inventoried wikiservice farms, and **Wiki4D** revision bodies.

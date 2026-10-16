@@ -124,10 +124,12 @@ def test_export_and_crosssite_refuse_to_write_into_the_run_they_read(tmp_path, c
 
 
 def test_readme_examples_write_only_where_git_ignores():
-    """Following the README leaves `git status` clean: every output its commands name is in an ignored directory."""
+    """Following the README and docs/USAGE.md leaves `git status` clean: every output their commands name is in an
+    ignored directory."""
     root = Path(__file__).resolve().parents[1]
     ignored = [line for line in (root / ".gitignore").read_text().splitlines() if line.endswith("/")]
-    code = "\n".join(re.findall(r"```bash\n(.*?)```", (root / "README.md").read_text(), re.S))
+    code = "\n".join(re.findall(r"```bash\n(.*?)```", "".join((root / f).read_text(encoding="utf-8")
+                                                               for f in ("README.md", "docs/USAGE.md")), re.S))
     outputs = re.findall(r"(?:-o|--out|--png|--json) (\S+)", code)
     assert len(outputs) > 20 and "runs/wiki/hungary.png" in outputs
     assert [o for o in outputs if not any(o.startswith(d) for d in ignored)] == []
