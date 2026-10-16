@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+from collections import Counter
 from dataclasses import dataclass, field
 from fractions import Fraction
 from pathlib import Path
@@ -534,18 +535,23 @@ def _a2(c: _Ctx) -> list[str]:
     est = causal.estimate(ex, wall_clock=not seq)
     causal.figure(est, c.run.figure("a2_causal.png", c.mapping))
     c.summary["A2"] = est.to_dict("records")
+    m = causal.MIN_SWITCHERS
     L = [f"## {SECTIONS['A2']}\n",
          "Two-way fixed effects on agent-rounds, `Y ~ D_cons | agent + item`, SEs clustered by agent "
          "(agents and items with a single round dropped). Item FE absorb \"same question, same answer\"; "
          "agent FE absorb ability. Treatment `D_cons` = the consensus value for the item was public before the agent's report; "
          "it is defined without reference to the agent's own answer, so a wrong answer cannot mechanically produce D=0. "
          "Identifying assumption: an agent's place in the run order is unrelated to its ability. "
+         f"Only agents whose exposure status switches (`agents_with_D_variation`) identify an effect: under {m} "
+         f"switchers a row is not identified, under {2 * m} it is weakly identified (its note says so, and the figure "
+         f"draws it grey); from {2 * m} on it reads *identified* where its 95% CI excludes 0 and *no effect detected* "
+         "where the CI covers 0, as the key findings do. "
          + ("On a message-order run only the consensus outcome under `D_cons` is estimated: the ≥1 h treatment "
             "needs a wall clock, and the latency outcome (an instant answer, as the post states it) is left out "
             "with it, although A1's *instant* column and A5's *instant only* rows, read from the same text, are "
             "shown." if seq else
-            "Latency would be the discriminating outcome (a common cause explains the same answer, not a 1-second answer on a 14-second timer); "
-            "check `agents_with_D_variation` before reading it — when few agents switch exposure status the latency estimate is uninformative.")
+            "Latency would be the discriminating outcome (a common cause explains the same answer, not a 1-second "
+            "answer on a 14-second timer).")
          + "\n",
          f"![causal](figures/{c.run.figure('a2_causal.png', c.mapping).name})\n"]
     cols = [k for k in ["outcome", "treatment", "beta", "se", "p", "n", "agents", "items",
@@ -694,13 +700,15 @@ def _a4(c: _Ctx) -> list[str]:
     feat = errors.pick_featured(vs, ss, cfg.featured_disputes, declared=ds)
     fig = None if seq else errors.figure(feat, c.run.figure("a4_errors.png", c.mapping))
     refs = errors.reference_keys(cfg.reference_values)
-    slots = feat + [s for s in vs[:12] + ss[:6] if s not in feat]
+    slots = feat + [s for s in ds + vs + ss if s not in feat]   # every disputed slot, the featured ones first
+    status = Counter(s["status"] for s in slots)
     rows = _a4_rows(slots, refs, c.cons, c.prov, seq)
-    unknown, outside = errors.unused_references(refs, set(zip(mentions["family"], mentions["item"])),
-                                                *({(s["family"], s["item"]) for s in g} for g in (vs + ss + ds, slots)))
+    unknown = errors.unused_references(refs, set(zip(mentions["family"], mentions["item"])),
+                                       {(s["family"], s["item"]) for s in slots})
     c.run.write(f"disputes_{c.mapping}", errors.dispute_rows(ds + vs + ss))
     a = c.summary["A4"] = {
         "n_value_slots_disputed": len(vs), "n_sequence_slots_disputed": len(ss),
+        "status_counts": {k: status[k] for k in errors.STATUSES},
         "rule": {"bin_hours": None if seq else errors.BIN_H, "tail_share": errors.TAIL_SHARE, "min_tail": errors.MIN_TAIL},
         "consensus_disagrees": {"slots": [s["slot"] for s in c.split], "n_value_slots": len(vs),
                                 "answer_rounds_stating_winner": c.n_split_rounds,
@@ -713,7 +721,7 @@ def _a4(c: _Ctx) -> list[str]:
                      "variant_provenance": c.prov.get(s["slot"])} if s["kind"] == "value" else {})
                  for r, s in zip(rows, slots)]}
     if refs:
-        a |= {"references_unknown": unknown, "references_outside_table": outside}
+        a["references_unknown"] = unknown
     if c.n_untimed_mn:
         a["n_mentions_untimed"] = c.n_untimed_mn
     tail = f"{Fraction(errors.TAIL_SHARE).limit_denominator(10)}"
@@ -754,13 +762,12 @@ def _a4(c: _Ctx) -> list[str]:
         L.append(_variant_note(vs, c.split, c.n_split_rounds, c.n_split_zero, c.prov, c.mapping))
     if fig:
         L.append(f"![errors](figures/{c.run.figure('a4_errors.png', c.mapping).name})\n")
+    L.append(f"All {len(slots):,} disputed slots are in the table: " + ", ".join(
+        f"{status[k]:,} {k}" for k in errors.STATUSES if status[k]) + ".\n")
     L.append(md_table(pd.DataFrame(rows), index=False, floatfmt="{:.1f}"))
     if unknown:
         L.append("Reference values that name no item or disputed slot in this run (a mistyped `family|item` key, or an item "
                  "nobody posted): " + ", ".join(f"`{k}`" for k in unknown) + ".\n")
-    if outside:
-        L.append("Reference values for disputed slots outside this table (no outcome shown): "
-                 + ", ".join(f"`{k}`" for k in outside) + ".\n")
     return L
 
 
@@ -976,18 +983,22 @@ def _kf_a1(a: dict, s: dict, seq: bool) -> str:
     return out + ". These are floors: only the posts this run captured are searched, so a copy anywhere else is invisible."
 
 
-def a2_identified(rows: list[dict]) -> tuple[list[dict], list[dict]]:
-    """A2's headline rows (the extra ``y_winner`` row aside) and those identified: an estimate on at least twice
-    ``causal.MIN_SWITCHERS`` agents that switch exposure status whose 95% CI excludes 0."""
+def a2_identified(rows: list[dict]) -> tuple[list[dict], dict[str, list[dict]]]:
+    """A2's headline rows (the extra ``y_winner`` row aside) and the same rows by ``causal.reading``, the one rule the
+    table's notes, the key findings and the report.html tile read: identified only with at least twice
+    ``causal.MIN_SWITCHERS`` agents that switch exposure status and a 95% CI that excludes 0."""
     main = [r for r in rows if r["outcome"] not in causal.OPTIONAL]
-    return main, [r for r in main if r.get("beta") is not None and r.get("ci_lo") is not None
-                  and r["agents_with_D_variation"] >= 2 * causal.MIN_SWITCHERS and (r["ci_lo"] > 0 or r["ci_hi"] < 0)]
+    by = {k: [] for k in (causal.IDENTIFIED, causal.NO_EFFECT, causal.WEAK, causal.NOT_IDENTIFIED)}
+    for r in main:
+        by[causal.reading(r["agents_with_D_variation"], r.get("ci_lo"), r.get("ci_hi"))].append(r)
+    return main, by
 
 
 def _kf_a2(rows: list[dict], s: dict, seq: bool) -> str | None:
-    main, hit = a2_identified(rows)
+    main, by = a2_identified(rows)
     if not main:
         return None
+    hit, null = by[causal.IDENTIFIED], by[causal.NO_EFFECT]
 
     def switch(rs: list[dict]) -> str:
         k = sorted({r["agents_with_D_variation"] for r in rs})
@@ -996,16 +1007,28 @@ def _kf_a2(rows: list[dict], s: dict, seq: bool) -> str | None:
     def either(key: str) -> str:
         names = [f"`{x}`" for x in dict.fromkeys(r[key] for r in main)]
         return names[0] if len(names) == 1 else ", ".join(names[:-1]) + f" or {names[-1]}"
+
+    def no_effect(r: dict) -> str:
+        return (f"`{r['outcome']}` under `{r['treatment']}`: no effect detected ({r['agents_with_D_variation']:,} agents "
+                f"switch, 95% CI {r['ci_lo']:+.2f} to {r['ci_hi']:+.2f})")
     fe = "two-way fixed effects (`Y ~ D | agent + item`, SEs clustered by agent)"
     if not hit:
-        return (f"Its effect is not identified ({switch(main)} agents switch exposure status): no estimate of "
-                f"{either('outcome')} under {either('treatment')} from {fe} rests on enough switching agents with a "
-                "95% CI that excludes 0.")
-    by = {}
+        rest = [r for r in main if r not in null]
+        if not null:
+            return (f"Its effect is not identified ({switch(main)} agents switch exposure status): no estimate of "
+                    f"{either('outcome')} under {either('treatment')} from {fe} rests on enough switching agents with a "
+                    "95% CI that excludes 0.")
+        return ((f"Not identified for {'most rows' if 2 * len(rest) > len(main) else f'{len(rest)} of the {len(main)} rows'}"
+                 f" ({switch(rest)} agents switch exposure status); " if rest else "")
+                + "; ".join(map(no_effect, null))
+                + f". From {fe}, a row is identified with at least {2 * causal.MIN_SWITCHERS} switching agents and a 95% "
+                "CI that excludes 0.")
+    by_outcome = {}
     for r in hit:   # an outcome's identified treatments, in the table's order
-        by.setdefault(r["outcome"], []).append(r)
-    rest = [r for r in main if r["outcome"] not in by]
-    others = ", ".join(f"`{o}`" for o in dict.fromkeys(r["outcome"] for r in rest))
+        by_outcome.setdefault(r["outcome"], []).append(r)
+    rest = [r for r in main if r["outcome"] not in by_outcome]
+    flat, unseen = [r for r in rest if r in null], [r for r in rest if r not in null]
+    others = ", ".join(f"`{o}`" for o in dict.fromkeys(r["outcome"] for r in unseen))
 
     def cell(rs: list[dict]) -> str:
         r = rs[0]
@@ -1013,8 +1036,9 @@ def _kf_a2(rows: list[dict], s: dict, seq: bool) -> str | None:
                 f"{r['ci_hi']:+.2f}, {r['agents_with_D_variation']:,} agents switch"
                 + "".join(f"; also under `{x['treatment']}`" for x in rs[1:]) + ")")
     return (f"Identified, from {fe}, where enough agents switch exposure status and the 95% CI excludes 0: "
-            + "; ".join(map(cell, by.values()))
-            + (f". Not identified for {others} ({switch(rest)} agents switch)" if rest else "") + ".")
+            + "; ".join(map(cell, by_outcome.values()))
+            + (". " + "; ".join(map(no_effect, flat)) if flat else "")
+            + (f". Not identified for {others} ({switch(unseen)} agents switch)" if unseen else "") + ".")
 
 
 def _kf_a3(rows: list[dict], s: dict, seq: bool) -> str:

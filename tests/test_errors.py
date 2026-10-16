@@ -177,8 +177,32 @@ def test_wiki_g5_patterns_skip_the_forecast_runner_up_list():
 
 def test_unused_references():
     refs = errors.reference_keys({"f|A": 1, "f|B": 2, "f|Typo": 3, "no-bar": 4})
-    items, disputed, tabled = {("f", "A"), ("f", "B")}, {("f", "A"), ("f", "B")}, {("f", "A")}
-    assert errors.unused_references(refs, items, disputed, tabled) == (["f|Typo", "no-bar|"], ["f|B"])
+    items, disputed = {("f", "A")}, {("f", "A"), ("f", "B")}
+    assert errors.unused_references(refs, items, disputed) == ["f|Typo", "no-bar|"]
+
+
+@pytest.fixture(scope="module")
+def fourteen_slots(tmp_path_factory):
+    """A chat whose 14 items each carry two values, three agents apiece: 14 disputed value slots."""
+    from swarmprov import pipeline
+    d = tmp_path_factory.mktemp("fourteen")
+    items = ["Poland", "Hungary", "Chile", "Spain", "Italy", "France", "Germany", "Austria", "Belgium", "Denmark",
+             "Finland", "Ireland", "Japan", "Norway"]
+    msgs = [{"id": f"m{6 * i + a}", "timestamp": (T0 + pd.Timedelta(minutes=6 * i + a)).isoformat(),
+             "author": f"agent-{a}", "text": f"I answered {item} {1 + (a >= 3) + i}.5."}
+            for i, item in enumerate(items) for a in range(6)]
+    (d / "chat.jsonl").write_text("".join(json.dumps(m) + "\n" for m in msgs))
+    (d / "cfg.json").write_text(json.dumps({"bootstrap_reps": 0}))
+    return pipeline.run_all(d / "chat.jsonl", d / "run", adapter="chat", config=str(d / "cfg.json"))
+
+
+def test_every_disputed_slot_is_in_the_table(fourteen_slots):
+    a4 = json.loads((fourteen_slots.path / "summary.json").read_text())["A4"]
+    assert a4["n_value_slots_disputed"] == len(a4["rows"]) == 14 and sum(r["featured"] for r in a4["rows"]) == 4
+    assert a4["status_counts"] == {"held": 0, "overturned": 0, "contested": 0, "contested (small n)": 14}
+    text = (fourteen_slots.path / "report.md").read_text().split("## A4")[1].split("## A5")[0]
+    assert "All 14 disputed slots are in the table: 14 contested (small n)." in text
+    assert sum(line.startswith("| all \\| ") for line in text.splitlines()) == 14
 
 
 def _true_values(truth):
@@ -210,7 +234,8 @@ def test_synthetic_a4_against_truth(synth_run):
     # every true value the swarm never posted is listed, so a mistyped key would be too
     posted = set(zip(truth["family"], truth["item"]))
     assert summary["references_unknown"] == sorted(k for k in cfg["reference_values"] if tuple(k.split("|")) not in posted)
-    assert summary["references_unknown"] and summary["references_outside_table"] == []
+    assert summary["references_unknown"] and "references_outside_table" not in summary
+    assert summary["status_counts"] == {k: sum(r["status"] == k for r in rows) for k in errors.STATUSES}
     a4 = (run.path / "report.md").read_text().split("## A4")[1].split("## A5")[0]
     assert "NaT" not in a4 and "analyst input" in a4 and "| status |" in a4
     assert "last 1/3 of carriers" in a4 and "3-hour bin" in a4 and "at least 5 late carriers in all" in a4

@@ -35,6 +35,19 @@ def _within_variation(df: pd.DataFrame, d: str) -> int:
 
 
 MIN_SWITCHERS = 10  # agents whose exposure status varies across their rounds
+# how A2 reads a row (``reading``): the table's notes, the key findings and the report.html tile
+IDENTIFIED, NO_EFFECT, WEAK, NOT_IDENTIFIED = "identified", "no effect detected", "weakly identified", "not identified"
+
+
+def reading(k: int, ci_lo, ci_hi, min_switchers: int = MIN_SWITCHERS) -> str:
+    """A row with ``k`` agents that switch exposure status: not identified under ``min_switchers`` or with no
+    estimate, weakly identified under twice that, else identified where its 95% CI excludes 0 and no effect detected
+    where it covers 0."""
+    if k < min_switchers or ci_lo is None or ci_lo != ci_lo:
+        return NOT_IDENTIFIED
+    if k < 2 * min_switchers:
+        return WEAK
+    return IDENTIFIED if ci_lo > 0 or ci_hi < 0 else NO_EFFECT
 
 
 def estimate(ex: pd.DataFrame, min_switchers: int = MIN_SWITCHERS, wall_clock: bool = True) -> pd.DataFrame:
@@ -71,6 +84,9 @@ def estimate(ex: pd.DataFrame, min_switchers: int = MIN_SWITCHERS, wall_clock: b
                         t = fit.tidy().loc[d]
                         row.update(beta=t["Estimate"], se=t["Std. Error"], p=t["Pr(>|t|)"],
                                    ci_lo=t["2.5%"], ci_hi=t["97.5%"])
+                        k = row["agents_with_D_variation"]
+                        if reading(k, row["ci_lo"], row["ci_hi"], min_switchers) == WEAK:
+                            row["note"] = f"weakly identified: only {k} agents switch (< {2 * min_switchers})"
                     except Exception as e:  # singular designs etc.
                         row["error"] = str(e)[:120]
             rows.append(row)
@@ -185,7 +201,7 @@ def estimate_dose(ex: pd.DataFrame, min_sd: float = MIN_DOSE_SD, min_bin_agents:
                                  f"{vary} in the outcome")
             if "note" in terms[DOSE_REF]:
                 for b in HEAD_BINS:
-                    terms[b].setdefault("note", f"not identified: the {DOSE_REF} reference bin is not")
+                    terms[b].setdefault("note", f"not identified: the {DOSE_REF} reference bin is not identified")
             fits = [(f"{y} ~ log_head", {"log_head": SLOPE}),
                     (f"{y} ~ i(head_bin, ref='{DOSE_REF}')", {f"head_bin::{b}": b for b in HEAD_BINS if b != DOSE_REF})]
             for formula, names in fits:

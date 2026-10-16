@@ -325,7 +325,7 @@
     "loo_lo": null,
     "loo_hi": null,
     "var_share_top2": null,
-    "note": "not identified: the <1h reference bin is not"
+    "note": "not identified: the <1h reference bin is not identified"
    },
    {
     "outcome": "y_instant|known",
@@ -348,7 +348,7 @@
     "loo_lo": null,
     "loo_hi": null,
     "var_share_top2": null,
-    "note": "not identified: the <1h reference bin is not"
+    "note": "not identified: the <1h reference bin is not identified"
    },
    {
     "outcome": "y_instant|known",
@@ -440,7 +440,7 @@
     "loo_lo": null,
     "loo_hi": null,
     "var_share_top2": null,
-    "note": "not identified: the <1h reference bin is not"
+    "note": "not identified: the <1h reference bin is not identified"
    },
    {
     "outcome": "y_instant",
@@ -463,7 +463,7 @@
     "loo_lo": null,
     "loo_hi": null,
     "var_share_top2": null,
-    "note": "not identified: the <1h reference bin is not"
+    "note": "not identified: the <1h reference bin is not identified"
    },
    {
     "outcome": "y_instant",
@@ -497,6 +497,12 @@
  "A4": {
   "n_value_slots_disputed": 3,
   "n_sequence_slots_disputed": 0,
+  "status_counts": {
+   "held": 0,
+   "overturned": 0,
+   "contested": 1,
+   "contested (small n)": 2
+  },
   "rule": {
    "bin_hours": 3.0,
    "tail_share": 0.3333333333333333,
@@ -658,8 +664,7 @@
   ],
   "references_unknown": [
    "alpha-task|Alaska"
-  ],
-  "references_outside_table": []
+  ]
  },
  "A5": {
   "n_nodes": 60,

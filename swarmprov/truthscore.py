@@ -240,12 +240,14 @@ def main(run: RunDir, truth_dir: str | Path, mapping: str = "merged") -> int:
         print(e)
         return 1
     d, a2, a2_txt = r["D"], r["A2"], ""
-    if a2 and (a2["note"] or a2["beta"] is None):
-        a2_txt = f"; A2 {a2['note'] or 'not estimated'}"
-    elif a2:
+    note = (a2 or {}).get("note") or ""
+    if a2 and (note.startswith("not ") or a2["beta"] is None):
+        a2_txt = f"; A2 {note or 'not estimated'}"
+    elif a2:   # a weakly identified estimate keeps its note beside it
         a2_txt = f"; A2 beta {a2['beta']:.3f} " + (
             "(no round was public at arrival: no true effect to compare)" if a2["covers"] is None else
-            f"against a true {a2['true_effect']:.3f} ({'inside' if a2['covers'] else 'outside'} its 95% CI)")
+            f"against a true {a2['true_effect']:.3f} ({'inside' if a2['covers'] else 'outside'} its 95% CI)") + (
+            f", {note}" if note else "")
     print(f"truth score {LABEL} ({mapping} mapping), {r['rounds']['matched']} of {r['rounds']['truth']} true rounds "
           f"matched: D agrees with on-the-board-at-arrival for {d['accuracy_vs_public_at_arrival']:.0%} of rounds, "
           f"with an earlier post of the value for {d['accuracy_vs_earlier_copy']:.0%}{a2_txt}")

@@ -167,7 +167,8 @@ def test_dose_gates_say_why_a_row_is_not_identified():
     # a thin reference leaves every bin unidentified, but not the slope; 20 agents in a bin but 14 in the reference
     thin = _dose(_panel(30, [3, 30, 10]), _panel(4, [0.5, 30], "d"))
     assert thin.loc[causal.DOSE_REF, "note"] == "not identified: only 4 agents have a round here and in another bin"
-    assert (thin.loc[["1-6h", "6-24h", ">24h"], "note"] == "not identified: the <1h reference bin is not").all()
+    assert (thin.loc[["1-6h", "6-24h", ">24h"], "note"]
+            == "not identified: the <1h reference bin is not identified").all()
     assert pd.notna(thin.loc[causal.SLOPE, "beta"]) and thin.loc[["1-6h", "6-24h", ">24h"], "beta"].isna().all()
     ref14 = _dose(_panel(30, [3, 30]), _panel(14, [0.5, 30], "e"))
     assert ref14.loc["1-6h", "note"] == "shape only: 14 agents inform the <1h reference (< 20)"

@@ -21,6 +21,7 @@ from pathlib import Path
 import pandas as pd
 
 from . import query
+from .analysis import causal
 from .claims import value_key
 from .fmt import dumps, json_safe, pct
 from .graph import CLOCK_RES_S, KINDS, RELAY_KINDS
@@ -274,12 +275,17 @@ def tiles(summary: dict) -> list[tuple[str, str, str]]:
     if rng := top10_range(summary.get("A5") or {}):
         out.append((rng[0], "top-10 source share", f"of {rng[1]:,} exposed answers, across attribution rules"))
     if (tv := (summary.get("A6") or {}).get("task values")) and tv.get("max_hops") is not None:
-        out.append((f"{tv['max_hops']:,}", "longest relay chain (hops)", "inferred paths, not proven ones"))
+        out.append((f"{tv['max_hops']:,}", "longest task-value relay chain (hops)", "inferred paths, not proven ones"))
     if summary.get("A2"):
-        main, hit = a2_identified(summary["A2"])
-        if main:
-            out.append(("identified" if hit else "not identified", "does availability cause copying?",
-                        "A2: two-way fixed effects on agent-rounds"))
+        main, by = a2_identified(summary["A2"])
+        null = sorted(by[causal.NO_EFFECT], key=lambda r: -r["agents_with_D_variation"])
+        if main and null and not by[causal.IDENTIFIED]:
+            r = null[0]
+            out.append((causal.NO_EFFECT, "does availability cause copying?",
+                        f"A2: {r['agents_with_D_variation']:,} agents switch, 95% CI {r['ci_lo']:+.2f} to {r['ci_hi']:+.2f}"))
+        elif main:
+            out.append((causal.IDENTIFIED if by[causal.IDENTIFIED] else causal.NOT_IDENTIFIED,
+                        "does availability cause copying?", "A2: two-way fixed effects on agent-rounds"))
     return out
 
 

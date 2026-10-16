@@ -5,6 +5,7 @@ import copy
 import json
 import re
 
+import pandas as pd
 import pytest
 
 from swarmprov import report
@@ -127,8 +128,9 @@ def sentinels(synth):
         i = _row(a2, outcome=outcome, treatment="D_cons")
         put |= {("A2", i, "agents_with_D_variation"): sw, ("A2", i, "beta"): beta, ("A2", i, "ci_lo"): lo,
                 ("A2", i, "ci_hi"): hi}
-    for k, treatment in enumerate(("D_cons", "D_cons_w60m")):
-        put[("A2", _row(a2, outcome="y_consensus", treatment=treatment), "agents_with_D_variation")] = 1026 + k
+    for k, (treatment, lo, hi) in enumerate((("D_cons", -0.112, 0.143), ("D_cons_w60m", -0.054, 0.165))):
+        i = _row(a2, outcome="y_consensus", treatment=treatment)
+        put |= {("A2", i, "agents_with_D_variation"): 1026 + k, ("A2", i, "ci_lo"): lo, ("A2", i, "ci_hi"): hi}
     for rule, n, share in (("first source", 2468, 0.712), ("latest source", 2468, 0.234),
                            ("same-page relay parent", 1357, 0.123)):   # the relay parent's share is the lowest
         i = _row(a5, rule=rule, answers="all exposed")
@@ -152,7 +154,9 @@ def test_each_printed_number_is_the_field_it_names(sentinels):
               "at most 1,234 were independent lookups (1,111 under `D_visible`",
               "`y_instant` under `D_cons` +0.81 (95% CI +0.62 to +0.93, 1,024 agents switch",
               "`y_instant|known` under `D_cons` +0.82 (95% CI +0.63 to +0.94, 1,025 agents switch",
-              "Not identified for `y_consensus` (1,026–1,027 agents switch)", "`census` 39% (1,212 of 3,232)",
+              ". `y_consensus` under `D_cons`: no effect detected (1,026 agents switch, 95% CI -0.11 to +0.14); "
+              "`y_consensus` under `D_cons_w60m`: no effect detected (1,027 agents switch, 95% CI -0.05 to +0.17).",
+              "`census` 39% (1,212 of 3,232)",
               "the top 10 sources supplied 23–71% of 2,468 exposed answers",
               "71% credited to the first agent to post the value (out-degree Gini 0.47; leaving out any one item moves "
               "it between 65% and 78%)", "23% to the latest earlier carrier", "12% of the 1,357 with a same-page relay parent",
@@ -181,6 +185,8 @@ def test_the_tile_takes_the_range_the_headline_states(sentinels):
     from swarmprov import html
     t, _, _ = sentinels
     assert ("23–71%", "top-10 source share", "of 2,468 exposed answers, across attribution rules") in html.tiles(t)
+    # the chain tile reads the task values' longest chain, not the URLs'
+    assert ("19", "longest task-value relay chain (hops)", "inferred paths, not proven ones") in html.tiles(t)
 
 
 def test_a3_in_a_catch_all_run_counts_every_active_agent(sentinels):
@@ -205,21 +211,58 @@ def _a2(switch, lo, hi, outcome="y_instant", beta=0.5):
             "agents_with_D_variation": switch}
 
 
-@pytest.mark.parametrize("rows,identified", [
-    ([_a2(2 * causal.MIN_SWITCHERS, 0.1, 0.9)], True),
-    ([_a2(2 * causal.MIN_SWITCHERS - 1, 0.1, 0.9)], False),   # too few switchers, whatever the interval
-    ([_a2(40, -0.1, 0.9)], False),                             # the interval covers 0
-    ([_a2(40, -0.9, -0.2, beta=-0.5)], True),                  # a negative effect counts too
-    ([_a2(3, None, None, beta=None), _a2(40, 0.1, 0.9, outcome="y_winner")], False),   # the extra row is no headline
+@pytest.mark.parametrize("rows,reading", [
+    ([_a2(2 * causal.MIN_SWITCHERS, 0.1, 0.9)], causal.IDENTIFIED),
+    ([_a2(2 * causal.MIN_SWITCHERS - 1, 0.1, 0.9)], causal.WEAK),   # too few switchers, whatever the interval
+    ([_a2(causal.MIN_SWITCHERS - 1, 0.1, 0.9)], causal.NOT_IDENTIFIED),
+    ([_a2(40, -0.1, 0.9)], causal.NO_EFFECT),                       # enough switchers, the interval covers 0
+    ([_a2(40, -0.9, -0.2, beta=-0.5)], causal.IDENTIFIED),          # a negative effect counts too
+    ([_a2(3, None, None, beta=None), _a2(40, 0.1, 0.9, outcome="y_winner")], causal.NOT_IDENTIFIED),   # no headline
 ])
-def test_a2_is_identified_only_with_switchers_and_an_interval_off_zero(rows, identified):
+def test_a2_reads_each_row_by_its_switchers_and_interval(rows, reading):
+    """One rule (``causal.reading``) for the key finding, the tile and the table's notes: a weakly identified row
+    counts as not identified in the key finding."""
+    from swarmprov import html
     s = {"profile": {"n_events": 10}, "A2": rows}
     (bullet,) = [b for b in report.key_findings(s) if "A2." in b]
-    assert ("Identified" in bullet) is identified and ("not identified" in bullet) is not identified
-    if not identified:
-        main = [r["agents_with_D_variation"] for r in rows if r["outcome"] != "y_winner"]
-        k = f"{min(main)}" + (f"–{max(main)}" if min(main) != max(main) else "")
-        assert f"not identified ({k} agents switch exposure status)" in bullet
+    r = rows[0]
+    assert causal.reading(r["agents_with_D_variation"], r["ci_lo"], r["ci_hi"]) == reading
+    assert bullet.startswith("- **A2. Does availability cause copying?** Identified") is (reading == causal.IDENTIFIED)
+    assert ("no effect detected (40 agents switch, 95% CI -0.10 to +0.90)" in bullet) is (reading == causal.NO_EFFECT)
+    if reading in (causal.WEAK, causal.NOT_IDENTIFIED):
+        assert f"not identified ({r['agents_with_D_variation']} agents switch exposure status)" in bullet
+    (tile,) = [t for t in html.tiles(s) if t[1] == "does availability cause copying?"]
+    assert tile[0] == {causal.WEAK: causal.NOT_IDENTIFIED}.get(reading, reading)
+
+
+def test_a2_weak_and_flat_rows_beside_unidentified_ones():
+    """The wiki's shape: most rows not identified, one with enough switchers and no effect detected."""
+    from swarmprov import html
+    rows = [_a2(17, -0.2, 0.06), _a2(37, -0.338, 0.112, beta=-0.11) | {"treatment": "D_cons_w60m"},
+            _a2(4, None, None, beta=None, outcome="y_consensus"), _a2(3, None, None, beta=None, outcome="y_consensus")]
+    (bullet,) = [b for b in report.key_findings({"profile": {"n_events": 10}, "A2": rows}) if "A2." in b]
+    assert ("Not identified for most rows (3–17 agents switch exposure status); `y_instant` under `D_cons_w60m`: no "
+            "effect detected (37 agents switch, 95% CI -0.34 to +0.11). From two-way fixed effects") in bullet
+    assert "a row is identified with at least 20 switching agents and a 95% CI that excludes 0." in bullet
+    assert ("no effect detected", "does availability cause copying?", "A2: 37 agents switch, 95% CI -0.34 to +0.11") \
+        in html.tiles({"A2": rows})
+
+
+def test_the_a2_table_notes_weak_rows(synth_null):
+    """Estimated rows under twice the minimum of switchers carry the weak note; rows below the minimum the old one."""
+    est = causal.estimate(synth_null[0].read("exposures_merged"), min_switchers=15)
+    for r in est.itertuples():
+        want = causal.reading(r.agents_with_D_variation, r.ci_lo, r.ci_hi, 15)
+        if want == causal.WEAK:
+            assert r.note == f"weakly identified: only {r.agents_with_D_variation} agents switch (< 30)"
+        elif r.agents_with_D_variation < 15:
+            assert r.note.startswith("not identified: only")
+        else:
+            assert pd.isna(r.note)
+    assert (est["note"].fillna("").str.startswith("weakly")).any()
+    text = (synth_null[0].path / "report.md").read_text()
+    assert ("Only agents whose exposure status switches (`agents_with_D_variation`) identify an effect: under 10 "
+            "switchers a row is not identified, under 20 it is weakly identified") in text
 
 
 def test_a2_names_the_headline_rows_it_could_not_identify():

@@ -37,6 +37,7 @@ from ..rules import norm_value
 # that can overturn the first variant
 BIN_H, TAIL_SHARE, MIN_TAIL = 3.0, 1 / 3, 5
 SPARSE_BIN = 3   # the figure draws a bin with fewer new carriers than this faint
+STATUSES = ("held", "overturned", "contested", "contested (small n)")
 
 
 def slot_rule(seq: bool) -> dict:
@@ -106,12 +107,9 @@ def reference_keys(values: dict) -> dict[tuple[str, str], str]:
     return out
 
 
-def unused_references(refs: dict, items: set, disputed: set, tabled: set) -> tuple[list[str], list[str]]:
-    """Reference keys naming no item or disputed slot (a mistyped key surfaces here), and those for
-    disputed slots left out of the table."""
-    def keys(pairs):
-        return sorted(f"{f}|{i}" for f, i in pairs)
-    return keys(set(refs) - disputed - items), keys(set(refs) & (disputed - tabled))
+def unused_references(refs: dict, items: set, disputed: set) -> list[str]:
+    """Reference keys naming no item or disputed slot (a mistyped key surfaces here)."""
+    return sorted(f"{f}|{i}" for f, i in set(refs) - disputed - items)
 
 
 def _key(v) -> str:

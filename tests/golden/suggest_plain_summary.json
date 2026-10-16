@@ -29,6 +29,12 @@
  "A4": {
   "n_value_slots_disputed": 0,
   "n_sequence_slots_disputed": 0,
+  "status_counts": {
+   "held": 0,
+   "overturned": 0,
+   "contested": 0,
+   "contested (small n)": 0
+  },
   "rule": {
    "bin_hours": 3.0,
    "tail_share": 0.3333333333333333,
