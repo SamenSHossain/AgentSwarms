@@ -12,7 +12,7 @@ import pandas as pd
 from . import identity, lifecycle as lifecycle_mod, roster as roster_mod, village as village_mod
 from .adapters.base import read_capabilities
 from .analysis import causal, diffusion, errors, origins, provenance, structure
-from .claims import agent_rounds
+from .claims import agent_rounds, public
 from .schema import TABLES, RunDir
 
 
@@ -22,7 +22,8 @@ CONSEQUENCES = {
     "has_order": ("posts can be put in order: by the wall clock, or by message position when there is none",
                   "no reliable order: only posts with a timestamp take part in time comparisons"),
     "has_explicit_author": ("authors come from fields, not parsed signatures", "authors are parsed from signatures in the text"),
-    "has_reads": ("read events are recorded; exposure is still inferred from what was public",
+    "has_reads": ("tool results are recorded as reads by the agent that called the tool (A1 counts own lookups); "
+                  "exposure to other agents' posts is still inferred from what was public",
                   "no read events, so exposure is inferred from what was public"),
     "has_lifecycle": ("deletions are recorded, posts carry visible_until, and A1 states D_visible beside D",
                       "no deletions are recorded, so D_visible equals D"),
@@ -231,7 +232,7 @@ def build(run: RunDir, mapping: str = "merged") -> str:
     if missing and len(ex.columns):   # a 0x0 table from a run with no agent-rounds has nothing to miss
         raise SystemExit(f"{run.path}: the exposure tables predate this version (no {', '.join(missing)}); "
                          f"rerun `swarmprov expose {run.path}`, then `graph` and `report`")
-    claims, tags, mentions = run.read("claims"), run.read("tags"), run.read("mentions")
+    claims, tags, mentions = run.read("claims"), run.read("tags"), public(run.read("mentions"))
     edges, chains = run.read(f"edges_{mapping}"), run.read(f"chains_{mapping}")
     events = run.read("events")
     notes = prof.get("notes") or {}
@@ -297,6 +298,11 @@ def build(run: RunDir, mapping: str = "merged") -> str:
                     f", {_pct(r1['share_exposed_60m'])} at least an hour before (robust to the unknown lag between a question's arrival and its report). "
                     f"Median head start: {r1['median_gap_h']:.1f} h. ")
                  + f"In {_pct(r1['share_self_prepared'])} of rounds the agent itself had posted the answer in advance.\n")
+        kinds = set(events["source_kind"].dropna())
+        if kinds & {"tool_result", "task"}:
+            fw = provenance.framework_split(ex, tools="tool_result" in kinds, task="task" in kinds)
+            summary["A1"].update(fw)
+            L.append(_framework_a1(fw, r1["n_independent"], r1["n_answers"]) + "\n")
         if seq:
             L.append(_needs_clock("The ≥10 min and ≥1 h shares and the head start in hours") + "\n")
         if untimed:
@@ -624,6 +630,29 @@ def _a1_gap(claims: pd.DataFrame, rounds: pd.DataFrame, family_hint: str) -> str
     return f"none of the {len(rounds):,} agent-rounds has a timestamp, so nothing can be ordered against them"
 
 
+def _framework_a1(fw: dict, n_ind: int, n: int) -> str:
+    """A1 on a framework trace: the answers the agent's own tool output, or the task, carried first."""
+    out = []
+    if "n_own_lookup" in fw:
+        look, both = fw["n_own_lookup"] + fw["n_exposed_with_own_lookup"], fw["n_exposed_with_own_lookup"]
+        out.append(f"Of {n_ind:,} with no earlier public copy, {fw['n_own_lookup']:,} were preceded by the agent's own tool "
+                   f"output (*own lookup preceded report*, `own_lookup_evidence`). Over all {n:,} answers: "
+                   f"{fw['n_exposed_no_lookup']:,} ({_pct(fw['n_exposed_no_lookup'] / n)}) had a public copy first and no "
+                   f"own lookup, {look:,} ({_pct(look / n)}) an own lookup first" + (f" ({both:,} of them with an earlier public "
+                                                                                     "copy too)" if both else "")
+                   + f", {fw['n_neither']:,} ({_pct(fw['n_neither'] / n)}) neither. A lookup is evidence that the agent "
+                   "fetched the value, not proof that it computed it: a tool can echo a value the agent passed in.")
+    if "n_given_in_task" in fw:
+        g, g0 = fw["n_given_in_task"], fw["n_given_in_task_no_public_copy"]
+        out.append(f"{g:,} answer{'s' * (g != 1)} had the value given in the task (a system or user message carried "
+                   "the item and value before the report)" + (f"; {g0:,} of them had no earlier public copy, so the "
+                                                              "independent count above includes them" if g0 else "")
+                   + ". Task messages are not agents' posts: they are no public copy and no source in A5."
+                   if g else "No answer had its value given in the task: no system or user message carried the item and "
+                             "value before the report.")
+    return " ".join(out)
+
+
 def _a5_gap(mentions: pd.DataFrame, agent_col: str, ex: pd.DataFrame, untimed: int, joined: bool) -> str:
     """Why the provenance graph has no edge, from what each edge kind needs: relay edges a fact two agents carried
     in timed posts, exposure edges an exposed answer, citation edges a post naming another agent."""
@@ -642,7 +671,10 @@ def _funnel_counts(events: pd.DataFrame, tags: pd.DataFrame, claims: pd.DataFram
                    catch_all: str | None = None) -> dict:
     """``summary['funnel']`` (all zeros for a run with no posts)."""
     a = claims[claims["event_type"] == "answer"] if len(claims) else pd.DataFrame(columns=["item", "value_norm", "family"])
-    return {"posts": len(events), "posts_with_family": int(events["family"].fillna("").astype(bool).sum()) if len(events) else 0,
+    kinds = events["source_kind"].value_counts() if "source_kind" in events else pd.Series(dtype=int)
+    private = {"task_messages": int(kinds.get("task", 0)), "tool_results": int(kinds.get("tool_result", 0))}
+    return {"posts": len(events), **(private if any(private.values()) else {}),
+            "posts_with_family": int(events["family"].fillna("").astype(bool).sum()) if len(events) else 0,
             "answer_posts": int(tags["is_answer"].fillna(False).astype(bool).sum()) if len(tags) else 0,
             "answer_claims": len(a), "answer_claims_no_item": int(a["item"].isna().sum()),
             "answer_claims_no_value": int(a["value_norm"].isna().sum()),
@@ -655,7 +687,10 @@ def _funnel(events, tags, claims, rounds, mapping: str, catch_all: str | None, s
     """Where posts dropped out on the way to an agent-round (also ``summary['funnel']``)."""
     f = summary["funnel"] = _funnel_counts(events, tags, claims, rounds, catch_all)
     c = {k: f"{v:,}" for k, v in f.items() if isinstance(v, int)}
-    rows = [("posts", c["posts"], "posts"),
+    t, r = f.get("task_messages", 0), f.get("tool_results", 0)
+    private = (f"posts; {t:,} task message{'s' * (t != 1)} (system or user) and {r:,} tool result{'s' * (r != 1)} among "
+               "them are not agents' posts and give no claims") if "tool_results" in f else "posts"
+    rows = [("posts", c["posts"], private),
             ("with a task family", c["posts_with_family"],
              f"posts; the catch-all family `{catch_all}`, because no families are configured" if catch_all else "posts"),
             ("with an answer report", c["answer_posts"], "posts saying answered, submitted, replied or responded"),

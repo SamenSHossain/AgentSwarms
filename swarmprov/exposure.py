@@ -27,11 +27,21 @@ with a wiki timestamp.
 * ``src_latest`` / ``t_latest``  the *latest* other carrier before the report, a
   second attribution rule beside the first public copy (A5 reports both).
 
+Framework traces add two private sources (``claims.PRIVATE_KINDS``), which never
+count as a public copy, for the agent or for anyone else:
+
+* ``t_own_lookup``  the agent's own tool output carried the item and value
+  before the report; ``own_lookup_evidence`` = D=0 and such a lookup, i.e. *own
+  lookup preceded report*.  Not "computed": a tool can echo a value the agent
+  passed in.
+* ``t_task``  a task message (system or user prompt) carried them before the
+  report: the value was given in the task.
+
 Each time is kept with the post behind it: ``report_event_id`` (the report),
 ``src_event_id`` / ``src_channel`` (the first public copy), ``latest_event_id`` (the
 latest), ``src_visible_event_id`` (the first copy still visible) and ``self_event_id``
-(the agent's own earlier post).  Copies posted in the same second are taken in
-event_id order, so the chosen post does not depend on row order.
+(the agent's own earlier post), ``own_lookup_event_id`` and ``task_event_id``.  Copies
+posted in the same second are taken in event_id order, so the chosen post does not depend on row order.
 
 Under a sequence clock (``wall_clock=False``: times are message positions) ``gap_s``,
 ``D_w10m``, ``D_w60m`` and ``D_cons_w60m`` are NA, since positions are not seconds.
@@ -42,7 +52,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from .claims import value_key
+from .claims import PRIVATE_KINDS, value_key
 
 
 def match_key(value_norm, consensus) -> str | None:
@@ -58,6 +68,7 @@ def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: s
     the map are public to all).  A round whose report has no timestamp is dropped:
     nothing can be ordered against it (the report counts these)."""
     m = mentions[mentions["family"] != "url"]
+    m = m.assign(_kind=m["source_kind"] if "source_kind" in m else None)
     groups = {k: g.sort_values(["ts", "event_id"], kind="stable") for k, g in m.groupby(["family", "item", "value_key"])}
     audience = audience or {}
 
@@ -74,10 +85,17 @@ def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: s
         target = match_key(r.value_norm, cv)
         t_pub = src = t_self = src_ev = src_ch = vis_ev = self_ev = t_last = src_last = last_ev = None
         g = groups.get((r.family, r.item, target)) if target else None
-        t_vis = t_src_del = None
+        t_vis = t_src_del = t_look = look_ev = t_task = task_ev = None
         src_gone = False
         if g is not None:
             before = readable(g[g["ts"] < r.t_report], r.agent)
+            look = before[(before["_kind"] == "tool_result") & (before[agent_col] == r.agent)]
+            if len(look):
+                t_look, look_ev = look["ts"].iloc[0], look["event_id"].iloc[0]
+            task = before[before["_kind"] == "task"]
+            if len(task):
+                t_task, task_ev = task["ts"].iloc[0], task["event_id"].iloc[0]
+            before = before[~before["_kind"].isin(PRIVATE_KINDS)]
             others = before[before[agent_col] != r.agent]
             if len(others):
                 first, last = others.iloc[0], others.iloc[-1]
@@ -102,7 +120,8 @@ def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: s
         t_cons = None
         gc = groups.get((r.family, r.item, cv)) if cv else None
         if gc is not None:
-            oc = readable(gc[(gc["ts"] < r.t_report) & (gc[agent_col] != r.agent)], r.agent)
+            oc = readable(gc[(gc["ts"] < r.t_report) & (gc[agent_col] != r.agent) & ~gc["_kind"].isin(PRIVATE_KINDS)],
+                          r.agent)
             if len(oc):
                 t_cons = oc["ts"].iloc[0]
         gap_c = (r.t_report - t_cons).total_seconds() if t_cons is not None else np.nan
@@ -133,6 +152,9 @@ def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: s
             "src_deleted_before_report": int(src_gone), "t_src_deleted": t_src_del,
             "src_event_id": src_ev, "src_channel": src_ch, "src_visible_event_id": vis_ev, "self_event_id": self_ev,
             "src_latest": src_last, "t_latest": t_last, "latest_event_id": last_ev,
+            "t_own_lookup": t_look, "own_lookup_event_id": look_ev,
+            "own_lookup_evidence": int(t_pub is None and t_look is not None),
+            "t_task": t_task, "task_event_id": task_ev,
         })
     out = pd.DataFrame(rows)
     if len(out):

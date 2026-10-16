@@ -2,8 +2,8 @@
 
 Prints each adapter's sniff in detection order (with the error a sniff raised).  Unless another adapter claims the
 input, it then shows what the chat reader finds: the first record's keys, the key each canonical field resolved to,
-coverage over a sample, and a ``{"fields": ...}`` snippet for ``--config`` guessed from key names and values.  It
-only suggests: nothing is applied or written.
+coverage over a sample (and the framework roles, when messages carry them), and a ``{"fields": ...}`` snippet for
+``--config`` guessed from key names and values.  It only suggests: nothing is applied or written.
 """
 
 from __future__ import annotations
@@ -14,6 +14,7 @@ from pathlib import Path
 import pandas as pd
 
 from . import adapters, remote
+from .adapters import framework
 from .adapters.base import FIELD_NAMES, AdapterConfig, check_fields, config_snippet
 from .adapters.chat import FORMATS, URLISH, _pick, _resolve, _text, _to_ts, read_messages
 
@@ -85,11 +86,18 @@ def inspect(path, config: str | None = None, fields: dict | None = None) -> int:
             keys = "the container (a {room: [...]} key, an export's channel name, a file name)"
         print(f"  {f:<10} <- {keys or '(none)'}{how}")
     n_ts = sum(pd.notna(_to_ts(_pick(m, "ts", fields))) for m in recs)
-    n_auth = sum(bool(_pick(m, "author", fields) or _pick(m, "author_alt", fields)) for m in recs)
+    who = [_pick(m, "author", fields) or _pick(m, "author_alt", fields) for m in recs]
+    roles = [framework.role(m, w) for m, w in zip(recs, who)]
+    n_auth = sum(bool(w) or r in ("task", "tool") for w, r in zip(who, roles))   # ingest names these `task` / the caller
     n_text = sum(bool(_text(_pick(m, "text", fields)).strip()) for m in recs)
     channels = {str(_pick(m, "channel", fields) or c or "main") for m, c, _ in sample}
     print(f"\ncoverage: timestamps read {n_ts / n:.0%}, authors known (not `unknown`) {n_auth / n:.0%}, "
           f"text non-empty {n_text / n:.0%}, {len(channels):,} channel{'s' if len(channels) > 1 else ''}")
+    kinds = Counter(roles)
+    if set(kinds) != {None}:
+        print(f"framework roles: {kinds['agent']:,} agent turns, {kinds['task']:,} task messages (system or user: author "
+              f"`task`), {kinds['tool']:,} tool results (the calling agent's own reads, not posts)"
+              + (f", {kinds[None]:,} with no role (ordinary posts)" if kinds[None] else ""))
     weak = [f for f in GUESS if f not in fields and sum(found[f].values()) < n / 2]
     taken = set(fields.values()) | {k for h in found.values() for k in h}
     guessed = guess_fields(recs, weak, taken)

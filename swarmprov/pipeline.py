@@ -128,12 +128,17 @@ def extract(run: RunDir, llm: str | None = None) -> None:
         _log(f"  shared goals cover {int(era_ann['era'].notna().sum())}/{len(ev)} posts")
     if ann is not None:
         run.write("roster_events", ann)
-    ev["family"] = fam
-    run.write("events", ev)
     caps = read_capabilities(json.loads((run.path / "profile.json").read_text()))
     agents = identity.resolve(ev, fam, cfg, explicit_author=caps.get("has_explicit_author", False))
     if ann is not None and "roster_agent" in ann:
         agents = roster_mod.merge_agents(agents, ev, ann, ros)
+    # a tool result is part of its caller's work: one that names no family of its own takes the caller's
+    tool = (ev["source_kind"] == "tool_result") & ~fam.astype(bool)
+    if tool.any():
+        fam = fam.where(~tool, ev["author_raw"].map(agents.drop_duplicates("author_raw").set_index("author_raw")["family"])
+                        .fillna(""))
+    ev["family"] = fam
+    run.write("events", ev)
     run.write("agents", agents)
     run.write_csv("agent_aliases", identity.alias_table(agents))
     learned = rules.learn_items(ev, fam, cfg)
@@ -142,11 +147,12 @@ def extract(run: RunDir, llm: str | None = None) -> None:
     (run.path / "items.json").write_text(json.dumps({k: sorted(v) for k, v in learned.items()}, indent=1))
     im = _matcher(learned)
     _log("rule extraction")
-    cl, tags = rules.extract(ev, fam, agents, cfg, im)
+    own = ~ev["source_kind"].isin(claims_mod.PRIVATE_KINDS)   # task messages and tool results are no agent's claims
+    cl, tags = rules.extract(ev[own], fam[own], agents, cfg, im)
     if llm:
         from . import extract_llm
         _log(f"LLM extraction with {llm}")
-        llm_cl = extract_llm.run(ev, fam, agents, model=llm, cache_dir=run.path / "llm_cache")
+        llm_cl = extract_llm.run(ev[own], fam[own], agents, model=llm, cache_dir=run.path / "llm_cache")
         cl = extract_llm.merge(cl, llm_cl)
     seqs = rules.learn_sequences(ev, fam, im)
     cl = claims_mod.fill_episodes(cl, sequences=seqs) if len(cl) else cl
@@ -179,11 +185,11 @@ def expose(run: RunDir) -> None:
     learned = json.loads((run.path / "items.json").read_text())
     im = _matcher(learned)
     targets = set(zip(cl["family"], cl["item"])) if len(cl) else set()
-    _log("index public mentions")
+    _log("index item-value mentions")
     mn = claims_mod.index_mentions(ev, ev["family"].fillna(""), agents, im, targets)
     if mn.empty:
         mn = pd.DataFrame(columns=["event_id", "ts", "agent_strict", "agent_merged", "channel", "family",
-                                   "item", "value_norm", "value_key"])
+                                   "item", "value_norm", "source_kind", "value_key"])
     if "visible_until" in ev and len(mn):  # a deleted copy stops being public: exposure reports D_visible beside D
         vu = ev[["event_id"]].assign(visible_until=pd.to_datetime(ev["visible_until"], utc=True, errors="coerce"))
         mn = mn.merge(vu.drop_duplicates("event_id"), on="event_id", how="left")
@@ -214,7 +220,8 @@ def build_graph(run: RunDir) -> None:
     res = None if json.loads((run.path / "profile.json").read_text()).get("clock") == "sequence" else graph.CLOCK_RES_S
     for name, col in AGENT_COLS.items():
         ex = run.read(f"exposures_{name}")
-        rel, chains = graph.relay_edges(mn, col, res) if len(mn) else (pd.DataFrame(), pd.DataFrame())
+        pub = claims_mod.public(mn)   # a tool result or task message relays nothing: no other agent saw it
+        rel, chains = graph.relay_edges(pub, col, res) if len(pub) else (pd.DataFrame(), pd.DataFrame())
         parts = [rel, graph.exposure_edges(ex) if len(ex) else pd.DataFrame(),
                  graph.citation_edges(tags, agents, col, cfg.cohort_regex)]
         edges = conform(pd.concat([p for p in parts if len(p)], ignore_index=True), "edges") \

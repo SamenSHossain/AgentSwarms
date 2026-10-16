@@ -6,7 +6,9 @@
 * computes the consensus value per (family, item);
 * scans every post for "item ... value" pairs so exposure can ask when a
   value first became public.  URLs are indexed too, so the reach analysis
-  also works on free-form chat.
+  also works on free-form chat.  Each mention keeps its post's ``source_kind``:
+  framework task messages and tool results (``PRIVATE_KINDS``) are indexed but are
+  not public posts, so only exposure reads them (as given in the task / own lookup).
 """
 
 from __future__ import annotations
@@ -19,6 +21,14 @@ import pandas as pd
 from .rules import ItemMatcher, first_value, norm_value
 
 URL_RE = re.compile(r"https?://[^\s\]\)\|'\"<>]+")
+PRIVATE_KINDS = ("task", "tool_result")   # framework rows: the task's prompt and an agent's own tool output
+
+
+def public(mentions: pd.DataFrame) -> pd.DataFrame:
+    """The mentions in public posts: every one but a framework task message's or tool result's."""
+    if "source_kind" not in mentions or not len(mentions):
+        return mentions
+    return mentions[~mentions["source_kind"].isin(PRIVATE_KINDS)]
 
 
 def value_key(v: str | None) -> str | None:
@@ -75,13 +85,14 @@ def agent_rounds(claims: pd.DataFrame, agent_col: str) -> pd.DataFrame:
 def consensus(claims: pd.DataFrame, mentions: pd.DataFrame | None = None,
               agent_col: str = "agent_merged", min_agents: int = 2) -> dict[tuple[str, str], str]:
     """Value backed by the most distinct agents per (family, item), pooling the
-    values agents answered with and the values they posted next to the item.
-    Ties go to the variant that appeared first."""
+    values agents answered with and the values they posted next to the item
+    (in public posts).  Ties go to the variant that appeared first."""
     a = claims[(claims["event_type"] == "answer") & claims["value_norm"].notna() & ~claims["wrong_flag"].astype(bool)]
     support = pd.DataFrame({"ts": a["ts"], "agent": a[agent_col], "family": a["family"], "item": a["item"],
                             "value_key": a["value_norm"].map(value_key)})
     if mentions is not None and len(mentions):
-        m = mentions[mentions["family"] != "url"]
+        m = public(mentions)
+        m = m[m["family"] != "url"]
         support = pd.concat([support, pd.DataFrame({"ts": m["ts"], "agent": m[agent_col], "family": m["family"],
                                                     "item": m["item"], "value_key": m["value_key"]})])
     support = support.dropna(subset=["value_key", "item"]).sort_values("ts")
@@ -104,6 +115,7 @@ def index_mentions(events: pd.DataFrame, families: pd.Series, agents: pd.DataFra
     for ev, fam in zip(events.itertuples(index=False), families):
         ids = amap.get(ev.author_raw, {"agent_strict": ev.author_raw, "agent_merged": ev.author_raw})
         base = {"event_id": ev.event_id, "ts": ev.ts, **ids}
+        kind = getattr(ev, "source_kind", None)
         text = ev.text
         if fam:
             found = items.find(fam, text)
@@ -116,12 +128,13 @@ def index_mentions(events: pd.DataFrame, families: pd.Series, agents: pd.DataFra
                 v = first_value(seg)
                 if v:
                     rows.append({**base, "channel": ev.channel, "family": fam, "item": item,
-                                 "value_norm": norm_value(v)})
+                                 "value_norm": norm_value(v), "source_kind": kind})
         if with_urls:
             for u in sorted(set(URL_RE.findall(text))):   # deterministic order: set order follows the hash seed
                 u = u.rstrip(".,;")
                 dom = re.sub(r"^https?://", "", u).split("/")[0]
-                rows.append({**base, "channel": ev.channel, "family": "url", "item": dom, "value_norm": u})
+                rows.append({**base, "channel": ev.channel, "family": "url", "item": dom, "value_norm": u,
+                             "source_kind": kind})
     m = pd.DataFrame(rows)
     if len(m):
         m["value_key"] = [v if f == "url" else value_key(v) for f, v in zip(m["family"], m["value_norm"])]

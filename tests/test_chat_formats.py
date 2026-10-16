@@ -255,9 +255,9 @@ def test_missing_author_field_is_flagged(runs, tmp_path):
     assert b.notes["n_no_author"] == 9
     assert "The first record's keys are `handle`, `content`, `type`; name the author's key with `--field author=<key>`." \
         in b.notes["warnings"][0]
-    text = _report(runs["openai"])
-    assert "**Warning:** 1 post names no author" in text and "so it is pooled" in text and "`unknown`" in text   # the system message
-    assert "no author" not in _report(runs["rooms"])
+    ev = runs["openai"].read("events")          # its role-only system message is the task's, not an unnamed agent's
+    assert ev.loc[ev["source_kind"] == "task", "author_raw"].tolist() == ["task"] and "unknown" not in set(ev["author_raw"])
+    assert "no author" not in _report(runs["openai"]) and "no author" not in _report(runs["rooms"])
 
 
 def test_order_alone_recovers_the_wall_clock_exposure_share(synth_run, tmp_path):

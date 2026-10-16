@@ -27,7 +27,8 @@ TABLES: dict[str, list[str]] = {
         "channel_family", # task family implied by the channel, "" if none
         "source_ref",
         "site",           # surface the post lives on: "dse", "paste.linuxiarz.pl", "rmn.re", ...
-        "source_kind",    # adapter-specific provenance of the row: "revision", "paste", "shortener_link", ...
+        "source_kind",    # adapter-specific provenance of the row: "revision", "paste", "shortener_link", ...;
+                          # framework traces: "message", or "task" / "tool_result", which are not public posts
         "ts_grade",       # how the timestamp was corroborated (wiki dump: reqlog / rclog / write_date), None if unknown
     ],
     # Channel deletions / recreations (wiki admin deletions, archived rooms).  The
@@ -41,7 +42,8 @@ TABLES: dict[str, list[str]] = {
     # landed within 1 s: co-timed with, not attributed to.
     "probes": ["probe_id", "ts", "site", "actor", "ip16", "request_action", "param_family", "success_observed",
                "time_grade", "source_ref", "nearest_save_label", "nearest_save_dt_s", "n_labels_on_prefix", "cotimed_label"],
-    # Observed reads, when the source logs them (page views, context windows).
+    # Observed reads, when the source logs them (page views, context windows; a framework trace's tool
+    # results, method "tool_result", each read by the agent that called the tool).
     "reads": ["agent_raw", "ts", "channel", "event_id", "method"],
     # Roster: who the agents are and what each was asked to do, per time window
     # (AI Village ``agent_goals``).  ``role`` is the short task label, ``goal``
@@ -80,8 +82,9 @@ TABLES: dict[str, list[str]] = {
         "is_confirm", "is_prediction", "is_correction", "is_request", "is_independent",
         "techniques", "cites",
     ],
-    # Every public occurrence of an (item, value) pair; drives T_public.
-    "mentions": ["event_id", "ts", "agent_strict", "agent_merged", "family", "item", "value_norm"],
+    # Every occurrence of an (item, value) pair; drives T_public.  ``source_kind`` is the post's: a framework
+    # task message or tool result (claims.PRIVATE_KINDS) is indexed but is not public.
+    "mentions": ["event_id", "ts", "agent_strict", "agent_merged", "family", "item", "value_norm", "source_kind"],
     # One row per answer claim (agent x episode x item).
     "exposures": [
         "claim_id", "agent", "family", "episode", "item", "value_norm", "t_report",
@@ -94,6 +97,9 @@ TABLES: dict[str, list[str]] = {
         "report_event_id", "src_event_id", "src_channel", "src_visible_event_id", "self_event_id",
         # a second attribution rule: the latest other carrier before t_report, and its post
         "src_latest", "t_latest", "latest_event_id",
+        # framework traces: the agent's own tool output carried the value before t_report (own_lookup_evidence:
+        # that, and no public copy first: "own lookup preceded report"), and a task message carried it
+        "t_own_lookup", "own_lookup_event_id", "own_lookup_evidence", "t_task", "task_event_id",
     ],
     # Provenance graph edges.  ``value_norm`` holds the fact's value_key (the first component of a
     # multi-number value) for every kind, so it joins chains.value_key.  ``event_id`` is always a post in

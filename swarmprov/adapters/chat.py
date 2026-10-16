@@ -8,7 +8,11 @@ each file's name as the channel of messages that name none.  Field names are
 guessed from common aliases (``ALIASES``); map any of them with ``fields`` in the
 config or ``--field author=source`` (a dotted key such as ``author.name`` reaches
 into nested objects), and ``swarmprov inspect`` shows what each resolved to.
-Each message is one post visible to everyone in its channel from its timestamp.
+Each message is one post visible to everyone in its channel from its timestamp,
+except in framework traces (``framework``: messages with an OpenAI/Anthropic
+``role`` or a LangChain/AutoGen ``type``), where task messages (author ``task``)
+and tool results (the calling agent's, also written as ``reads``) are kept with
+``source_kind`` ``task`` / ``tool_result`` and are not public posts.
 
 Framework logs (OpenAI message lists, AutoGen, LangGraph state) often carry no
 timestamps.  When fewer than 90% of the messages have one and the file is a
@@ -31,6 +35,7 @@ from pathlib import Path
 import pandas as pd
 
 from ..textutil import stable_id
+from . import framework
 from .base import Adapter, AdapterConfig, Bundle, Capabilities
 
 ALIASES = {
@@ -119,7 +124,7 @@ def _flatten(obj, channel: str = "") -> list[tuple[dict, str]]:
     """(message, the channel its container names): a ``{room: [...]}`` key, a wrapper's ``channel`` or
     ``channel.name`` (a Discord export, whose guild and channel metadata stay out of the messages), a file name."""
     if isinstance(obj, list):
-        return [(m, channel) for m in obj if isinstance(m, dict)]
+        return [(framework.unwrap(m), channel) for m in obj if isinstance(m, dict)]
     if isinstance(obj, dict):
         for key in WRAPPER_KEYS:
             if isinstance(obj.get(key), list):
@@ -189,8 +194,8 @@ def _site(path: Path) -> str:
 
 
 def _text(v) -> str:
-    if isinstance(v, list):  # content blocks
-        return "\n".join(b.get("text", "") if isinstance(b, dict) else str(b) for b in v)
+    if isinstance(v, list):  # content blocks; a tool result's block keeps its text under "content"
+        return "\n".join(_text(b.get("text", b.get("content"))) if isinstance(b, dict) else str(b) for b in v)
     return "" if v is None else str(v)
 
 
@@ -251,14 +256,15 @@ def _keys(keys) -> str:
 def _warnings(ev: pd.DataFrame, n_no_author: int, n_ts_values: int, bad_ts, keys: list) -> list[str]:
     """Signs that a field was not found: posts with no author, one author or one channel for all, unread times."""
     n, out = len(ev), []
+    posts = ev[ev["source_kind"] == "message"]   # the agents' own: task messages and tool results have set authors
     if n_no_author:
         many = n_no_author > 1
         out.append(f"{n_no_author:,} post{'s name' if many else ' names'} no author (no author field was recognised), so "
                    f"{'they are' if many else 'it is'} pooled as one agent, `unknown`, which can look like a hub or a relay "
                    "source in A5." + (f" The first record's keys are {_keys(keys)}; name the author's key with "
-                                      "`--field author=<key>`." if n_no_author > WARN_NO_AUTHOR * n else ""))
-    elif n > WARN_MIN_POSTS and ev["author_raw"].nunique() == 1:
-        out.append(f"All {n:,} posts have one author, `{ev['author_raw'].iloc[0]}`, so no answer can be exposed to another "
+                                      "`--field author=<key>`." if n_no_author > WARN_NO_AUTHOR * len(posts) else ""))
+    elif len(posts) > WARN_MIN_POSTS and posts["author_raw"].nunique() == 1:
+        out.append(f"All {len(posts):,} posts have one author, `{posts['author_raw'].iloc[0]}`, so no answer can be exposed to another "
                    f"agent's post and A5 has no structure to find. The first record's keys are {_keys(keys)}; if another "
                    "one names the speaker, use `--field author=<key>`.")
     n_bad, n_missing = n_ts_values - int(ev["ts"].notna().sum()), n - n_ts_values
@@ -292,19 +298,30 @@ class ChatAdapter(Adapter):
             msgs = _flatten(_read_any(path))
         else:
             return False
-        return bool(msgs) and all(_pick(m, "text", self.mapping) is not None for m, _ in msgs[:5])
+        # every sampled message has text, or is a framework turn that only calls tools (OpenAI's `content: null`)
+        texts = [_pick(m, "text", self.mapping) is not None for m, _ in msgs[:5]]
+        return any(texts) and all(t or framework.call_ids(m) for t, (m, _) in zip(texts, msgs))
 
     def load(self, path: Path) -> Bundle:
         path = Path(path)
         msgs, one_list = read_messages(path)
         rows, pos, n_no_author, n_ts_values, bad_ts = [], [], 0, 0, None
+        calls, n_unmatched = framework.Calls(), 0
         for i, (m, container, ref) in enumerate(msgs):
+            alt = str(_pick(m, "author_alt", self.mapping) or "")
+            author = _pick(m, "author", self.mapping) or alt
+            kind = framework.role(m, author)
+            if kind == "agent":   # before the text check: a call-only turn has no text but opens calls
+                calls.open(str(author or "unknown"), framework.call_ids(m))
+            elif kind == "tool":
+                author = calls.answer(framework.result_ids(m)) or "tool"
+            elif kind == "task":
+                author = "task"
             text = _text(_pick(m, "text", self.mapping))
             if not text.strip():
                 continue
+            n_unmatched += kind == "tool" and author == "tool"
             mid = _pick(m, "id", self.mapping) or stable_id(path, i)
-            alt = str(_pick(m, "author_alt", self.mapping) or "")
-            author = _pick(m, "author", self.mapping) or alt
             n_no_author += not author
             raw_ts, parent = _pick(m, "ts", self.mapping), _pick(m, "parent", self.mapping)
             ts = _to_ts(raw_ts)
@@ -323,7 +340,7 @@ class ChatAdapter(Adapter):
                 "channel_family": "",
                 "source_ref": ref,
                 "site": _site(path),
-                "source_kind": "message",
+                "source_kind": {"task": "task", "tool": "tool_result"}.get(kind, "message"),
             })
             pos.append(i)
         if not rows:
@@ -335,16 +352,29 @@ class ChatAdapter(Adapter):
         has_ts = n_timed >= MIN_TIMED * len(ev)
         clock = "wall" if has_ts else ("sequence" if one_list else "none")
         warns = _warnings(ev, n_no_author, n_ts_values, bad_ts, list(msgs[0][0]))   # before positions replace times
+        if n_unmatched:
+            warns.append(f"{n_unmatched:,} tool result{'s' if n_unmatched > 1 else ''} answer{'' if n_unmatched > 1 else 's'} "
+                         "no call id seen in the file while not exactly one tool call was pending, so "
+                         f"{'they are' if n_unmatched > 1 else 'it is'} attributed to `tool`, not to the agent that called "
+                         "the tool, and count as no agent's own lookup.")
         if clock == "sequence":
             ev["ts"] = SEQUENCE_EPOCH + pd.to_timedelta(pos, unit="s")
+        tools = ev[(ev["source_kind"] == "tool_result") & (ev["author_raw"] != "tool")]
+        reads = pd.DataFrame({"agent_raw": tools["author_raw"], "ts": tools["ts"], "channel": tools["channel"],
+                              "event_id": tools["event_id"], "method": "tool_result"}).reset_index(drop=True)
         caps = Capabilities(has_wall_clock=bool(has_ts), has_order=clock != "none", has_explicit_author=True,
-                            has_reads=False, has_lifecycle=False, has_threading=bool(ev["parent_id"].notna().any()))
+                            has_reads=bool(len(reads)), has_lifecycle=False,
+                            has_threading=bool(ev["parent_id"].notna().any()))
         notes = {"n_messages": len(ev), "n_channels": int(ev["channel"].nunique()),
                  "n_authors": int(ev["author_raw"].nunique()), "clock": clock, "n_timestamps": n_timed,
                  "n_no_author": n_no_author, "warnings": warns}
+        kinds = ev["source_kind"].value_counts()
+        if kinds.get("task") or kinds.get("tool_result"):
+            notes.update(n_task=int(kinds.get("task", 0)), n_tool_results=int(kinds.get("tool_result", 0)),
+                         n_tool_unmatched=n_unmatched)
         if clock == "sequence":
             notes["timestamps_discarded"] = n_timed
-        return Bundle(events=ev, capabilities=caps, notes=notes)
+        return Bundle(events=ev, reads=reads if len(reads) else None, capabilities=caps, notes=notes)
 
     def config(self) -> AdapterConfig:
         return AdapterConfig(name="chat", default_family="all")

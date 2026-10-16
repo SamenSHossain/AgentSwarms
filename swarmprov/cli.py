@@ -15,6 +15,7 @@
     swarmprov trace    runs/wiki --agent "Mar16|oecd-equity" --item "Czech Republic"   # one answer's sources
     swarmprov trace    runs/wiki --fact "oecd-equity|Hungary|9.9" --png hungary.png     # one fact's relay tree
     swarmprov synth    -o data/synth.jsonl            # synthetic swarm with known provenance
+    swarmprov synth    -o data/ag/autogen.jsonl --format autogen   # the same as an AutoGen stream with tool calls
 """
 
 from __future__ import annotations
@@ -131,6 +132,8 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--copy-from", choices=["latest", "first", "random"], default="latest",
                    help="which earlier post a copying agent takes its value from")
     s.add_argument("--seed", type=int, default=0)
+    s.add_argument("--format", choices=["chat", "autogen"], default="chat",
+                   help="autogen: an untimed AutoGen message stream with each computed answer's own tool call")
 
     a = p.parse_args(argv)
     fields = {k: v for d in getattr(a, "field", []) for k, v in d.items()}
@@ -168,7 +171,7 @@ def main(argv: list[str] | None = None) -> int:
                            event=a.event, mapping=a.mapping, json_path=a.json, png_path=a.png, limit=a.limit)
     elif a.cmd == "synth":
         from . import synth
-        synth.write(a.out, n_agents=a.agents, copy_rate=a.copy_rate, seed=a.seed, copy_from=a.copy_from)
+        synth.write(a.out, n_agents=a.agents, copy_rate=a.copy_rate, seed=a.seed, copy_from=a.copy_from, fmt=a.format)
     return 0
 
 

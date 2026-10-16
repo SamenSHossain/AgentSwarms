@@ -38,6 +38,21 @@ def summarize(ex: pd.DataFrame, min_n: int = 10, wall_clock: bool = True) -> dic
     return out
 
 
+def framework_split(ex: pd.DataFrame, tools: bool, task: bool) -> dict:
+    """On a framework trace: answers split by a public copy first (D) and the agent's own tool output first
+    (``n_own_lookup`` = ``own_lookup_evidence``, a lookup and no public copy), and answers whose value a task
+    message gave first."""
+    out = {}
+    if tools:
+        look, exposed = ex["t_own_lookup"].notna(), ex["D"] == 1
+        out.update(n_own_lookup=int(ex["own_lookup_evidence"].sum()), n_exposed_with_own_lookup=int((exposed & look).sum()),
+                   n_exposed_no_lookup=int((exposed & ~look).sum()), n_neither=int((~exposed & ~look).sum()))
+    if task:
+        given = ex["t_task"].notna()
+        out.update(n_given_in_task=int(given.sum()), n_given_in_task_no_public_copy=int((given & (ex["D"] == 0)).sum()))
+    return out
+
+
 def figure(ex: pd.DataFrame, res: dict, path, wall_clock: bool = True) -> str:
     plotting.setup()
     fam = res["by_family"].head(14).iloc[::-1]

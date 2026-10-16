@@ -16,7 +16,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from .claims import value_key
+from .claims import PRIVATE_KINDS, public, value_key
 from .exposure import match_key
 from .graph import CLOCK_RES_S
 from .rules import norm_value
@@ -119,7 +119,7 @@ def fact_lineage(run: RunDir, family: str, item: str, value: str | None = None, 
     if not len(c):
         return []
     edges, ev = run.read(f"edges_{mapping}"), _events(run)
-    mn = run.read("mentions").sort_values(["ts", "event_id"], kind="stable")   # the order relay_edges uses
+    mn = public(run.read("mentions")).sort_values(["ts", "event_id"], kind="stable")   # what relay_edges reads, in its order
     out = []
     for f in c.sort_values(["n_agents", "t0"], ascending=[False, True]).itertuples(index=False):
         first = mn[(mn["family"] == f.family) & (mn["item"] == f.item) & (mn["value_key"] == f.value_key)]
@@ -201,6 +201,10 @@ def answer_lineage(run: RunDir, claim_id: str | None = None, agent: str | None =
             "first_visible_copy": _post(ev, r.src_visible_event_id, r.item)
             if r.src_visible_event_id != r.src_event_id else None,
             "own_earlier_post": _post(ev, r.self_event_id, r.item),
+            # framework traces: the agent's own tool output, and the task message, that carried the value first
+            "own_lookup": _post(ev, getattr(r, "own_lookup_event_id", None), r.item),
+            "own_lookup_evidence": int(getattr(r, "own_lookup_evidence", 0) or 0),
+            "given_in_task": _post(ev, getattr(r, "task_event_id", None), r.item),
             "relay_parent": rp, "path": path,
             "variants": variants[(r.family, r.item)],
         })
@@ -248,13 +252,18 @@ def event_view(run: RunDir, event_id: str, mapping: str = "merged") -> dict | No
     ed = edges[(edges["event_id"] == event_id) | (edges["src_event_id"] == event_id)]
     ex = _table(run, f"exposures_{mapping}")
     fam = e["family"] if isinstance(e.get("family"), str) else ""
-    note = None
-    if not len(cl):
+    note, kind = None, e.get("source_kind")
+    if kind in PRIVATE_KINDS:
+        note = ("no claim: " + ("a task message (system or user prompt)" if kind == "task" else
+                                "a tool result (the calling agent's private read)") +
+                " is not an agent's post; exposure reads its mentions as " +
+                ("the value given in the task" if kind == "task" else "the agent's own lookup"))
+    elif not len(cl):
         note = ("no claim: no answer report ('answered …', 'Answer: item = value'), prediction or round "
                 "sequence matched" + ("" if fam else ", and the post has no task family") +
                 (f"; it still carries {len(mn)} item-value mention(s), which exposure and relays use" if len(mn) else ""))
     return {
-        "event_id": event_id, "ts": e["ts"], "channel": e["channel"], "author": e["author_raw"],
+        "event_id": event_id, "ts": e["ts"], "channel": e["channel"], "author": e["author_raw"], "source_kind": kind,
         "agent_merged": who["agent_merged"] if who is not None else None,
         "agent_strict": who["agent_strict"] if who is not None else None,
         "family": fam, "visible_until": e.get("visible_until"),
@@ -343,6 +352,13 @@ def text_answers(answers: list[dict], seq: bool = False) -> list[str]:
             L.append("  first public copy: none before the report")
         p = a["own_earlier_post"]
         L.append(f"  own earlier post: {_post_line(p)}" if p else "  own earlier post: none")
+        for key, what in (("own_lookup", "own tool output before the report"), ("given_in_task", "value given in the task")):
+            p = a.get(key)
+            if p:
+                note = ("" if key != "own_lookup" else "; own lookup preceded report (own_lookup_evidence)"
+                        if a["own_lookup_evidence"] else "; a public copy came first, so no own_lookup_evidence")
+                L.append(f"  {what}: post {_post_line(p)}{note}")
+                L.append(f"    \"{p['excerpt']}\"")
         rp = a["relay_parent"]
         if rp:
             late = ["parent post not before the report: not this answer's source"] if rp["after_report"] else []
@@ -390,7 +406,8 @@ def text_facts(facts: list[dict], limit: int | None = None, seq: bool = False) -
 
 
 def text_event(v: dict) -> list[str]:
-    L = [f"post {v['event_id']}, {_ts(v['ts'])}, {v['channel']}, by {v['author']}",
+    kind = {"task": " (task message)", "tool_result": " (tool result)"}.get(v.get("source_kind"), "")
+    L = [f"post {v['event_id']}, {_ts(v['ts'])}, {v['channel']}, by {v['author']}{kind}",
          f"  agent: merged {v['agent_merged']}, strict {v['agent_strict']}; family: {v['family'] or '(none)'}"]
     if v["visible_until"] is not None and pd.notna(v["visible_until"]):
         L.append(f"  page deleted {_ts(v['visible_until'])}")
