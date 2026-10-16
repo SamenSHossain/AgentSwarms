@@ -4,92 +4,239 @@
     "adapter": "corpus",
     "n_events": 1296,
     "n_authors": 126,
-    "first_ts": "2026-03-11 17:03:08+00:00",
-    "last_ts": "2026-07-07 19:12:00+00:00"
+    "first_ts": "2026-03-11T17:03:08+00:00",
+    "last_ts": "2026-07-07T19:12:00+00:00",
+    "clock": "wall"
+  },
+  "funnel": {
+    "posts": 1296,
+    "posts_with_family": 415,
+    "answer_posts": 15,
+    "answer_claims": 15,
+    "answer_claims_no_item": 15,
+    "answer_claims_no_value": 0,
+    "answer_claims_no_family": 0,
+    "agent_rounds": 0,
+    "agent_rounds_untimed": 0,
+    "catch_all_family": null
+  },
+  "skipped": {
+    "A1": "needs agent-rounds (an agent's answer to an item in a task family); 15 answer claims extracted, 0 agent-rounds: none names an item (add `extra_items`, or use `--llm`)",
+    "A2": "needs more than 20 agent-rounds; this run has 0",
+    "agents": "needs agent-rounds (see A1)"
   },
   "A3": [
     {
       "technique": "proxy-markdown-new",
-      "first_seen": "2026-05-26 13:55:19+00:00",
+      "first_seen": "2026-05-26T13:55:19+00:00",
       "originator": "anon@wikiservice.at/user/milk",
       "n_posts": 88,
       "at_risk": 94,
       "adopters": 8,
       "adoption_share": 0.0851063829787234,
-      "median_hours_to_adopt": NaN,
-      "median_hours_among_adopters": 2.897361111111111
+      "median_hours_to_adopt": null,
+      "median_hours_to_adopt_lo": null,
+      "median_hours_to_adopt_hi": null,
+      "median_hours_among_adopters": 2.897361111111111,
+      "contagion": {
+        "n_carrying_pages": 62,
+        "n_posts_page_name_only": 0,
+        "n_page_names": 0,
+        "excluded": null,
+        "n_adopters": 8,
+        "n_on_carrying": 2,
+        "share_on_carrying": 0.25,
+        "baseline": 0.3520833333333333,
+        "p": 1.0,
+        "n_exposed_before": 1,
+        "n_adopted_on_named_page": 0,
+        "n_carrying_on_named_page": 0,
+        "p_holm": 1.0
+      }
     },
     {
       "technique": "proxy-allorigins",
-      "first_seen": "2026-05-26 15:16:26+00:00",
+      "first_seen": "2026-05-26T15:16:26+00:00",
       "originator": "anon@paste.linuxiarz.pl",
       "n_posts": 80,
       "at_risk": 93,
       "adopters": 18,
       "adoption_share": 0.1935483870967742,
       "median_hours_to_adopt": 553.9066666666666,
-      "median_hours_among_adopters": 551.8715277777778
+      "median_hours_to_adopt_lo": 552.6294444444444,
+      "median_hours_to_adopt_hi": 1011.8427777777778,
+      "median_hours_among_adopters": 551.8715277777778,
+      "contagion": {
+        "n_carrying_pages": 47,
+        "n_posts_page_name_only": 0,
+        "n_page_names": 0,
+        "excluded": null,
+        "n_adopters": 18,
+        "n_on_carrying": 13,
+        "share_on_carrying": 0.7222222222222222,
+        "baseline": 0.5998857623857624,
+        "p": 0.06612244897959185,
+        "n_exposed_before": 7,
+        "n_adopted_on_named_page": 0,
+        "n_carrying_on_named_page": 0,
+        "p_holm": 0.3967346938775511
+      }
     },
     {
       "technique": "proxy-jqp",
-      "first_seen": "2026-06-18 16:00:07+00:00",
+      "first_seen": "2026-06-18T16:00:07+00:00",
       "originator": "ip16:20.230",
       "n_posts": 21,
       "at_risk": 18,
       "adopters": 5,
       "adoption_share": 0.2777777777777778,
-      "median_hours_to_adopt": NaN,
-      "median_hours_among_adopters": 2.263611111111111
+      "median_hours_to_adopt": null,
+      "median_hours_to_adopt_lo": null,
+      "median_hours_to_adopt_hi": null,
+      "median_hours_among_adopters": 2.263611111111111,
+      "contagion": {
+        "n_carrying_pages": 15,
+        "n_posts_page_name_only": 0,
+        "n_page_names": 0,
+        "excluded": null,
+        "n_adopters": 5,
+        "n_on_carrying": 2,
+        "share_on_carrying": 0.4,
+        "baseline": 0.4,
+        "p": 1.0,
+        "n_exposed_before": 1,
+        "n_adopted_on_named_page": 0,
+        "n_carrying_on_named_page": 0,
+        "p_holm": 1.0
+      }
     },
     {
       "technique": "proxy-md-succ",
-      "first_seen": "2026-06-18 15:23:34+00:00",
+      "first_seen": "2026-06-18T15:23:34+00:00",
       "originator": "anon@wikiservice.at/probier",
       "n_posts": 67,
       "at_risk": 17,
       "adopters": 4,
       "adoption_share": 0.23529411764705882,
-      "median_hours_to_adopt": NaN,
-      "median_hours_among_adopters": 4.370833333333334
+      "median_hours_to_adopt": null,
+      "median_hours_to_adopt_lo": null,
+      "median_hours_to_adopt_hi": null,
+      "median_hours_among_adopters": 4.370833333333334,
+      "contagion": {
+        "n_carrying_pages": 23,
+        "n_posts_page_name_only": 0,
+        "n_page_names": 0,
+        "excluded": null,
+        "n_adopters": 4,
+        "n_on_carrying": 4,
+        "share_on_carrying": 1.0,
+        "baseline": 1.0,
+        "p": 1.0,
+        "n_exposed_before": 3,
+        "n_adopted_on_named_page": 0,
+        "n_carrying_on_named_page": 0,
+        "p_holm": 1.0
+      }
     },
     {
       "technique": "proxy-jina",
-      "first_seen": "2026-05-17 21:30:24+00:00",
+      "first_seen": "2026-05-17T21:30:24+00:00",
       "originator": "ip16:104.209",
       "n_posts": 27,
       "at_risk": 93,
       "adopters": 5,
       "adoption_share": 0.053763440860215055,
       "median_hours_to_adopt": 1221.61,
-      "median_hours_among_adopters": 764.0825
+      "median_hours_to_adopt_lo": 1221.61,
+      "median_hours_to_adopt_hi": 1221.61,
+      "median_hours_among_adopters": 764.0825,
+      "contagion": {
+        "n_carrying_pages": 22,
+        "n_posts_page_name_only": 0,
+        "n_page_names": 0,
+        "excluded": null,
+        "n_adopters": 5,
+        "n_on_carrying": 2,
+        "share_on_carrying": 0.4,
+        "baseline": 0.18,
+        "p": 0.2,
+        "n_exposed_before": 1,
+        "n_adopted_on_named_page": 0,
+        "n_carrying_on_named_page": 0,
+        "p_holm": 1.0
+      }
     },
     {
       "technique": "proxy-pure-md",
-      "first_seen": "2026-06-01 14:09:19+00:00",
+      "first_seen": "2026-06-01T14:09:19+00:00",
       "originator": "anon@wikiservice.at/probier",
       "n_posts": 3,
       "at_risk": 92,
       "adopters": 0,
       "adoption_share": 0.0,
-      "median_hours_to_adopt": NaN,
-      "median_hours_among_adopters": NaN
+      "median_hours_to_adopt": null,
+      "median_hours_to_adopt_lo": null,
+      "median_hours_to_adopt_hi": null,
+      "median_hours_among_adopters": null,
+      "contagion": {
+        "n_carrying_pages": 3,
+        "n_posts_page_name_only": 0,
+        "n_page_names": 0,
+        "excluded": null,
+        "n_adopters": 0,
+        "n_on_carrying": 0,
+        "share_on_carrying": null,
+        "baseline": null,
+        "p": null,
+        "n_exposed_before": 0,
+        "n_adopted_on_named_page": 0,
+        "n_carrying_on_named_page": 0
+      }
     },
     {
       "technique": "shortener-da-gd",
-      "first_seen": "2026-06-16 20:05:22+00:00",
+      "first_seen": "2026-06-16T20:05:22+00:00",
       "originator": "anon@paste.linuxiarz.pl",
       "n_posts": 15,
       "at_risk": 91,
       "adopters": 7,
       "adoption_share": 0.07692307692307693,
-      "median_hours_to_adopt": NaN,
-      "median_hours_among_adopters": 44.17722222222222
+      "median_hours_to_adopt": null,
+      "median_hours_to_adopt_lo": null,
+      "median_hours_to_adopt_hi": null,
+      "median_hours_among_adopters": 44.17722222222222,
+      "contagion": {
+        "n_carrying_pages": 9,
+        "n_posts_page_name_only": 0,
+        "n_page_names": 0,
+        "excluded": null,
+        "n_adopters": 7,
+        "n_on_carrying": 5,
+        "share_on_carrying": 0.7142857142857143,
+        "baseline": 0.5692640692640693,
+        "p": 0.2727272727272727,
+        "n_exposed_before": 3,
+        "n_adopted_on_named_page": 0,
+        "n_carrying_on_named_page": 0,
+        "p_holm": 1.0
+      }
     }
   ],
   "A4": {
     "n_value_slots_disputed": 0,
     "n_sequence_slots_disputed": 0,
-    "featured": []
+    "rule": {
+      "bin_hours": 3.0,
+      "tail_share": 0.3333333333333333,
+      "min_tail": 5
+    },
+    "consensus_disagrees": {
+      "slots": [],
+      "n_value_slots": 0,
+      "answer_rounds_stating_winner": 0,
+      "of_them_y_consensus_0": 0
+    },
+    "rows": []
   },
   "A5": {
     "n_nodes": 18,
@@ -98,12 +245,22 @@
     "n_relay_edges": 10,
     "n_xchannel_edges": 91,
     "n_citation_edges": 0,
+    "n_reply_edges": 0,
     "exposure_sources": 0,
-    "gini_exposure_outdegree": NaN,
-    "top10_share_exposure": NaN,
+    "gini_exposure_outdegree": null,
+    "top10_share_exposure": null,
+    "top10_share_exposure_loo": [
+      null,
+      null
+    ],
+    "gini_exposure_outdegree_loo": [
+      null,
+      null
+    ],
     "gini_relay_outdegree": 0.0,
-    "mean_chain_depth": NaN,
-    "mean_agents_per_fact": NaN
+    "betweenness_sampled_sources": null,
+    "mean_chain_depth": null,
+    "mean_agents_per_fact": null
   },
   "A6": {
     "urls": {
@@ -112,7 +269,46 @@
       "mean_repeaters": 0.06437221159974506,
       "p90_repeaters": 0.0,
       "max_hops": 3,
-      "mean_hops_repeated": 1.0317460317460319
+      "mean_hops_repeated": 1.0317460317460319,
+      "mean_repeaters_lo": 0.04652644996813257,
+      "mean_repeaters_hi": 0.08604206500956023
+    },
+    "url domains": {
+      "facts": 94,
+      "repeated": 48,
+      "mean_repeaters": 3.6595744680851063,
+      "p90_repeaters": 7.700000000000003,
+      "max_hops": null,
+      "mean_hops_repeated": null,
+      "mean_repeaters_lo": 1.829521276595745,
+      "mean_repeaters_hi": 6.053191489361702,
+      "top": [
+        {
+          "domain": "viz.aihw.gov.au",
+          "agents": 77
+        },
+        {
+          "domain": "example.org",
+          "agents": 64
+        },
+        {
+          "domain": "md.succ.ai",
+          "agents": 28
+        }
+      ]
     }
-  }
+  },
+  "integrity": {
+    "n_checks": 9,
+    "n_pass": 9,
+    "failing": []
+  },
+  "headline": [
+    "**A1. Provenance split**: skipped: needs agent-rounds (an agent's answer to an item in a task family); 15 answer claims extracted, 0 agent-rounds: none names an item (add `extra_items`, or use `--llm`).",
+    "**A2. Does availability cause copying?** skipped: needs more than 20 agent-rounds; this run has 0.",
+    "**A3. Technique diffusion**: adoption share = the share of the agents at risk (active in its task families after its first post) that went on to use it: `proxy-jqp` 28% (5 of 18), `proxy-md-succ` 24% (4 of 17), `proxy-allorigins` 19% (18 of 93), `proxy-markdown-new` 9% (8 of 94), `shortener-da-gd` 8% (7 of 91); lower for the rest.",
+    "**A4. Error propagation**: no slot carried competing values.",
+    "**A5. Structure**: 18 agents linked by 10 same-page relay hops; no answer had a first public source, so there is no hub concentration to report.",
+    "**A6. Reach**: 63 of 1,569 URLs were repeated by other agents, travelling 1.0 hops on average and at most 3 (a hop links a carrier to an inferred source: plausible paths, not proven ones)."
+  ]
 }

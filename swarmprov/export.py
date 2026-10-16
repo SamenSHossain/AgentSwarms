@@ -13,8 +13,13 @@ from .schema import REPORT_TABLES, RunDir, suffix
 EXPOSURE_COLUMNS = ["claim_id", "agent", "family", "episode", "item", "value_norm", "t_report", "t_public", "src_agent",
                     "t_self_prepared", "gap_s", "D", "D_w10m", "D_w60m", "self_prepared", "D_cons", "D_cons_w60m",
                     "y_instant", "latency_known", "y_consensus", "consensus_value", "latency_class", "wrong_flag",
-                    "t_public_visible", "D_visible", "src_deleted_before_report", "t_src_deleted", "item_fe"]
-EDGE_COLUMNS = ["src", "dst", "family", "item", "value_norm", "kind", "dt_s", "event_id", "within_clock_res"]
+                    "t_public_visible", "D_visible", "src_deleted_before_report", "t_src_deleted", "item_fe",
+                    # appended so the first mirrors' columns keep their places; the framework-trace columns
+                    # (own lookups, task messages) come only with all_columns
+                    "t_cons", "gap_cons_s", "y_winner", "report_event_id", "src_event_id", "src_channel",
+                    "src_visible_event_id", "self_event_id", "src_latest", "t_latest", "latest_event_id"]
+EDGE_COLUMNS = ["src", "dst", "family", "item", "value_norm", "kind", "dt_s", "event_id", "within_clock_res",
+                "claim_id", "src_event_id"]
 
 # name -> (the stage table it reads, per mapping, the mirror's columns or None for all, edge kinds kept or None)
 EXPORTS = {

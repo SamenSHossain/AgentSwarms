@@ -2,15 +2,24 @@
   "adapter": "corpus",
   "config": "cross-site-corpus",
   "source": "data/raw2",
+  "roster": null,
+  "roster_notes": {},
   "config_path": null,
+  "fields": {},
   "capabilities": {
     "has_wall_clock": true,
+    "has_order": true,
     "has_explicit_author": false,
     "has_reads": false,
     "has_lifecycle": false,
     "has_threading": false,
-    "has_episodes": false
+    "has_episodes": false,
+    "has_activity": false,
+    "has_request_log": false,
+    "derived_text": false
   },
+  "clock": "wall",
+  "n_untimed": 0,
   "n_events": 1296,
   "n_authors": 126,
   "first_ts": "2026-03-11 17:03:08+00:00",
@@ -195,5 +204,161 @@
       "wayback_capture": 10
     },
     "ip16_overlap_note": "ip16 prefixes on shortener / other-wiki rows were not matched against the primary wiki dump (data/raw/revisions.jsonl is not read by this adapter); join on author_raw 'ip16:*' against the wiki bundle's author_alt downstream if needed."
+  },
+  "warnings": [],
+  "config_settings": {
+    "name": "cross-site-corpus",
+    "families": {
+      "oecd-equity": "OECD\\s*(?:Education\\s*)?Equity|Education\\s*Equity|pre-?primary",
+      "oecd-regional-co2": "Regional\\s*Recovery|\\bRRP|CO2",
+      "oecd-household-income": "Household\\s*Disposable\\s*Income",
+      "datausa-clothing-workforce": "Clothing",
+      "datausa-grocery-workforce": "Grocery",
+      "datausa-cashiers-bachelors": "Cashier\\w*\\s*Bachelor",
+      "datausa-cashier-skills": "Cashier\\s*Skills",
+      "datausa-cashiers-masters": "Cashier",
+      "datausa-construction-wage": "Construction\\s*Wage",
+      "datausa-construction-workforce": "Construction",
+      "datausa-sector61-state": "Sector\\s*61|S61x62|61-62",
+      "datausa-occupation-salary-61-62": "Occupation\\s*Salary|School\\s*Psych",
+      "ihme-cvd-deaths": "\\bCVD\\b|Healthdata\\s*CVD",
+      "ihme-family-planning": "Family\\s*Planning",
+      "ihme-mcv2": "MCV2",
+      "ihme-smoking": "Healthdata\\s*Smoking",
+      "ihme-lymphatic-filariasis": "Lymphatic|LFSequence",
+      "datausa-language-french": "French|DataUSALang",
+      "fuel-poverty-ni": "Fuel\\s*Poverty",
+      "world-poverty-clock": "World\\s*Poverty\\s*Clock",
+      "datausa-poverty-state": "Poverty\\s*State",
+      "datausa-poverty-county": "Poverty",
+      "datausa-maids-wage": "\\bMaids?\\b",
+      "datausa-police-wage-age": "Police",
+      "datausa-finance-gender-gap": "Finance|financial\\s*managers",
+      "aihw-pbs": "\\bPBS\\b|AIHW",
+      "datausa-transport-production": "Transport",
+      "datausa-production-share": "Production\\s*Occupation|DataUSAProd",
+      "datausa-slp-ethnicity": "\\bSLP\\b|Speech\\s*Path",
+      "datausa-ivy-tuition": "\\bIvy\\b",
+      "uefa-pass-accuracy": "UEFA",
+      "vermont-rent": "Vermont|Lamoille",
+      "nyc-veterans": "NYC\\s*Veterans",
+      "datausa-elpaso-foreign-born": "El\\s*Paso",
+      "datausa-enrollment-asian": "Enrollment\\s*Asian",
+      "unaids-bosnia-hiv": "UNAIDS",
+      "sdg-index-score": "SDG\\s*Index",
+      "gapminder-age80": "Gapminder",
+      "iowa-health": "\\bIowa\\b|IowaCollab|asthma|thyroid|85 and older"
+    },
+    "channel_family": null,
+    "cohort_regex": "(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?|JAN|FEB|MAR(?:CH)?|APR(?:IL)?|MAY|JUNE?|JULY?|AUG|SEPT?|OCT|NOV|DEC)[ \\-]?(\\d{1,2})(?!\\d)",
+    "cohort_from_text": null,
+    "episode_regex": "(?<![A-Za-z0-9])(?:R|G|#|Round\\s?)([1-9])(?![0-9])",
+    "extra_items": {},
+    "techniques": [
+      {
+        "name": "blob-hostname-bypass",
+        "pattern": "blob\\s*host(?:name)?|blob\\.core\\.windows|allowed\\s+blob|blob-host",
+        "families": [
+          "oecd-equity"
+        ],
+        "description": "Route Power BI embed calls through an allowed blob hostname with the real Host header"
+      },
+      {
+        "name": "live-tooltip-value",
+        "pattern": "(?:real|live|actual)[-\\s]?(?:dashboard[-/\\s]?)?tooltip|tooltip\\s+(?:says|shows|value)",
+        "families": [
+          "oecd-equity"
+        ],
+        "description": "Read the rendered dashboard tooltip instead of the rounded EAG table"
+      },
+      {
+        "name": "heartbeat-beacon",
+        "pattern": "heart\\s?beat|beacon",
+        "families": [],
+        "description": "Background wiki writes to test whether the container survives the final answer"
+      },
+      {
+        "name": "zzz-backup-pages",
+        "pattern": "ZZZ",
+        "families": [],
+        "description": "ZZZ-suffixed backup / link-list pages"
+      },
+      {
+        "name": "rng-seed-crack",
+        "pattern": "random\\.shuffle|\\bseed\\s*\\d{4,}|\\bRNG\\b",
+        "families": [],
+        "description": "Predicting the question order by brute-forcing the shuffle seed"
+      },
+      {
+        "name": "clock-wait-fastforward",
+        "pattern": "clock\\.wait",
+        "families": [],
+        "description": "Advancing the task clock with clock.wait"
+      },
+      {
+        "name": "proxy-markdown-new",
+        "pattern": "markdown\\.new",
+        "families": [],
+        "description": "markdown.new used as a fetch / render proxy for blocked hosts"
+      },
+      {
+        "name": "proxy-allorigins",
+        "pattern": "allorigins\\.hexlet\\.app",
+        "families": [],
+        "description": "allorigins.hexlet.app CORS proxy used to fetch blocked hosts"
+      },
+      {
+        "name": "proxy-jqp",
+        "pattern": "jqp\\.vercel\\.app",
+        "families": [],
+        "description": "jqp.vercel.app (jq playground) used to fetch and filter JSON"
+      },
+      {
+        "name": "proxy-md-succ",
+        "pattern": "md\\.succ\\.ai",
+        "families": [],
+        "description": "md.succ.ai markdown converter used as a fetch proxy"
+      },
+      {
+        "name": "proxy-jina",
+        "pattern": "r\\.jina\\.ai",
+        "families": [],
+        "description": "r.jina.ai reader used as a fetch proxy"
+      },
+      {
+        "name": "proxy-pure-md",
+        "pattern": "pure\\.md",
+        "families": [],
+        "description": "pure.md reader used as a fetch proxy"
+      },
+      {
+        "name": "shortener-da-gd",
+        "pattern": "\\bda\\.gd\\b",
+        "families": [],
+        "description": "da.gd shortener / header echo used as a relay"
+      }
+    ],
+    "auto_techniques": false,
+    "featured_disputes": [],
+    "disputes": [],
+    "reference_values": {},
+    "instant_threshold_s": 2.0,
+    "bootstrap_reps": 1000,
+    "ignore_authors": [],
+    "family_from_channel": false,
+    "default_family": null,
+    "family_from_roster": true,
+    "roster_aliases": {},
+    "schedule_tz": null,
+    "coverage_note": "Only this corpus's own posts are searched for earlier copies of an answer, not the wiki dump, the largest captured surface (`swarmprov crosssite` joins the two, for technique spread only); the collectors' coverage tables list 143 surfaces the swarm touched, most of them (Discord, 12 uncrawled wikis, relays) not captured. An \"independent\" answer may have been relayed through the wiki or one of those surfaces, so the exposed share is a floor and the independent count a ceiling.",
+    "digest_as_posts": false,
+    "fields": {},
+    "strict_config": false
+  },
+  "config_stages": {
+    "ingest": "13fff7895a2a",
+    "extract": "13fff7895a2a",
+    "graph": "13fff7895a2a",
+    "report": "13fff7895a2a"
   }
 }

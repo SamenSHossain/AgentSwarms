@@ -286,10 +286,13 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
         if notes.get("swarmtraces"):
             L = _swarmtraces_block(prof, notes["swarmtraces"], summary)
             return _write(run, L, summary, mapping)
+        becomes = (f"The roster below becomes task families and cohorts when attached to a transcript: "
+                   f"`swarmprov run TRANSCRIPT --roster {prof['source']}`." if prof["adapter"] == "roster" else
+                   "The tables below become task families, cohorts, channel lifecycle and audiences once a message "
+                   "table sits next to them (or is attached with `--roster`).")
         L = ["# Context report (no posts)\n",
              f"Source: `{prof['source']}` (adapter `{prof['adapter']}`) holds no posts, so there is no provenance to "
-             "analyse. The tables below become task families, cohorts, channel lifecycle and audiences once a "
-             "message table sits next to them (or is attached with `--roster`).\n"] + _warnings(prof, summary)
+             f"analyse. {becomes}\n"] + _warnings(prof, summary)
         L += _village_block(run, prof, summary)
         if run.has("roster"):
             L += _roster_block(run, prof, summary)

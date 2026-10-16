@@ -1,4 +1,4 @@
-# Roster report
+# Context report (no posts)
 
 Source: `data/village/agent_goals.jsonl` (adapter `roster`) holds no posts, so there is no provenance to analyse. The roster below becomes task families and cohorts when attached to a transcript: `swarmprov run TRANSCRIPT --roster data/village/agent_goals.jsonl`.
 
@@ -57,7 +57,7 @@ Roles:
 
 Goal changes:
 
-| agent_id | role | change | start | end | goal |
+| agent | role | change | start | end | goal |
 |---|---|---|---|---|---|
 | ea91b7cb-bb15-4194-bfbf-d70e088f84c5 | ai-safety-researcher | reworded | 2026-09-01 23:42 |  | Maximize the future citation count of an AI safety research paper you author. It should be MATS quality level or above. |
 

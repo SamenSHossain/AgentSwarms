@@ -5,8 +5,10 @@
   "roster": null,
   "roster_notes": {},
   "config_path": null,
+  "fields": {},
   "capabilities": {
     "has_wall_clock": true,
+    "has_order": true,
     "has_explicit_author": false,
     "has_reads": false,
     "has_lifecycle": true,
@@ -16,6 +18,8 @@
     "has_request_log": true,
     "derived_text": false
   },
+  "clock": "wall",
+  "n_untimed": 0,
   "n_events": 15987,
   "n_authors": 3232,
   "first_ts": "2026-05-24 06:02:19+00:00",
@@ -78,7 +82,7 @@
       "pipeline_only": 2,
       "pipeline_only_after_cutoff": 2,
       "dump_only": 0,
-      "cutoff": "2026-06-22 09:20:04+00:00",
+      "cutoff": "2026-06-22T09:20:04+00:00",
       "posts_on_recreations": 107,
       "restored_posts": 30,
       "fresh_posts": 77,
@@ -162,5 +166,149 @@
       "probe": 101,
       "revert": 4
     }
+  },
+  "warnings": [],
+  "config_settings": {
+    "name": "openai-wiki",
+    "families": {
+      "oecd-equity": "OECD\\s*(?:Education\\s*)?Equity|Education\\s*Equity|pre-?primary",
+      "oecd-regional-co2": "Regional\\s*Recovery|\\bRRP|CO2",
+      "oecd-household-income": "Household\\s*Disposable\\s*Income",
+      "datausa-clothing-workforce": "Clothing",
+      "datausa-grocery-workforce": "Grocery",
+      "datausa-cashiers-bachelors": "Cashier\\w*\\s*Bachelor",
+      "datausa-cashier-skills": "Cashier\\s*Skills",
+      "datausa-cashiers-masters": "Cashier",
+      "datausa-construction-wage": "Construction\\s*Wage",
+      "datausa-construction-workforce": "Construction",
+      "datausa-sector61-state": "Sector\\s*61|S61x62|61-62",
+      "datausa-occupation-salary-61-62": "Occupation\\s*Salary|School\\s*Psych",
+      "ihme-cvd-deaths": "\\bCVD\\b|Healthdata\\s*CVD",
+      "ihme-family-planning": "Family\\s*Planning",
+      "ihme-mcv2": "MCV2",
+      "ihme-smoking": "Healthdata\\s*Smoking",
+      "ihme-lymphatic-filariasis": "Lymphatic|LFSequence",
+      "datausa-language-french": "French|DataUSALang",
+      "fuel-poverty-ni": "Fuel\\s*Poverty",
+      "world-poverty-clock": "World\\s*Poverty\\s*Clock",
+      "datausa-poverty-state": "Poverty\\s*State",
+      "datausa-poverty-county": "Poverty",
+      "datausa-maids-wage": "\\bMaids?\\b",
+      "datausa-police-wage-age": "Police",
+      "datausa-finance-gender-gap": "Finance|financial\\s*managers",
+      "aihw-pbs": "\\bPBS\\b|AIHW",
+      "datausa-transport-production": "Transport",
+      "datausa-production-share": "Production\\s*Occupation|DataUSAProd",
+      "datausa-slp-ethnicity": "\\bSLP\\b|Speech\\s*Path",
+      "datausa-ivy-tuition": "\\bIvy\\b",
+      "uefa-pass-accuracy": "UEFA",
+      "vermont-rent": "Vermont|Lamoille",
+      "nyc-veterans": "NYC\\s*Veterans",
+      "datausa-elpaso-foreign-born": "El\\s*Paso",
+      "datausa-enrollment-asian": "Enrollment\\s*Asian",
+      "unaids-bosnia-hiv": "UNAIDS",
+      "sdg-index-score": "SDG\\s*Index",
+      "gapminder-age80": "Gapminder"
+    },
+    "channel_family": null,
+    "cohort_regex": "(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?|JAN|FEB|MAR(?:CH)?|APR(?:IL)?|MAY|JUNE?|JULY?|AUG|SEPT?|OCT|NOV|DEC)[ \\-]?(\\d{1,2})(?!\\d)",
+    "cohort_from_text": null,
+    "episode_regex": "(?<![A-Za-z0-9])(?:R|G|#|Round\\s?)([1-9])(?![0-9])",
+    "extra_items": {},
+    "techniques": [
+      {
+        "name": "blob-hostname-bypass",
+        "pattern": "blob\\s*host(?:name)?|blob\\.core\\.windows|allowed\\s+blob|blob-host",
+        "families": [
+          "oecd-equity"
+        ],
+        "description": "Route Power BI embed calls through an allowed blob hostname with the real Host header"
+      },
+      {
+        "name": "live-tooltip-value",
+        "pattern": "(?:real|live|actual)[-\\s]?(?:dashboard[-/\\s]?)?tooltip|tooltip\\s+(?:says|shows|value)",
+        "families": [
+          "oecd-equity"
+        ],
+        "description": "Read the rendered dashboard tooltip instead of the rounded EAG table"
+      },
+      {
+        "name": "heartbeat-beacon",
+        "pattern": "heart\\s?beat|beacon",
+        "families": [],
+        "description": "Background wiki writes to test whether the container survives the final answer"
+      },
+      {
+        "name": "zzz-backup-pages",
+        "pattern": "ZZZ",
+        "families": [],
+        "description": "ZZZ-suffixed backup / link-list pages"
+      },
+      {
+        "name": "rng-seed-crack",
+        "pattern": "random\\.shuffle|\\bseed\\s*\\d{4,}|\\bRNG\\b",
+        "families": [],
+        "description": "Predicting the question order by brute-forcing the shuffle seed"
+      },
+      {
+        "name": "clock-wait-fastforward",
+        "pattern": "clock\\.wait",
+        "families": [],
+        "description": "Advancing the task clock with clock.wait"
+      }
+    ],
+    "auto_techniques": false,
+    "featured_disputes": [
+      [
+        "oecd-equity",
+        "Poland"
+      ],
+      [
+        "oecd-equity",
+        "Hungary"
+      ],
+      [
+        "oecd-equity",
+        "Slovak Republic"
+      ]
+    ],
+    "disputes": [
+      {
+        "family": "datausa-grocery-workforce",
+        "slot": "G5 (cracked-seed forecast vs observed)",
+        "context": "\\bG5\\b",
+        "variants": {
+          "Maryland (RNG forecast)": "(?i:maryland)|\\bMD\\b",
+          "Montana (observed)": "(?i:montana)"
+        }
+      }
+    ],
+    "reference_values": {
+      "oecd-equity|Poland": 16.38,
+      "oecd-equity|Hungary": 9.91,
+      "oecd-equity|Slovak Republic": 14.59
+    },
+    "instant_threshold_s": 2.0,
+    "bootstrap_reps": 1000,
+    "ignore_authors": [
+      "[Admin1]",
+      "[Admin2]",
+      "[Person22]"
+    ],
+    "family_from_channel": false,
+    "default_family": null,
+    "family_from_roster": true,
+    "roster_aliases": {},
+    "schedule_tz": null,
+    "coverage_note": "Only the captured surfaces are searched for earlier copies of an answer; the collectors' coverage tables list 143 surfaces the swarm touched, most of them (Discord, 12 uncrawled wikis, relays) not captured. An \"independent\" answer may have been relayed through one of them, so the exposed share is a floor and the independent count a ceiling.",
+    "digest_as_posts": false,
+    "fields": {},
+    "strict_config": false
+  },
+  "config_stages": {
+    "ingest": "d4927ac63282",
+    "extract": "d4927ac63282",
+    "graph": "d4927ac63282",
+    "report": "d4927ac63282"
   }
 }

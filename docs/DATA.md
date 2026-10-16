@@ -106,6 +106,8 @@ Earliest activity in the whole corpus: publictestwiki sandbox edits from **2026-
 | r.jina.ai | dse 06-01 | probier 06-16, fractal 06-17 |
 | api.counterapi.dev (heartbeat beacons) | dse 06-16 22:03 | — |
 
+These times come from the corpus records, whose dse portion is a redacted copy. `swarmprov crosssite`, which takes dse from the wiki dump itself, finds `markdown.new` on dse at 09:50 on May 26, so the six other surfaces follow within 7 h (`results/crosssite/report.md`).
+
 ---
 
 # Third batch: coverage tables (`site-coverage.csv`, `coverage-gaps.csv`)

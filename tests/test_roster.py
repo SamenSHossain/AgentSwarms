@@ -121,6 +121,8 @@ def test_roster_only_run_writes_roster_report(tmp_path):
     run = pipeline.run_all(GOALS, tmp_path / "run")
     text = (run.path / "report.md").read_text()
     assert text.startswith("# Context report") and "33 goal assignments to 32 agents" in text
+    assert f"The roster below becomes task families and cohorts when attached to a transcript: `swarmprov run " \
+           f"TRANSCRIPT --roster {GOALS}`." in text and "channel lifecycle" not in text
     funnel = json.loads((run.path / "summary.json").read_text())["funnel"]
     assert funnel["posts"] == funnel["answer_claims"] == funnel["agent_rounds"] == 0
     assert not run.has("claims")

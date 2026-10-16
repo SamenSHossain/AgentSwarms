@@ -4,11 +4,21 @@
     "adapter": "wiki",
     "n_events": 15987,
     "n_authors": 3232,
-    "first_ts": "2026-05-24 06:02:19+00:00",
-    "last_ts": "2026-07-02 17:51:22+00:00"
+    "first_ts": "2026-05-24T06:02:19+00:00",
+    "last_ts": "2026-07-02T17:51:22+00:00",
+    "clock": "wall"
   },
-  "village": {
-    "family_from_roster": true
+  "funnel": {
+    "posts": 15987,
+    "posts_with_family": 7210,
+    "answer_posts": 1329,
+    "answer_claims": 1472,
+    "answer_claims_no_item": 106,
+    "answer_claims_no_value": 547,
+    "answer_claims_no_family": 49,
+    "agent_rounds": 1108,
+    "agent_rounds_untimed": 0,
+    "catch_all_family": null
   },
   "deletions": {
     "n": 5217,
@@ -16,8 +26,8 @@
     "actors": [
       "[Admin1]"
     ],
-    "first": "2026-06-04 10:53:40+00:00",
-    "last": "2026-07-14 13:56:54+00:00",
+    "first": "2026-06-04T10:53:40+00:00",
+    "last": "2026-07-14T13:56:54+00:00",
     "held": 3969,
     "unheld": 1248,
     "n_sweeps": 80,
@@ -27,13 +37,13 @@
     "largest": {
       "n": 441,
       "pages": 440,
-      "start": "2026-07-13 19:15:30+00:00",
-      "end": "2026-07-13 22:18:48+00:00"
+      "start": "2026-07-13T19:15:30+00:00",
+      "end": "2026-07-13T22:18:48+00:00"
     },
     "n_recreate": 68,
     "recreate_with_revision": 64,
     "recreate_gap_median_h": 0.37930555555555556,
-    "last_write": "2026-07-02 17:51:22+00:00",
+    "last_write": "2026-07-02T17:51:22+00:00",
     "deleted_before_last_write": 2796,
     "posts": 15987,
     "posts_on_deleted_pages": 13542,
@@ -47,7 +57,7 @@
       "pipeline_only": 2,
       "pipeline_only_after_cutoff": 2,
       "dump_only": 0,
-      "cutoff": "2026-06-22 09:20:04+00:00",
+      "cutoff": "2026-06-22T09:20:04+00:00",
       "posts_on_recreations": 107,
       "restored_posts": 30,
       "fresh_posts": 77
@@ -58,8 +68,8 @@
     "sites": [
       "dse"
     ],
-    "first": "2026-05-17 05:46:45+00:00",
-    "last": "2026-06-30 12:10:38+00:00",
+    "first": "2026-05-17T05:46:45+00:00",
+    "last": "2026-06-30T12:10:38+00:00",
     "n_ip16": 46,
     "n_success": 0,
     "actions": {
@@ -95,9 +105,238 @@
     "share_self_prepared": 0.18501805054151624,
     "median_gap_h": 11.62,
     "n_agents": 617,
+    "share_exposed_ci": [
+      0.8834969650255323,
+      0.9552066781023825
+    ],
+    "share_exposed_10m_ci": [
+      0.8582842907777704,
+      0.9435504110100885
+    ],
+    "share_exposed_60m_ci": [
+      0.753577916402461,
+      0.8836316329592224
+    ],
+    "share_self_prepared_ci": [
+      0.12140961184551527,
+      0.25444950772700947
+    ],
+    "median_gap_h_ci": [
+      9.03053125,
+      16.503638888888887
+    ],
+    "bootstrap": {
+      "reps": 1000,
+      "cluster": "item_fe",
+      "level": 0.95,
+      "seed": 0,
+      "min_clusters": 5
+    },
     "n_independent_visible": 104,
     "n_src_deleted_before_report": 171,
-    "n_only_deleted_copies": 21
+    "n_only_deleted_copies": 21,
+    "threshold_curve": {
+      "label": "public at least t before the report",
+      "hours": [
+        0,
+        0.16666666666666666,
+        0.5,
+        1,
+        3,
+        6,
+        12,
+        24,
+        48
+      ],
+      "min_n": 40,
+      "curves": [
+        {
+          "answers": "all answers",
+          "n": 1108,
+          "share": [
+            0.9250902527075813,
+            0.907942238267148,
+            0.8736462093862816,
+            0.8321299638989169,
+            0.7102888086642599,
+            0.6425992779783394,
+            0.44314079422382674,
+            0.20667870036101083,
+            0.16425992779783394
+          ]
+        },
+        {
+          "answers": "all answers, still-visible copies",
+          "n": 1108,
+          "share": [
+            0.9061371841155235,
+            0.8745487364620939,
+            0.8303249097472925,
+            0.76985559566787,
+            0.5947653429602888,
+            0.5108303249097473,
+            0.30234657039711194,
+            0.06498194945848375,
+            0.024368231046931407
+          ]
+        },
+        {
+          "answers": "oecd-equity",
+          "n": 201,
+          "share": [
+            0.9402985074626866,
+            0.9402985074626866,
+            0.9402985074626866,
+            0.9402985074626866,
+            0.900497512437811,
+            0.7263681592039801,
+            0.6417910447761194,
+            0.6368159203980099,
+            0.6368159203980099
+          ]
+        },
+        {
+          "answers": "datausa-cashiers-masters",
+          "n": 175,
+          "share": [
+            0.9542857142857143,
+            0.9542857142857143,
+            0.9542857142857143,
+            0.9314285714285714,
+            0.9028571428571428,
+            0.8914285714285715,
+            0.8914285714285715,
+            0.17142857142857143,
+            0.11428571428571428
+          ]
+        },
+        {
+          "answers": "datausa-construction-workforce",
+          "n": 120,
+          "share": [
+            0.925,
+            0.875,
+            0.7833333333333333,
+            0.7583333333333333,
+            0.6333333333333333,
+            0.5916666666666667,
+            0.5833333333333334,
+            0.03333333333333333,
+            0.0
+          ]
+        },
+        {
+          "answers": "datausa-grocery-workforce",
+          "n": 109,
+          "share": [
+            0.9724770642201835,
+            0.963302752293578,
+            0.9174311926605505,
+            0.8990825688073395,
+            0.8990825688073395,
+            0.8990825688073395,
+            0.045871559633027525,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "answers": "datausa-sector61-state",
+          "n": 91,
+          "share": [
+            1.0,
+            0.989010989010989,
+            0.8571428571428571,
+            0.6593406593406593,
+            0.02197802197802198,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "answers": "datausa-clothing-workforce",
+          "n": 87,
+          "share": [
+            0.9885057471264368,
+            0.9885057471264368,
+            0.9770114942528736,
+            0.9080459770114943,
+            0.8850574712643678,
+            0.8850574712643678,
+            0.1839080459770115,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "answers": "ihme-cvd-deaths",
+          "n": 60,
+          "share": [
+            0.7833333333333333,
+            0.7833333333333333,
+            0.7833333333333333,
+            0.7833333333333333,
+            0.7333333333333333,
+            0.6833333333333333,
+            0.6166666666666667,
+            0.48333333333333334,
+            0.48333333333333334
+          ]
+        },
+        {
+          "answers": "datausa-poverty-county",
+          "n": 54,
+          "share": [
+            0.9074074074074074,
+            0.8888888888888888,
+            0.8703703703703703,
+            0.8333333333333334,
+            0.7222222222222222,
+            0.7222222222222222,
+            0.5370370370370371,
+            0.05555555555555555,
+            0.05555555555555555
+          ]
+        },
+        {
+          "answers": "datausa-language-french",
+          "n": 51,
+          "share": [
+            0.9215686274509803,
+            0.9019607843137255,
+            0.8627450980392157,
+            0.7843137254901961,
+            0.49019607843137253,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ]
+    },
+    "instant_sweep": {
+      "n_answers": 1108,
+      "n_stated_latency": 277,
+      "n_instant_by_wording": 271,
+      "n_delayed_by_wording": 0,
+      "ks": [
+        1,
+        2,
+        5,
+        10
+      ],
+      "share_instant": [
+        0.42418772563176893,
+        0.44404332129963897,
+        0.45126353790613716,
+        0.45216606498194944
+      ],
+      "n_class_differs_at_configured": 0,
+      "k_configured": 2.0
+    }
   },
   "A2": [
     {
@@ -111,12 +350,12 @@
       "agents_with_D_variation": 17,
       "mean_y_D0": 0.4838709677419355,
       "mean_y_D1": 0.48412698412698413,
-      "beta": -0.06633494373768489,
-      "se": 0.06561512920742678,
-      "p": 0.31284807352042066,
-      "ci_lo": -0.19546090324455745,
-      "ci_hi": 0.06279101576918766,
-      "note": NaN
+      "beta": -0.06633494414991348,
+      "se": 0.06561511702597438,
+      "p": 0.3128479808354039,
+      "ci_lo": -0.19546087968454443,
+      "ci_hi": 0.06279099138471747,
+      "note": null
     },
     {
       "outcome": "y_instant",
@@ -129,12 +368,12 @@
       "agents_with_D_variation": 37,
       "mean_y_D0": 0.6063829787234043,
       "mean_y_D1": 0.4675324675324675,
-      "beta": -0.11273927227854844,
-      "se": 0.11436991918204581,
-      "p": 0.3250565514789754,
-      "ci_lo": -0.3378112294855392,
-      "ci_hi": 0.11233268492844237,
-      "note": NaN
+      "beta": -0.11273927238107655,
+      "se": 0.11436990478453721,
+      "p": 0.32505649023261407,
+      "ci_lo": -0.33781120125478303,
+      "ci_hi": 0.11233265649262993,
+      "note": null
     },
     {
       "outcome": "y_instant|known",
@@ -147,11 +386,11 @@
       "agents_with_D_variation": 4,
       "mean_y_D0": 1.0,
       "mean_y_D1": 0.8996865203761756,
-      "beta": NaN,
-      "se": NaN,
-      "p": NaN,
-      "ci_lo": NaN,
-      "ci_hi": NaN,
+      "beta": null,
+      "se": null,
+      "p": null,
+      "ci_lo": null,
+      "ci_hi": null,
       "note": "not identified: only 4 agents switch exposure status"
     },
     {
@@ -165,12 +404,12 @@
       "agents_with_D_variation": 10,
       "mean_y_D0": 0.9523809523809523,
       "mean_y_D1": 0.8951048951048951,
-      "beta": 0.0009667228623873576,
-      "se": 0.0038238467275152834,
-      "p": 0.800785263912553,
-      "ci_lo": -0.00659370170912112,
-      "ci_hi": 0.008527147433895835,
-      "note": NaN
+      "beta": 0.0009667210185989637,
+      "se": 0.003823756076887678,
+      "p": 0.8007810134182798,
+      "ci_lo": -0.0065935243205079005,
+      "ci_hi": 0.008526966357705827,
+      "note": null
     },
     {
       "outcome": "y_consensus",
@@ -183,11 +422,11 @@
       "agents_with_D_variation": 3,
       "mean_y_D0": 0.6470588235294118,
       "mean_y_D1": 0.801038062283737,
-      "beta": NaN,
-      "se": NaN,
-      "p": NaN,
-      "ci_lo": NaN,
-      "ci_hi": NaN,
+      "beta": null,
+      "se": null,
+      "p": null,
+      "ci_lo": null,
+      "ci_hi": null,
       "note": "not identified: only 3 agents switch exposure status"
     },
     {
@@ -201,97 +440,732 @@
       "agents_with_D_variation": 15,
       "mean_y_D0": 0.7916666666666666,
       "mean_y_D1": 0.7970749542961609,
-      "beta": 0.024765532182865535,
-      "se": 0.0944582188438045,
-      "p": 0.7934186648928174,
-      "ci_lo": -0.16137037578299152,
-      "ci_hi": 0.21090144014872259,
-      "note": NaN
+      "beta": 0.024765532392697742,
+      "se": 0.09445822243049715,
+      "p": 0.7934186708477071,
+      "ci_lo": -0.16137038264096454,
+      "ci_hi": 0.21090144742636002,
+      "note": null
+    },
+    {
+      "outcome": "y_winner",
+      "outcome_label": "Answer matches the A4 winner (overturned slots only)",
+      "treatment": "D_cons",
+      "treatment_label": "Consensus public before report",
+      "n": 98,
+      "agents": 49,
+      "items": 4,
+      "agents_with_D_variation": 0,
+      "mean_y_D0": 0.0,
+      "mean_y_D1": 0.4375,
+      "beta": null,
+      "se": null,
+      "p": null,
+      "ci_lo": null,
+      "ci_hi": null,
+      "note": "not identified: only 0 agents switch exposure status"
+    },
+    {
+      "outcome": "y_winner",
+      "outcome_label": "Answer matches the A4 winner (overturned slots only)",
+      "treatment": "D_cons_w60m",
+      "treatment_label": "Consensus public >= 1 h before",
+      "n": 98,
+      "agents": 49,
+      "items": 4,
+      "agents_with_D_variation": 4,
+      "mean_y_D0": 0.16666666666666666,
+      "mean_y_D1": 0.44565217391304346,
+      "beta": null,
+      "se": null,
+      "p": null,
+      "ci_lo": null,
+      "ci_hi": null,
+      "note": "not identified: only 4 agents switch exposure status"
     }
   ],
+  "A2_dose": {
+    "label": "exploratory: dose response among exposed rounds",
+    "ref": "<1h",
+    "min_within_sd": 0.25,
+    "min_bin_agents": 10,
+    "min_informative": 10,
+    "rows": [
+      {
+        "outcome": "y_instant|known",
+        "outcome_label": "Answered instantly, rounds with stated latency",
+        "n": 319,
+        "agents": 142,
+        "items": 35,
+        "within_sd": 0.3249347254246571,
+        "bin_agents": 19,
+        "term": "log1p(head h)",
+        "n_term": 319,
+        "mean_y": 0.8996865203761756,
+        "agents_spanning": 127,
+        "agents_informative": 26,
+        "beta": -0.010009062082249338,
+        "se": 0.013029429127875854,
+        "p": 0.4436971066290649,
+        "ci_lo": -0.03577386191826833,
+        "ci_hi": 0.015755737753769657,
+        "loo_lo": -0.0726556146368047,
+        "loo_hi": -0.0022072445283595754,
+        "var_share_top2": 0.8744537636351962,
+        "note": null
+      },
+      {
+        "outcome": "y_instant|known",
+        "outcome_label": "Answered instantly, rounds with stated latency",
+        "n": 319,
+        "agents": 142,
+        "items": 35,
+        "within_sd": 0.3249347254246571,
+        "bin_agents": 19,
+        "term": "<1h",
+        "n_term": 33,
+        "mean_y": 0.9393939393939394,
+        "agents_spanning": 10,
+        "agents_informative": 2,
+        "beta": null,
+        "se": null,
+        "p": null,
+        "ci_lo": null,
+        "ci_hi": null,
+        "loo_lo": null,
+        "loo_hi": null,
+        "var_share_top2": null,
+        "note": "not identified: only 2 of the 10 agents with a round here and in another bin vary in the outcome"
+      },
+      {
+        "outcome": "y_instant|known",
+        "outcome_label": "Answered instantly, rounds with stated latency",
+        "n": 319,
+        "agents": 142,
+        "items": 35,
+        "within_sd": 0.3249347254246571,
+        "bin_agents": 19,
+        "term": "1-6h",
+        "n_term": 25,
+        "mean_y": 1.0,
+        "agents_spanning": 12,
+        "agents_informative": 1,
+        "beta": null,
+        "se": null,
+        "p": null,
+        "ci_lo": null,
+        "ci_hi": null,
+        "loo_lo": null,
+        "loo_hi": null,
+        "var_share_top2": null,
+        "note": "not identified: only 1 of the 12 agents with a round here and in another bin varies in the outcome"
+      },
+      {
+        "outcome": "y_instant|known",
+        "outcome_label": "Answered instantly, rounds with stated latency",
+        "n": 319,
+        "agents": 142,
+        "items": 35,
+        "within_sd": 0.3249347254246571,
+        "bin_agents": 19,
+        "term": "6-24h",
+        "n_term": 157,
+        "mean_y": 0.9235668789808917,
+        "agents_spanning": 11,
+        "agents_informative": 1,
+        "beta": null,
+        "se": null,
+        "p": null,
+        "ci_lo": null,
+        "ci_hi": null,
+        "loo_lo": null,
+        "loo_hi": null,
+        "var_share_top2": null,
+        "note": "not identified: only 1 of the 11 agents with a round here and in another bin varies in the outcome"
+      },
+      {
+        "outcome": "y_instant|known",
+        "outcome_label": "Answered instantly, rounds with stated latency",
+        "n": 319,
+        "agents": 142,
+        "items": 35,
+        "within_sd": 0.3249347254246571,
+        "bin_agents": 19,
+        "term": ">24h",
+        "n_term": 104,
+        "mean_y": 0.8269230769230769,
+        "agents_spanning": 6,
+        "agents_informative": 0,
+        "beta": null,
+        "se": null,
+        "p": null,
+        "ci_lo": null,
+        "ci_hi": null,
+        "loo_lo": null,
+        "loo_hi": null,
+        "var_share_top2": null,
+        "note": "not identified: only 6 agents have a round here and in another bin"
+      },
+      {
+        "outcome": "y_instant",
+        "outcome_label": "Answered instantly (<= 2 s claimed)",
+        "n": 747,
+        "agents": 287,
+        "items": 53,
+        "within_sd": 0.3656885401214559,
+        "bin_agents": 52,
+        "term": "log1p(head h)",
+        "n_term": 747,
+        "mean_y": 0.4899598393574297,
+        "agents_spanning": 261,
+        "agents_informative": 157,
+        "beta": -0.09832902265116707,
+        "se": 0.08519302866332527,
+        "p": 0.24938880654539375,
+        "ci_lo": -0.26601638658966786,
+        "ci_hi": 0.06935834128733372,
+        "loo_lo": -0.22028458406473195,
+        "loo_hi": -0.03321789094362215,
+        "var_share_top2": 0.833404146286421,
+        "note": null
+      },
+      {
+        "outcome": "y_instant",
+        "outcome_label": "Answered instantly (<= 2 s claimed)",
+        "n": 747,
+        "agents": 287,
+        "items": 53,
+        "within_sd": 0.3656885401214559,
+        "bin_agents": 52,
+        "term": "<1h",
+        "n_term": 63,
+        "mean_y": 0.6666666666666666,
+        "agents_spanning": 26,
+        "agents_informative": 14,
+        "beta": null,
+        "se": null,
+        "p": null,
+        "ci_lo": null,
+        "ci_hi": null,
+        "loo_lo": null,
+        "loo_hi": null,
+        "var_share_top2": null,
+        "note": null
+      },
+      {
+        "outcome": "y_instant",
+        "outcome_label": "Answered instantly (<= 2 s claimed)",
+        "n": 747,
+        "agents": 287,
+        "items": 53,
+        "within_sd": 0.3656885401214559,
+        "bin_agents": 52,
+        "term": "1-6h",
+        "n_term": 91,
+        "mean_y": 0.4065934065934066,
+        "agents_spanning": 36,
+        "agents_informative": 16,
+        "beta": -0.08477135881515746,
+        "se": 0.10991545284763433,
+        "p": 0.4412027416364981,
+        "ci_lo": -0.3011204290772988,
+        "ci_hi": 0.13157771144698388,
+        "loo_lo": null,
+        "loo_hi": null,
+        "var_share_top2": null,
+        "note": "shape only: 14 agents inform the <1h reference (< 20)"
+      },
+      {
+        "outcome": "y_instant",
+        "outcome_label": "Answered instantly (<= 2 s claimed)",
+        "n": 747,
+        "agents": 287,
+        "items": 53,
+        "within_sd": 0.3656885401214559,
+        "bin_agents": 52,
+        "term": "6-24h",
+        "n_term": 350,
+        "mean_y": 0.5171428571428571,
+        "agents_spanning": 33,
+        "agents_informative": 16,
+        "beta": -0.21447509044390017,
+        "se": 0.284990499360766,
+        "p": 0.4523299250356516,
+        "ci_lo": -0.7754283319841513,
+        "ci_hi": 0.346478151096351,
+        "loo_lo": null,
+        "loo_hi": null,
+        "var_share_top2": null,
+        "note": "shape only: 14 agents inform the <1h reference (< 20)"
+      },
+      {
+        "outcome": "y_instant",
+        "outcome_label": "Answered instantly (<= 2 s claimed)",
+        "n": 747,
+        "agents": 287,
+        "items": 53,
+        "within_sd": 0.3656885401214559,
+        "bin_agents": 52,
+        "term": ">24h",
+        "n_term": 243,
+        "mean_y": 0.43621399176954734,
+        "agents_spanning": 11,
+        "agents_informative": 5,
+        "beta": null,
+        "se": null,
+        "p": null,
+        "ci_lo": null,
+        "ci_hi": null,
+        "loo_lo": null,
+        "loo_hi": null,
+        "var_share_top2": null,
+        "note": "not identified: only 5 of the 11 agents with a round here and in another bin vary in the outcome"
+      }
+    ],
+    "stated_latency_slope": {
+      "beta": -0.17887593786308253,
+      "se": 0.06866424743304383,
+      "p": 0.009667416745770652,
+      "n": 747
+    },
+    "other_mapping": [
+      {
+        "outcome": "y_instant|known",
+        "outcome_label": "Answered instantly, rounds with stated latency",
+        "n": 315,
+        "agents": 142,
+        "items": 33,
+        "within_sd": 0.25702969510126544,
+        "bin_agents": 18,
+        "term": "log1p(head h)",
+        "n_term": 315,
+        "mean_y": 0.9111111111111111,
+        "agents_spanning": 125,
+        "agents_informative": 22,
+        "beta": -0.03468582606144533,
+        "se": 0.04071952225022826,
+        "p": 0.39579889496419707,
+        "ci_lo": -0.11520588030932391,
+        "ci_hi": 0.04583422818643324,
+        "loo_lo": -0.054994241154421974,
+        "loo_hi": -0.00652521192665656,
+        "var_share_top2": 0.6755499125297171,
+        "note": null
+      },
+      {
+        "outcome": "y_instant|known",
+        "outcome_label": "Answered instantly, rounds with stated latency",
+        "n": 315,
+        "agents": 142,
+        "items": 33,
+        "within_sd": 0.25702969510126544,
+        "bin_agents": 18,
+        "term": "<1h",
+        "n_term": 35,
+        "mean_y": 0.9428571428571428,
+        "agents_spanning": 9,
+        "agents_informative": 2,
+        "beta": null,
+        "se": null,
+        "p": null,
+        "ci_lo": null,
+        "ci_hi": null,
+        "loo_lo": null,
+        "loo_hi": null,
+        "var_share_top2": null,
+        "note": "not identified: only 9 agents have a round here and in another bin"
+      },
+      {
+        "outcome": "y_instant|known",
+        "outcome_label": "Answered instantly, rounds with stated latency",
+        "n": 315,
+        "agents": 142,
+        "items": 33,
+        "within_sd": 0.25702969510126544,
+        "bin_agents": 18,
+        "term": "1-6h",
+        "n_term": 21,
+        "mean_y": 1.0,
+        "agents_spanning": 12,
+        "agents_informative": 1,
+        "beta": null,
+        "se": null,
+        "p": null,
+        "ci_lo": null,
+        "ci_hi": null,
+        "loo_lo": null,
+        "loo_hi": null,
+        "var_share_top2": null,
+        "note": "not identified: only 1 of the 12 agents with a round here and in another bin varies in the outcome"
+      },
+      {
+        "outcome": "y_instant|known",
+        "outcome_label": "Answered instantly, rounds with stated latency",
+        "n": 315,
+        "agents": 142,
+        "items": 33,
+        "within_sd": 0.25702969510126544,
+        "bin_agents": 18,
+        "term": "6-24h",
+        "n_term": 157,
+        "mean_y": 0.9299363057324841,
+        "agents_spanning": 11,
+        "agents_informative": 1,
+        "beta": null,
+        "se": null,
+        "p": null,
+        "ci_lo": null,
+        "ci_hi": null,
+        "loo_lo": null,
+        "loo_hi": null,
+        "var_share_top2": null,
+        "note": "not identified: only 1 of the 11 agents with a round here and in another bin varies in the outcome"
+      },
+      {
+        "outcome": "y_instant|known",
+        "outcome_label": "Answered instantly, rounds with stated latency",
+        "n": 315,
+        "agents": 142,
+        "items": 33,
+        "within_sd": 0.25702969510126544,
+        "bin_agents": 18,
+        "term": ">24h",
+        "n_term": 102,
+        "mean_y": 0.8529411764705882,
+        "agents_spanning": 5,
+        "agents_informative": 0,
+        "beta": null,
+        "se": null,
+        "p": null,
+        "ci_lo": null,
+        "ci_hi": null,
+        "loo_lo": null,
+        "loo_hi": null,
+        "var_share_top2": null,
+        "note": "not identified: only 5 agents have a round here and in another bin"
+      },
+      {
+        "outcome": "y_instant",
+        "outcome_label": "Answered instantly (<= 2 s claimed)",
+        "n": 751,
+        "agents": 292,
+        "items": 51,
+        "within_sd": 0.33410719685359525,
+        "bin_agents": 50,
+        "term": "log1p(head h)",
+        "n_term": 751,
+        "mean_y": 0.49134487350199735,
+        "agents_spanning": 261,
+        "agents_informative": 151,
+        "beta": -0.059407999949897185,
+        "se": 0.17256334026577524,
+        "p": 0.7308944097666839,
+        "ci_lo": -0.39904335199033036,
+        "ci_hi": 0.28022735209053595,
+        "loo_lo": -0.38741397875715844,
+        "loo_hi": 0.1561043665784536,
+        "var_share_top2": 0.8380622113498554,
+        "note": null
+      },
+      {
+        "outcome": "y_instant",
+        "outcome_label": "Answered instantly (<= 2 s claimed)",
+        "n": 751,
+        "agents": 292,
+        "items": 51,
+        "within_sd": 0.33410719685359525,
+        "bin_agents": 50,
+        "term": "<1h",
+        "n_term": 65,
+        "mean_y": 0.676923076923077,
+        "agents_spanning": 24,
+        "agents_informative": 13,
+        "beta": null,
+        "se": null,
+        "p": null,
+        "ci_lo": null,
+        "ci_hi": null,
+        "loo_lo": null,
+        "loo_hi": null,
+        "var_share_top2": null,
+        "note": null
+      },
+      {
+        "outcome": "y_instant",
+        "outcome_label": "Answered instantly (<= 2 s claimed)",
+        "n": 751,
+        "agents": 292,
+        "items": 51,
+        "within_sd": 0.33410719685359525,
+        "bin_agents": 50,
+        "term": "1-6h",
+        "n_term": 84,
+        "mean_y": 0.4166666666666667,
+        "agents_spanning": 36,
+        "agents_informative": 16,
+        "beta": 0.0076497349471374865,
+        "se": 0.13461753965993284,
+        "p": 0.9547231796243887,
+        "ci_lo": -0.25730153107959086,
+        "ci_hi": 0.27260100097386586,
+        "loo_lo": null,
+        "loo_hi": null,
+        "var_share_top2": null,
+        "note": "shape only: 13 agents inform the <1h reference (< 20)"
+      },
+      {
+        "outcome": "y_instant",
+        "outcome_label": "Answered instantly (<= 2 s claimed)",
+        "n": 751,
+        "agents": 292,
+        "items": 51,
+        "within_sd": 0.33410719685359525,
+        "bin_agents": 50,
+        "term": "6-24h",
+        "n_term": 354,
+        "mean_y": 0.5169491525423728,
+        "agents_spanning": 33,
+        "agents_informative": 16,
+        "beta": -0.11126581065026181,
+        "se": 0.3505837375559962,
+        "p": 0.7511889746894256,
+        "ci_lo": -0.8012769737460486,
+        "ci_hi": 0.578745352445525,
+        "loo_lo": null,
+        "loo_hi": null,
+        "var_share_top2": null,
+        "note": "shape only: 13 agents inform the <1h reference (< 20)"
+      },
+      {
+        "outcome": "y_instant",
+        "outcome_label": "Answered instantly (<= 2 s claimed)",
+        "n": 751,
+        "agents": 292,
+        "items": 51,
+        "within_sd": 0.33410719685359525,
+        "bin_agents": 50,
+        "term": ">24h",
+        "n_term": 248,
+        "mean_y": 0.4314516129032258,
+        "agents_spanning": 9,
+        "agents_informative": 4,
+        "beta": null,
+        "se": null,
+        "p": null,
+        "ci_lo": null,
+        "ci_hi": null,
+        "loo_lo": null,
+        "loo_hi": null,
+        "var_share_top2": null,
+        "note": "not identified: only 9 agents have a round here and in another bin"
+      }
+    ]
+  },
   "A3": [
     {
       "technique": "blob-hostname-bypass",
-      "first_seen": "2026-06-20 05:10:21+00:00",
+      "first_seen": "2026-06-20T05:10:21+00:00",
       "originator": "Mar30|oecd-equity",
       "n_posts": 24,
       "at_risk": 73,
       "adopters": 17,
       "adoption_share": 0.2328767123287671,
-      "median_hours_to_adopt": NaN,
-      "median_hours_among_adopters": 0.7844444444444445
+      "median_hours_to_adopt": null,
+      "median_hours_to_adopt_lo": null,
+      "median_hours_to_adopt_hi": null,
+      "median_hours_among_adopters": 0.7844444444444445,
+      "contagion": {
+        "n_carrying_pages": 16,
+        "n_posts_page_name_only": 0,
+        "n_page_names": 0,
+        "excluded": null,
+        "n_adopters": 17,
+        "n_on_carrying": 6,
+        "share_on_carrying": 0.35294117647058826,
+        "baseline": 0.18858543417366946,
+        "p": 0.03821281599059377,
+        "n_exposed_before": 3,
+        "n_adopted_on_named_page": 0,
+        "n_carrying_on_named_page": 0,
+        "p_holm": 0.11463844797178131
+      }
     },
     {
       "technique": "live-tooltip-value",
-      "first_seen": "2026-06-20 04:44:39+00:00",
+      "first_seen": "2026-06-20T04:44:39+00:00",
       "originator": "Apr19|oecd-equity",
       "n_posts": 50,
       "at_risk": 74,
       "adopters": 35,
       "adoption_share": 0.47297297297297297,
       "median_hours_to_adopt": 5.735277777777778,
-      "median_hours_among_adopters": 4.196111111111111
+      "median_hours_to_adopt_lo": 4.796944444444445,
+      "median_hours_to_adopt_hi": 8.450555555555555,
+      "median_hours_among_adopters": 4.196111111111111,
+      "contagion": {
+        "n_carrying_pages": 34,
+        "n_posts_page_name_only": 0,
+        "n_page_names": 0,
+        "excluded": null,
+        "n_adopters": 35,
+        "n_on_carrying": 6,
+        "share_on_carrying": 0.17142857142857143,
+        "baseline": 0.19921768707482995,
+        "p": 0.8145815894717262,
+        "n_exposed_before": 8,
+        "n_adopted_on_named_page": 0,
+        "n_carrying_on_named_page": 0,
+        "p_holm": 0.8145815894717262
+      }
     },
     {
       "technique": "heartbeat-beacon",
-      "first_seen": "2026-06-17 00:19:12+00:00",
+      "first_seen": "2026-06-17T00:19:12+00:00",
       "originator": "Apr15|ihme-lymphatic-filariasis",
       "n_posts": 199,
-      "at_risk": 1114,
+      "at_risk": 1113,
       "adopters": 96,
-      "adoption_share": 0.08617594254937164,
-      "median_hours_to_adopt": NaN,
-      "median_hours_among_adopters": 80.57305555555556
+      "adoption_share": 0.0862533692722372,
+      "median_hours_to_adopt": null,
+      "median_hours_to_adopt_lo": null,
+      "median_hours_to_adopt_hi": null,
+      "median_hours_among_adopters": 80.57305555555556,
+      "contagion": {
+        "n_carrying_pages": 80,
+        "n_posts_page_name_only": 0,
+        "n_page_names": 2,
+        "excluded": null,
+        "n_adopters": 96,
+        "n_on_carrying": 39,
+        "share_on_carrying": 0.40625,
+        "baseline": 0.35496573282346305,
+        "p": 0.0867896510285528,
+        "n_exposed_before": 40,
+        "n_adopted_on_named_page": 2,
+        "n_carrying_on_named_page": 1,
+        "p_holm": 0.1735793020571056
+      }
     },
     {
       "technique": "zzz-backup-pages",
-      "first_seen": "2026-05-31 00:23:58+00:00",
+      "first_seen": "2026-05-31T00:23:58+00:00",
       "originator": "test",
       "n_posts": 78,
-      "at_risk": 1642,
+      "at_risk": 1640,
       "adopters": 27,
-      "adoption_share": 0.016443361753958587,
-      "median_hours_to_adopt": NaN,
-      "median_hours_among_adopters": 451.09055555555557
+      "adoption_share": 0.016463414634146342,
+      "median_hours_to_adopt": null,
+      "median_hours_to_adopt_lo": null,
+      "median_hours_to_adopt_hi": null,
+      "median_hours_among_adopters": 451.09055555555557,
+      "contagion": {
+        "n_carrying_pages": 35,
+        "n_posts_page_name_only": 67,
+        "n_page_names": 16,
+        "excluded": "67 of its 78 posts match its pattern only by naming a page, so the match can come from the page's name rather than the technique"
+      }
     },
     {
       "technique": "rng-seed-crack",
-      "first_seen": "2026-06-16 09:47:08+00:00",
+      "first_seen": "2026-06-16T09:47:08+00:00",
       "originator": "Apr02|datausa-sector61-state",
       "n_posts": 51,
-      "at_risk": 1602,
+      "at_risk": 1600,
       "adopters": 42,
-      "adoption_share": 0.026217228464419477,
-      "median_hours_to_adopt": NaN,
-      "median_hours_among_adopters": 12.1875
+      "adoption_share": 0.02625,
+      "median_hours_to_adopt": null,
+      "median_hours_to_adopt_lo": null,
+      "median_hours_to_adopt_hi": null,
+      "median_hours_among_adopters": 12.1875,
+      "contagion": {
+        "n_carrying_pages": 27,
+        "n_posts_page_name_only": 0,
+        "n_page_names": 0,
+        "excluded": null,
+        "n_adopters": 42,
+        "n_on_carrying": 19,
+        "share_on_carrying": 0.4523809523809524,
+        "baseline": 0.2970257410294244,
+        "p": 0.0032873732274297505,
+        "n_exposed_before": 14,
+        "n_adopted_on_named_page": 0,
+        "n_carrying_on_named_page": 0,
+        "p_holm": 0.016436866137148752
+      }
     },
     {
       "technique": "clock-wait-fastforward",
-      "first_seen": "2026-06-16 11:06:46+00:00",
+      "first_seen": "2026-06-16T11:06:46+00:00",
       "originator": "Mar13|datausa-grocery-workforce",
       "n_posts": 195,
-      "at_risk": 1594,
+      "at_risk": 1592,
       "adopters": 135,
-      "adoption_share": 0.08469259723964868,
-      "median_hours_to_adopt": NaN,
-      "median_hours_among_adopters": 12.698611111111111
+      "adoption_share": 0.08479899497487438,
+      "median_hours_to_adopt": null,
+      "median_hours_to_adopt_lo": null,
+      "median_hours_to_adopt_hi": null,
+      "median_hours_among_adopters": 12.698611111111111,
+      "contagion": {
+        "n_carrying_pages": 109,
+        "n_posts_page_name_only": 0,
+        "n_page_names": 0,
+        "excluded": null,
+        "n_adopters": 135,
+        "n_on_carrying": 50,
+        "share_on_carrying": 0.37037037037037035,
+        "baseline": 0.2957385522806979,
+        "p": 0.005762834046766439,
+        "n_exposed_before": 45,
+        "n_adopted_on_named_page": 0,
+        "n_carrying_on_named_page": 0,
+        "p_holm": 0.023051336187065757
+      }
     }
   ],
   "A4": {
     "n_value_slots_disputed": 13,
     "n_sequence_slots_disputed": 2,
-    "featured": [
+    "rule": {
+      "bin_hours": 3.0,
+      "tail_share": 0.3333333333333333,
+      "min_tail": 5
+    },
+    "consensus_disagrees": {
+      "slots": [
+        "oecd-equity | Slovak Republic",
+        "oecd-equity | Hungary",
+        "oecd-equity | Poland",
+        "oecd-equity | Czech Republic",
+        "oecd-equity | Slovenia",
+        "datausa-language-french | Louisiana"
+      ],
+      "n_value_slots": 13,
+      "answer_rounds_stating_winner": 68,
+      "of_them_y_consensus_0": 68
+    },
+    "rows": [
       {
         "slot": "datausa-grocery-workforce | G5 (cracked-seed forecast vs observed)",
         "kind": "declared",
-        "variants (agents)": "Maryland (RNG forecast) (30), Montana (observed) (9)",
-        "agents carrying both": 3,
+        "variants (agents)": "Maryland (RNG forecast) (30), Montana (observed) (11)",
+        "agents carrying both": 2,
         "first variant": "Maryland (RNG forecast)",
         "winner": "Montana (observed)",
-        "corrected": true,
-        "winner first seen": "2026-06-16 10:54:31+00:00",
-        "winner majority from": "2026-06-16 22:54:31+00:00",
-        "hours to overtake": 12.0
+        "status": "overturned",
+        "late carriers (winner/total)": "11/14",
+        "winner first seen": "2026-06-16T22:56:50+00:00",
+        "winner majority from": "2026-06-16T22:56:50+00:00",
+        "hours to overtake": 0.0,
+        "reference (analyst input)": null,
+        "outcome": null,
+        "featured": true,
+        "tail counts": {
+          "Montana (observed)": 11,
+          "Maryland (RNG forecast)": 3
+        },
+        "tie": false,
+        "first seen tie": false,
+        "corrected": true
       },
       {
         "slot": "oecd-equity | Poland",
@@ -300,10 +1174,46 @@
         "agents carrying both": 13,
         "first variant": "16.4",
         "winner": "16.38",
+        "status": "overturned",
+        "late carriers (winner/total)": "21/28",
+        "winner first seen": "2026-06-20T04:56:50+00:00",
+        "winner majority from": "2026-06-20T04:56:50+00:00",
+        "hours to overtake": 0.0,
+        "reference (analyst input)": "16.38",
+        "outcome": "precision variant: reference prevailed",
+        "independent / after-public rounds": "16.38: 0 / 32; 16.4: 1 / 25",
+        "consensus \u2260 winner": "yes (16.4)",
+        "precision variants": "yes",
+        "featured": true,
+        "tail counts": {
+          "16.38": 21,
+          "16.4": 7
+        },
+        "tie": false,
+        "first seen tie": false,
         "corrected": true,
-        "winner first seen": "2026-06-20 04:56:50+00:00",
-        "winner majority from": "2026-06-20 04:56:50+00:00",
-        "hours to overtake": 0.0
+        "consensus": "16.4",
+        "precision_variants": true,
+        "variant_provenance": {
+          "by_variant": {
+            "16.4": {
+              "answer_rounds": 26,
+              "derived_independently": 1,
+              "independent_dissent": 0,
+              "adopted_after_public": 25,
+              "median_head_start_h": 65.36416666666666
+            },
+            "16.38": {
+              "answer_rounds": 32,
+              "derived_independently": 0,
+              "independent_dissent": 0,
+              "adopted_after_public": 32,
+              "median_head_start_h": 5.286666666666667
+            }
+          },
+          "n_inherited": 0,
+          "n_other_value": 0
+        }
       },
       {
         "slot": "oecd-equity | Hungary",
@@ -312,10 +1222,46 @@
         "agents carrying both": 11,
         "first variant": "9.9",
         "winner": "9.91",
-        "corrected": true,
-        "winner first seen": "2026-06-20 04:56:50+00:00",
-        "winner majority from": "None",
-        "hours to overtake": NaN
+        "status": "contested",
+        "late carriers (winner/total)": "16/29",
+        "winner first seen": "2026-06-20T04:56:50+00:00",
+        "winner majority from": null,
+        "hours to overtake": null,
+        "reference (analyst input)": "9.91",
+        "outcome": "precision variant: unresolved",
+        "independent / after-public rounds": "9.9: 0 / 47; 9.91: 0 / 18",
+        "consensus \u2260 winner": "yes (9.9)",
+        "precision variants": "yes",
+        "featured": true,
+        "tail counts": {
+          "9.91": 16,
+          "9.9": 13
+        },
+        "tie": false,
+        "first seen tie": false,
+        "corrected": false,
+        "consensus": "9.9",
+        "precision_variants": true,
+        "variant_provenance": {
+          "by_variant": {
+            "9.9": {
+              "answer_rounds": 47,
+              "derived_independently": 0,
+              "independent_dissent": 0,
+              "adopted_after_public": 47,
+              "median_head_start_h": 65.36416666666666
+            },
+            "9.91": {
+              "answer_rounds": 18,
+              "derived_independently": 0,
+              "independent_dissent": 0,
+              "adopted_after_public": 18,
+              "median_head_start_h": 4.940555555555555
+            }
+          },
+          "n_inherited": 1,
+          "n_other_value": 2
+        }
       },
       {
         "slot": "oecd-equity | Slovak Republic",
@@ -324,26 +1270,942 @@
         "agents carrying both": 20,
         "first variant": "14.6",
         "winner": "14.59",
+        "status": "overturned",
+        "late carriers (winner/total)": "31/35",
+        "winner first seen": "2026-06-20T04:56:50+00:00",
+        "winner majority from": "2026-06-20T04:56:50+00:00",
+        "hours to overtake": 0.0,
+        "reference (analyst input)": "14.59",
+        "outcome": "precision variant: reference prevailed",
+        "independent / after-public rounds": "no answer rounds",
+        "consensus \u2260 winner": "yes (14.6)",
+        "precision variants": "yes",
+        "featured": true,
+        "tail counts": {
+          "14.59": 31,
+          "14.6": 4
+        },
+        "tie": false,
+        "first seen tie": false,
         "corrected": true,
-        "winner first seen": "2026-06-20 04:56:50+00:00",
-        "winner majority from": "2026-06-20 04:56:50+00:00",
-        "hours to overtake": 0.0
+        "consensus": "14.6",
+        "precision_variants": true,
+        "variant_provenance": {
+          "by_variant": {
+            "14.6": {
+              "answer_rounds": 0,
+              "derived_independently": 0,
+              "independent_dissent": 0,
+              "adopted_after_public": 0,
+              "median_head_start_h": null
+            },
+            "14.59": {
+              "answer_rounds": 0,
+              "derived_independently": 0,
+              "independent_dissent": 0,
+              "adopted_after_public": 0,
+              "median_head_start_h": null
+            }
+          },
+          "n_inherited": 0,
+          "n_other_value": 0
+        }
+      },
+      {
+        "slot": "oecd-equity | Czech Republic",
+        "kind": "value",
+        "variants (agents)": "9.69 (17), 9.7 (27)",
+        "agents carrying both": 3,
+        "first variant": "9.7",
+        "winner": "9.69",
+        "status": "overturned",
+        "late carriers (winner/total)": "13/15",
+        "winner first seen": "2026-06-20T03:04:25+00:00",
+        "winner majority from": "2026-06-20T03:46:10+00:00",
+        "hours to overtake": 0.6958333333333333,
+        "reference (analyst input)": null,
+        "outcome": null,
+        "independent / after-public rounds": "9.69: 5 / 11; 9.7: 0 / 52",
+        "consensus \u2260 winner": "yes (9.7)",
+        "precision variants": "yes",
+        "featured": false,
+        "tail counts": {
+          "9.69": 13,
+          "9.7": 2
+        },
+        "tie": false,
+        "first seen tie": false,
+        "corrected": true,
+        "consensus": "9.7",
+        "precision_variants": true,
+        "variant_provenance": {
+          "by_variant": {
+            "9.7": {
+              "answer_rounds": 52,
+              "derived_independently": 0,
+              "independent_dissent": 0,
+              "adopted_after_public": 52,
+              "median_head_start_h": 63.42597222222222
+            },
+            "9.69": {
+              "answer_rounds": 16,
+              "derived_independently": 5,
+              "independent_dissent": 5,
+              "adopted_after_public": 11,
+              "median_head_start_h": 3.725
+            }
+          },
+          "n_inherited": 3,
+          "n_other_value": 4
+        }
+      },
+      {
+        "slot": "datausa-language-french | New Hampshire",
+        "kind": "value",
+        "variants (agents)": "1.25 (5), 1.32 (23)",
+        "agents carrying both": 2,
+        "first variant": "1.25",
+        "winner": "1.32",
+        "status": "overturned",
+        "late carriers (winner/total)": "9/10",
+        "winner first seen": "2026-06-16T22:08:36+00:00",
+        "winner majority from": "2026-06-16T22:08:36+00:00",
+        "hours to overtake": 0.0,
+        "reference (analyst input)": null,
+        "outcome": null,
+        "independent / after-public rounds": "1.25: 0 / 1; 1.32: 1 / 22",
+        "consensus \u2260 winner": "no",
+        "precision variants": "no",
+        "featured": false,
+        "tail counts": {
+          "1.32": 9,
+          "1.25": 1
+        },
+        "tie": false,
+        "first seen tie": false,
+        "corrected": true,
+        "consensus": "1.32",
+        "precision_variants": false,
+        "variant_provenance": {
+          "by_variant": {
+            "1.25": {
+              "answer_rounds": 1,
+              "derived_independently": 0,
+              "independent_dissent": 0,
+              "adopted_after_public": 1,
+              "median_head_start_h": 0.6455555555555555
+            },
+            "1.32": {
+              "answer_rounds": 23,
+              "derived_independently": 1,
+              "independent_dissent": 0,
+              "adopted_after_public": 22,
+              "median_head_start_h": 3.665138888888889
+            }
+          },
+          "n_inherited": 1,
+          "n_other_value": 0
+        }
+      },
+      {
+        "slot": "datausa-language-french | New York",
+        "kind": "value",
+        "variants (agents)": "11.7 (9), 12.4 (19)",
+        "agents carrying both": 5,
+        "first variant": "12.4",
+        "winner": "12.4",
+        "status": "held",
+        "late carriers (winner/total)": "10/10",
+        "winner first seen": "2026-06-16T20:53:32+00:00",
+        "winner majority from": "2026-06-16T20:53:32+00:00",
+        "hours to overtake": null,
+        "reference (analyst input)": null,
+        "outcome": null,
+        "independent / after-public rounds": "11.7: 0 / 1; 12.4: 0 / 11",
+        "consensus \u2260 winner": "no",
+        "precision variants": "no",
+        "featured": false,
+        "tail counts": {
+          "12.4": 10
+        },
+        "tie": false,
+        "first seen tie": false,
+        "corrected": false,
+        "consensus": "12.4",
+        "precision_variants": false,
+        "variant_provenance": {
+          "by_variant": {
+            "12.4": {
+              "answer_rounds": 11,
+              "derived_independently": 0,
+              "independent_dissent": 0,
+              "adopted_after_public": 11,
+              "median_head_start_h": 3.245833333333333
+            },
+            "11.7": {
+              "answer_rounds": 1,
+              "derived_independently": 0,
+              "independent_dissent": 0,
+              "adopted_after_public": 1,
+              "median_head_start_h": 2.200833333333333
+            }
+          },
+          "n_inherited": 1,
+          "n_other_value": 1
+        }
+      },
+      {
+        "slot": "oecd-equity | Slovenia",
+        "kind": "value",
+        "variants (agents)": "23.1 (16), 23.13 (11)",
+        "agents carrying both": 0,
+        "first variant": "23.1",
+        "winner": "23.13",
+        "status": "overturned",
+        "late carriers (winner/total)": "7/9",
+        "winner first seen": "2026-06-20T05:42:40+00:00",
+        "winner majority from": "2026-06-20T05:42:40+00:00",
+        "hours to overtake": 0.0,
+        "reference (analyst input)": null,
+        "outcome": null,
+        "independent / after-public rounds": "no answer rounds",
+        "consensus \u2260 winner": "yes (23.1)",
+        "precision variants": "yes",
+        "featured": false,
+        "tail counts": {
+          "23.13": 7,
+          "23.1": 2
+        },
+        "tie": false,
+        "first seen tie": false,
+        "corrected": true,
+        "consensus": "23.1",
+        "precision_variants": true,
+        "variant_provenance": {
+          "by_variant": {
+            "23.1": {
+              "answer_rounds": 0,
+              "derived_independently": 0,
+              "independent_dissent": 0,
+              "adopted_after_public": 0,
+              "median_head_start_h": null
+            },
+            "23.13": {
+              "answer_rounds": 0,
+              "derived_independently": 0,
+              "independent_dissent": 0,
+              "adopted_after_public": 0,
+              "median_head_start_h": null
+            }
+          },
+          "n_inherited": 0,
+          "n_other_value": 0
+        }
+      },
+      {
+        "slot": "datausa-language-french | Louisiana",
+        "kind": "value",
+        "variants (agents)": "5.26 (10), 5.57 (9)",
+        "agents carrying both": 2,
+        "first variant": "5.26",
+        "winner": "5.57",
+        "status": "overturned",
+        "late carriers (winner/total)": "6/7",
+        "winner first seen": "2026-06-16T20:53:32+00:00",
+        "winner majority from": "2026-06-17T02:52:52+00:00",
+        "hours to overtake": 5.988888888888889,
+        "reference (analyst input)": null,
+        "outcome": null,
+        "independent / after-public rounds": "5.26: 0 / 7; 5.57: 0 / 2",
+        "consensus \u2260 winner": "yes (5.26)",
+        "precision variants": "no",
+        "featured": false,
+        "tail counts": {
+          "5.57": 6,
+          "5.26": 1
+        },
+        "tie": false,
+        "first seen tie": false,
+        "corrected": true,
+        "consensus": "5.26",
+        "precision_variants": false,
+        "variant_provenance": {
+          "by_variant": {
+            "5.26": {
+              "answer_rounds": 7,
+              "derived_independently": 0,
+              "independent_dissent": 0,
+              "adopted_after_public": 7,
+              "median_head_start_h": 0.6394444444444445
+            },
+            "5.57": {
+              "answer_rounds": 2,
+              "derived_independently": 0,
+              "independent_dissent": 0,
+              "adopted_after_public": 2,
+              "median_head_start_h": 1.011111111111111
+            }
+          },
+          "n_inherited": 1,
+          "n_other_value": 0
+        }
+      },
+      {
+        "slot": "ihme-family-planning | Albania",
+        "kind": "value",
+        "variants (agents)": "13.46 (13), 51 (3)",
+        "agents carrying both": 2,
+        "first variant": null,
+        "winner": "13.46",
+        "status": "contested",
+        "late carriers (winner/total)": "5/6",
+        "winner first seen": "2026-06-20T11:07:47+00:00",
+        "winner majority from": "2026-06-21T08:07:47+00:00",
+        "hours to overtake": null,
+        "reference (analyst input)": null,
+        "outcome": null,
+        "independent / after-public rounds": "13.46: 0 / 12; 51: 0 / 0",
+        "consensus \u2260 winner": "no",
+        "precision variants": "no",
+        "featured": false,
+        "tail counts": {
+          "13.46": 5,
+          "51": 1
+        },
+        "tie": false,
+        "first seen tie": true,
+        "corrected": false,
+        "consensus": "13.46",
+        "precision_variants": false,
+        "variant_provenance": {
+          "by_variant": {
+            "13.46": {
+              "answer_rounds": 12,
+              "derived_independently": 0,
+              "independent_dissent": 0,
+              "adopted_after_public": 12,
+              "median_head_start_h": 26.315555555555555
+            },
+            "51": {
+              "answer_rounds": 0,
+              "derived_independently": 0,
+              "independent_dissent": 0,
+              "adopted_after_public": 0,
+              "median_head_start_h": null
+            }
+          },
+          "n_inherited": 2,
+          "n_other_value": 0
+        }
+      },
+      {
+        "slot": "datausa-maids-wage | Male",
+        "kind": "value",
+        "variants (agents)": "21839 (3), 22140 (11)",
+        "agents carrying both": 1,
+        "first variant": "21839",
+        "winner": "22140",
+        "status": "overturned",
+        "late carriers (winner/total)": "5/5",
+        "winner first seen": "2026-06-16T19:27:32+00:00",
+        "winner majority from": "2026-06-16T19:27:32+00:00",
+        "hours to overtake": 0.0,
+        "reference (analyst input)": null,
+        "outcome": null,
+        "independent / after-public rounds": "21839: 0 / 0; 22140: 4 / 19",
+        "consensus \u2260 winner": "no",
+        "precision variants": "no",
+        "featured": false,
+        "tail counts": {
+          "22140": 5
+        },
+        "tie": false,
+        "first seen tie": false,
+        "corrected": true,
+        "consensus": "22140",
+        "precision_variants": false,
+        "variant_provenance": {
+          "by_variant": {
+            "21839": {
+              "answer_rounds": 0,
+              "derived_independently": 0,
+              "independent_dissent": 0,
+              "adopted_after_public": 0,
+              "median_head_start_h": null
+            },
+            "22140": {
+              "answer_rounds": 23,
+              "derived_independently": 4,
+              "independent_dissent": 0,
+              "adopted_after_public": 19,
+              "median_head_start_h": 0.3858333333333333
+            }
+          },
+          "n_inherited": 1,
+          "n_other_value": 0
+        }
+      },
+      {
+        "slot": "datausa-language-french | Texas",
+        "kind": "value",
+        "variants (agents)": "7.58 (4), 8.03 (8)",
+        "agents carrying both": 1,
+        "first variant": "7.58",
+        "winner": "8.03",
+        "status": "contested (small n)",
+        "late carriers (winner/total)": "4/4",
+        "winner first seen": "2026-06-16T21:23:57+00:00",
+        "winner majority from": "2026-06-16T22:40:41+00:00",
+        "hours to overtake": 1.278888888888889,
+        "reference (analyst input)": null,
+        "outcome": null,
+        "independent / after-public rounds": "7.58: 1 / 0; 8.03: 0 / 0",
+        "consensus \u2260 winner": "no",
+        "precision variants": "no",
+        "featured": false,
+        "tail counts": {
+          "8.03": 4
+        },
+        "tie": false,
+        "first seen tie": false,
+        "corrected": false,
+        "consensus": "8.03",
+        "precision_variants": false,
+        "variant_provenance": {
+          "by_variant": {
+            "7.58": {
+              "answer_rounds": 1,
+              "derived_independently": 1,
+              "independent_dissent": 0,
+              "adopted_after_public": 0,
+              "median_head_start_h": null
+            },
+            "8.03": {
+              "answer_rounds": 0,
+              "derived_independently": 0,
+              "independent_dissent": 0,
+              "adopted_after_public": 0,
+              "median_head_start_h": null
+            }
+          },
+          "n_inherited": 1,
+          "n_other_value": 0
+        }
+      },
+      {
+        "slot": "nyc-veterans | Gulf War",
+        "kind": "value",
+        "variants (agents)": "14751 (5), 25276 (6)",
+        "agents carrying both": 4,
+        "first variant": "14751",
+        "winner": null,
+        "status": "contested",
+        "late carriers (winner/total)": "2/4 tie",
+        "winner first seen": null,
+        "winner majority from": null,
+        "hours to overtake": null,
+        "reference (analyst input)": null,
+        "outcome": null,
+        "independent / after-public rounds": "14751: 0 / 5; 25276: 0 / 0",
+        "consensus \u2260 winner": null,
+        "precision variants": "no",
+        "featured": false,
+        "tail counts": {
+          "25276": 2,
+          "14751": 2
+        },
+        "tie": true,
+        "first seen tie": false,
+        "corrected": false,
+        "consensus": "14751",
+        "precision_variants": false,
+        "variant_provenance": {
+          "by_variant": {
+            "14751": {
+              "answer_rounds": 5,
+              "derived_independently": 0,
+              "independent_dissent": 0,
+              "adopted_after_public": 5,
+              "median_head_start_h": 9.491666666666667
+            },
+            "25276": {
+              "answer_rounds": 0,
+              "derived_independently": 0,
+              "independent_dissent": 0,
+              "adopted_after_public": 0,
+              "median_head_start_h": null
+            }
+          },
+          "n_inherited": 0,
+          "n_other_value": 0
+        }
+      },
+      {
+        "slot": "datausa-construction-workforce | R4",
+        "kind": "sequence",
+        "variants (agents)": "Florida (45), New Mexico (9)",
+        "agents carrying both": 2,
+        "first variant": "Florida",
+        "winner": "Florida",
+        "status": "held",
+        "late carriers (winner/total)": "17/18",
+        "winner first seen": "2026-06-17T01:07:35+00:00",
+        "winner majority from": "2026-06-17T16:07:35+00:00",
+        "hours to overtake": null,
+        "reference (analyst input)": null,
+        "outcome": null,
+        "featured": false,
+        "tail counts": {
+          "Florida": 17,
+          "New Mexico": 1
+        },
+        "tie": false,
+        "first seen tie": false,
+        "corrected": false
+      },
+      {
+        "slot": "datausa-language-french | R5",
+        "kind": "sequence",
+        "variants (agents)": "California (18), New Mexico (5)",
+        "agents carrying both": 2,
+        "first variant": "New Mexico",
+        "winner": "California",
+        "status": "overturned",
+        "late carriers (winner/total)": "8/8",
+        "winner first seen": "2026-06-17T00:02:41+00:00",
+        "winner majority from": "2026-06-17T00:02:41+00:00",
+        "hours to overtake": 0.0,
+        "reference (analyst input)": null,
+        "outcome": null,
+        "featured": false,
+        "tail counts": {
+          "California": 8
+        },
+        "tie": false,
+        "first seen tie": false,
+        "corrected": true
       }
-    ]
+    ],
+    "references_unknown": [],
+    "references_outside_table": []
   },
   "A5": {
-    "n_nodes": 1435,
+    "n_nodes": 1434,
     "n_edges": 2439,
     "n_exposure_edges": 1025,
     "n_relay_edges": 9262,
-    "n_xchannel_edges": 11810,
+    "n_xchannel_edges": 11809,
     "n_citation_edges": 227,
+    "n_reply_edges": 0,
     "exposure_sources": 49,
     "gini_exposure_outdegree": 0.691806869089099,
     "top10_share_exposure": 0.7336585365853658,
-    "gini_relay_outdegree": 0.6637185304129206,
+    "top10_share_exposure_loo": [
+      0.7153284671532847,
+      0.7565392354124748
+    ],
+    "gini_exposure_outdegree_loo": [
+      0.6749189696349369,
+      0.7039581961816985
+    ],
+    "gini_relay_outdegree": 0.6636840406130874,
+    "betweenness_sampled_sources": null,
     "mean_chain_depth": 2.0314465408805034,
-    "mean_agents_per_fact": 9.371069182389936
+    "mean_agents_per_fact": 9.371069182389936,
+    "gini_item_exposures": 0.5568972411035585,
+    "items_exposed": 61,
+    "items_one_source": 47,
+    "attribution": [
+      {
+        "rule": "first source",
+        "answers": "all exposed",
+        "n": 1025,
+        "sources": 49,
+        "top10_share": 0.7336585365853658,
+        "gini": 0.691806869089099,
+        "unmatched": 0,
+        "top10_share_loo_lo": 0.7153284671532847,
+        "top10_share_loo_hi": 0.7565392354124748,
+        "gini_loo_lo": 0.6749189696349369,
+        "gini_loo_hi": 0.7039581961816985
+      },
+      {
+        "rule": "latest source",
+        "answers": "all exposed",
+        "n": 1025,
+        "sources": 327,
+        "top10_share": 0.2,
+        "gini": 0.4733348250913702,
+        "unmatched": 0,
+        "top10_share_loo_lo": 0.17006109979633402,
+        "top10_share_loo_hi": 0.21074380165289255,
+        "gini_loo_lo": 0.4515343460577863,
+        "gini_loo_hi": 0.4776647403229682
+      },
+      {
+        "rule": "same-page relay parent",
+        "answers": "all exposed",
+        "n": 218,
+        "sources": 140,
+        "top10_share": 0.20642201834862386,
+        "gini": 0.2718872870249017,
+        "unmatched": 807,
+        "top10_share_loo_lo": 0.19339622641509435,
+        "top10_share_loo_hi": 0.21428571428571427,
+        "gini_loo_lo": 0.2590466313567169,
+        "gini_loo_hi": 0.2761904761904762
+      },
+      {
+        "rule": "first source",
+        "answers": "instant only",
+        "n": 460,
+        "sources": 32,
+        "top10_share": 0.7956521739130434,
+        "gini": 0.6078804347826087,
+        "unmatched": 0,
+        "top10_share_loo_lo": 0.7740384615384616,
+        "top10_share_loo_hi": 0.8224719101123595,
+        "gini_loo_lo": 0.5827359617682198,
+        "gini_loo_hi": 0.6267715419501134
+      },
+      {
+        "rule": "latest source",
+        "answers": "instant only",
+        "n": 460,
+        "sources": 210,
+        "top10_share": 0.17391304347826086,
+        "gini": 0.36869565217391304,
+        "unmatched": 0,
+        "top10_share_loo_lo": 0.16743119266055045,
+        "top10_share_loo_hi": 0.18518518518518517,
+        "gini_loo_lo": 0.3543384643577057,
+        "gini_loo_hi": 0.3747927031509121
+      },
+      {
+        "rule": "same-page relay parent",
+        "answers": "instant only",
+        "n": 122,
+        "sources": 89,
+        "top10_share": 0.2540983606557377,
+        "gini": 0.219745809541352,
+        "unmatched": 338,
+        "top10_share_loo_lo": 0.2413793103448276,
+        "top10_share_loo_hi": 0.26785714285714285,
+        "gini_loo_lo": 0.19159240604416894,
+        "gini_loo_hi": 0.22725384295803905
+      }
+    ],
+    "origins": {
+      "by_mapping": {
+        "merged": {
+          "first source": {
+            "computed": 214,
+            "no answer round observed": 644,
+            "dissent": 70,
+            "relayed": 97
+          },
+          "latest source": {
+            "computed": 16,
+            "no answer round observed": 338,
+            "dissent": 29,
+            "relayed": 642
+          }
+        },
+        "strict": {
+          "first source": {
+            "computed": 181,
+            "no answer round observed": 727,
+            "dissent": 74,
+            "relayed": 99
+          },
+          "latest source": {
+            "computed": 11,
+            "no answer round observed": 402,
+            "dissent": 25,
+            "relayed": 643
+          }
+        }
+      },
+      "mapping": "merged",
+      "roots": {
+        "first source": {
+          "computed": 214,
+          "no answer round observed": 644,
+          "dissent": 70,
+          "posted before its own source": 97,
+          "chain cut (its latest source posted after it)": 0
+        },
+        "latest source": {
+          "computed": 45,
+          "no answer round observed": 616,
+          "dissent": 76,
+          "posted before its own source": 1,
+          "chain cut (its latest source posted after it)": 287
+        }
+      },
+      "max depth": {
+        "first source": 2,
+        "latest source": 16
+      },
+      "no answer round observed, top sources": [
+        {
+          "source": "clothingsequencescout",
+          "answers": 86,
+          "items": 2,
+          "answer rounds (any item)": 0
+        },
+        {
+          "source": "Jun03|datausa-construction-workforce",
+          "answers": 83,
+          "items": 3,
+          "answer rounds (any item)": 0
+        },
+        {
+          "source": "Mar30|oecd-equity",
+          "answers": 50,
+          "items": 2,
+          "answer rounds (any item)": 0
+        },
+        {
+          "source": "Jan29|datausa-sector61-state",
+          "answers": 48,
+          "items": 2,
+          "answer rounds (any item)": 1
+        },
+        {
+          "source": "Oct04|oecd-equity",
+          "answers": 48,
+          "items": 1,
+          "answer rounds (any item)": 2
+        },
+        {
+          "source": "Apr04|ihme-cvd-deaths",
+          "answers": 39,
+          "items": 1,
+          "answer rounds (any item)": 0
+        },
+        {
+          "source": "Mar31|ihme-family-planning",
+          "answers": 37,
+          "items": 3,
+          "answer rounds (any item)": 0
+        },
+        {
+          "source": "May28|datausa-cashiers-masters",
+          "answers": 32,
+          "items": 1,
+          "answer rounds (any item)": 3
+        },
+        {
+          "source": "Mar13|datausa-grocery-workforce",
+          "answers": 31,
+          "items": 1,
+          "answer rounds (any item)": 1
+        },
+        {
+          "source": "Apr27|datausa-grocery-workforce",
+          "answers": 26,
+          "items": 1,
+          "answer rounds (any item)": 2
+        }
+      ]
+    }
+  },
+  "agents": {
+    "mapping": "merged",
+    "n_agents": 3014,
+    "n_answering": 617,
+    "n_answers": 1108,
+    "n_all_no_prior_copy": 38,
+    "n_all_no_prior_copy_min3": 1,
+    "n_all_exposed": 542,
+    "n_sources": 49,
+    "n_sources_answering": 34,
+    "n_sources_with_no_prior_copy": 19,
+    "top_no_prior_copy": [
+      {
+        "label": "May28|datausa-cashiers-masters",
+        "n_author_strings": 3,
+        "n_answers": 3,
+        "n_no_prior_copy": 3,
+        "n_exposed": 0,
+        "n_self_prepared": 3,
+        "answers_supplied": 164
+      },
+      {
+        "label": "Dec27|datausa-construction-workforce",
+        "n_author_strings": 1,
+        "n_answers": 4,
+        "n_no_prior_copy": 2,
+        "n_exposed": 2,
+        "n_self_prepared": 3,
+        "answers_supplied": 0
+      },
+      {
+        "label": "Jan02|datausa-cashiers-masters",
+        "n_author_strings": 1,
+        "n_answers": 4,
+        "n_no_prior_copy": 2,
+        "n_exposed": 2,
+        "n_self_prepared": 3,
+        "answers_supplied": 1
+      },
+      {
+        "label": "Apr09|datausa-poverty-county",
+        "n_author_strings": 1,
+        "n_answers": 2,
+        "n_no_prior_copy": 2,
+        "n_exposed": 0,
+        "n_self_prepared": 0,
+        "answers_supplied": 9
+      },
+      {
+        "label": "Jun16|datausa-construction-workforce",
+        "n_author_strings": 1,
+        "n_answers": 2,
+        "n_no_prior_copy": 2,
+        "n_exposed": 0,
+        "n_self_prepared": 0,
+        "answers_supplied": 0
+      },
+      {
+        "label": "May01|datausa-poverty-state",
+        "n_author_strings": 1,
+        "n_answers": 2,
+        "n_no_prior_copy": 2,
+        "n_exposed": 0,
+        "n_self_prepared": 0,
+        "answers_supplied": 4
+      },
+      {
+        "label": "Oct04|oecd-equity",
+        "n_author_strings": 2,
+        "n_answers": 2,
+        "n_no_prior_copy": 2,
+        "n_exposed": 0,
+        "n_self_prepared": 1,
+        "answers_supplied": 128
+      },
+      {
+        "label": "Dec30|datausa-construction-workforce",
+        "n_author_strings": 1,
+        "n_answers": 4,
+        "n_no_prior_copy": 1,
+        "n_exposed": 3,
+        "n_self_prepared": 0,
+        "answers_supplied": 0
+      },
+      {
+        "label": "Jul05|datausa-poverty-county",
+        "n_author_strings": 1,
+        "n_answers": 4,
+        "n_no_prior_copy": 1,
+        "n_exposed": 3,
+        "n_self_prepared": 0,
+        "answers_supplied": 0
+      },
+      {
+        "label": "Jun23|datausa-cashiers-masters",
+        "n_author_strings": 1,
+        "n_answers": 4,
+        "n_no_prior_copy": 1,
+        "n_exposed": 3,
+        "n_self_prepared": 2,
+        "answers_supplied": 0
+      }
+    ],
+    "top_suppliers": [
+      {
+        "label": "May28|datausa-cashiers-masters",
+        "n_author_strings": 3,
+        "answers_supplied": 164,
+        "items_first_sourced": 4,
+        "n_answers": 3,
+        "n_no_prior_copy": 3,
+        "n_exposed": 0
+      },
+      {
+        "label": "Oct04|oecd-equity",
+        "n_author_strings": 2,
+        "answers_supplied": 128,
+        "items_first_sourced": 3,
+        "n_answers": 2,
+        "n_no_prior_copy": 2,
+        "n_exposed": 0
+      },
+      {
+        "label": "Jan29|datausa-sector61-state",
+        "n_author_strings": 1,
+        "answers_supplied": 90,
+        "items_first_sourced": 3,
+        "n_answers": 1,
+        "n_no_prior_copy": 0,
+        "n_exposed": 1
+      },
+      {
+        "label": "clothingsequencescout",
+        "n_author_strings": 1,
+        "answers_supplied": 86,
+        "items_first_sourced": 2,
+        "n_answers": 0,
+        "n_no_prior_copy": 0,
+        "n_exposed": 0
+      },
+      {
+        "label": "Jun03|datausa-construction-workforce",
+        "n_author_strings": 2,
+        "answers_supplied": 83,
+        "items_first_sourced": 3,
+        "n_answers": 0,
+        "n_no_prior_copy": 0,
+        "n_exposed": 0
+      },
+      {
+        "label": "Mar30|oecd-equity",
+        "n_author_strings": 1,
+        "answers_supplied": 50,
+        "items_first_sourced": 2,
+        "n_answers": 0,
+        "n_no_prior_copy": 0,
+        "n_exposed": 0
+      },
+      {
+        "label": "Apr27|datausa-grocery-workforce",
+        "n_author_strings": 1,
+        "answers_supplied": 42,
+        "items_first_sourced": 3,
+        "n_answers": 2,
+        "n_no_prior_copy": 0,
+        "n_exposed": 2
+      },
+      {
+        "label": "Apr04|ihme-cvd-deaths",
+        "n_author_strings": 1,
+        "answers_supplied": 39,
+        "items_first_sourced": 1,
+        "n_answers": 0,
+        "n_no_prior_copy": 0,
+        "n_exposed": 0
+      },
+      {
+        "label": "Mar31|ihme-family-planning",
+        "n_author_strings": 1,
+        "answers_supplied": 37,
+        "items_first_sourced": 3,
+        "n_answers": 0,
+        "n_no_prior_copy": 0,
+        "n_exposed": 0
+      },
+      {
+        "label": "Sep21|datausa-grocery-workforce",
+        "n_author_strings": 3,
+        "answers_supplied": 33,
+        "items_first_sourced": 2,
+        "n_answers": 4,
+        "n_no_prior_copy": 1,
+        "n_exposed": 3
+      }
+    ]
   },
   "A6": {
     "task values": {
@@ -352,16 +2214,104 @@
       "mean_repeaters": 3.6465753424657534,
       "p90_repeaters": 10.0,
       "max_hops": 10,
-      "mean_hops_repeated": 2.0314465408805034
+      "mean_hops_repeated": 2.0314465408805034,
+      "mean_repeaters_lo": 2.6683561643835616,
+      "mean_repeaters_hi": 4.663630136986301
     },
     "urls": {
       "facts": 23560,
       "repeated": 5373,
-      "mean_repeaters": 0.8379032258064516,
+      "mean_repeaters": 0.8378607809847198,
       "p90_repeaters": 2.0,
       "max_hops": 18,
-      "mean_hops_repeated": 1.7167318071840685
-    }
+      "mean_hops_repeated": 1.7167318071840685,
+      "mean_repeaters_lo": 0.7740662139219016,
+      "mean_repeaters_hi": 0.906391129032258
+    },
+    "url domains": {
+      "facts": 195,
+      "repeated": 116,
+      "mean_repeaters": 34.15384615384615,
+      "p90_repeaters": 61.39999999999998,
+      "max_hops": null,
+      "mean_hops_repeated": null,
+      "mean_repeaters_lo": 20.143333333333334,
+      "mean_repeaters_hi": 51.744615384615386,
+      "top": [
+        {
+          "domain": "api.datausa.io",
+          "agents": 909
+        },
+        {
+          "domain": "wikiservice.at",
+          "agents": 715
+        },
+        {
+          "domain": "jqp.vercel.app",
+          "agents": 613
+        }
+      ]
+    },
+    "window_sensitivity": [
+      {
+        "W_s": 600.0,
+        "relay": 160,
+        "relay_xchannel": 21,
+        "unattributed": 1150,
+        "mean_linked_repeaters": 0.4958904109589041,
+        "mean_max_depth": 0.6855345911949685
+      },
+      {
+        "W_s": 3600.0,
+        "relay": 298,
+        "relay_xchannel": 84,
+        "unattributed": 949,
+        "mean_linked_repeaters": 1.0465753424657533,
+        "mean_max_depth": 1.2893081761006289
+      },
+      {
+        "W_s": 21600.0,
+        "relay": 360,
+        "relay_xchannel": 292,
+        "unattributed": 679,
+        "mean_linked_repeaters": 1.7863013698630137,
+        "mean_max_depth": 1.6729559748427674
+      },
+      {
+        "W_s": 86400.0,
+        "relay": 398,
+        "relay_xchannel": 705,
+        "unattributed": 228,
+        "mean_linked_repeaters": 3.021917808219178,
+        "mean_max_depth": 1.9371069182389937
+      },
+      {
+        "W_s": null,
+        "relay": 409,
+        "relay_xchannel": 922,
+        "unattributed": 0,
+        "mean_linked_repeaters": 3.6465753424657534,
+        "mean_max_depth": 2.0314465408805034
+      }
+    ]
+  },
+  "integrity": {
+    "n_checks": 19,
+    "n_pass": 17,
+    "failing": [
+      {
+        "check": "self_prepared_before_public",
+        "table": "exposures_merged",
+        "n_violations": 6,
+        "severity": "warning"
+      },
+      {
+        "check": "self_prepared_before_public",
+        "table": "exposures_strict",
+        "n_violations": 6,
+        "severity": "warning"
+      }
+    ]
   },
   "validation": {
     "validation_dev": {
@@ -393,7 +2343,48 @@
         }
       },
       "split": "dev (tuned on)",
-      "labels_file": "validation/dev_labels.jsonl"
+      "labels_file": "validation/dev_labels.jsonl",
+      "coverage": {
+        "labelled": 60,
+        "in_run": 60,
+        "share": 1.0
+      }
+    },
+    "validation_heldout": {
+      "n": 48,
+      "labeller": "assistant-audit (Claude), held-out; replace with human labels",
+      "gold_answers": 29,
+      "predicted_answers": 28,
+      "fields": {
+        "answer_post": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 24
+        },
+        "item": {
+          "accuracy": 1.0,
+          "support": 28
+        },
+        "value": {
+          "accuracy": 1.0,
+          "support": 20
+        },
+        "episode": {
+          "accuracy": 1.0,
+          "support": 28
+        },
+        "latency_class": {
+          "accuracy": 1.0,
+          "support": 9
+        }
+      },
+      "split": "held-out, then tuned on",
+      "labels_file": "validation/heldout_labels.jsonl",
+      "coverage": {
+        "labelled": 48,
+        "in_run": 48,
+        "share": 1.0
+      }
     },
     "validation_test": {
       "n": 40,
@@ -424,7 +2415,20 @@
         }
       },
       "split": "untouched test",
-      "labels_file": "validation/test_labels.jsonl"
+      "labels_file": "validation/test_labels.jsonl",
+      "coverage": {
+        "labelled": 40,
+        "in_run": 40,
+        "share": 1.0
+      }
     }
-  }
+  },
+  "headline": [
+    "**A1. Provenance split**: 93% (95% CI 88\u201396%) of 1,108 answers by 617 agents were already public before the agent reported them (another agent had posted the same item and value), 83% (75\u201388%) at least an hour before, with a median head start of 11.6 h (9.0\u201316.5 h); at most 83 were independent lookups (104 under `D_visible`, which counts a copy deleted before the report as never public). These are floors: only the posts this run captured are searched, so a copy anywhere else is invisible.",
+    "**A2. Does availability cause copying?** Its effect is not identified (3\u201337 agents switch exposure status): no estimate from two-way fixed effects (`Y ~ D_cons | agent + item`, SEs clustered by agent) rests on enough switching agents with a 95% CI that excludes 0.",
+    "**A3. Technique diffusion**: adoption share = the share of the agents at risk (active in its task families after its first post) that went on to use it: `live-tooltip-value` 47% (35 of 74), `blob-hostname-bypass` 23% (17 of 73), `heartbeat-beacon` 9% (96 of 1,113), `clock-wait-fastforward` 8% (135 of 1,592), `rng-seed-crack` 3% (42 of 1,600); lower for the rest. Consistent with contagion (adoptions landed on a page that already carried the technique more often than the adopters' own posts did, after Holm's correction; posting on a page is not reading it): `rng-seed-crack`, `clock-wait-fastforward`.",
+    "**A4. Error propagation**: winner = the most common variant among the last third of a slot's carriers; overturned = a later winner that kept the majority of new carriers. datausa-grocery-workforce | G5 (cracked-seed forecast vs observed): `Maryland (RNG forecast)` \u2192 `Montana (observed)`, overturned as soon as it appeared; oecd-equity | Poland: `16.4` \u2192 `16.38`, overturned as soon as it appeared (against the analyst's reference value: precision variant: reference prevailed); oecd-equity | Hungary: `9.9` first, `9.91` leads the late carriers 16 to 13 but never kept the majority of new carriers: contested (against the analyst's reference value: precision variant: unresolved); oecd-equity | Slovak Republic: `14.6` \u2192 `14.59`, overturned as soon as it appeared (against the analyst's reference value: precision variant: reference prevailed).",
+    "**A5. Structure**: the top 10 sources supplied 20\u201373% of 1,025 exposed answers, depending on who is credited (nothing records who read whom, so each rule credits one source per answer): 73% credited to the first agent to post the value (out-degree Gini 0.69; leaving out any one item moves it between 72% and 76%), 20% to the latest earlier carrier, 21% of the 218 with a same-page relay parent.",
+    "**A6. Reach**: 159 of 365 task values were repeated by other agents, travelling 2.0 hops on average and at most 10; 5,373 of 23,560 URLs were repeated by other agents, travelling 1.7 hops on average and at most 18 (a hop links a carrier to an inferred source: plausible paths, not proven ones)."
+  ]
 }

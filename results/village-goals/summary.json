@@ -4,14 +4,26 @@
     "source": "data/village/agent_goals.jsonl",
     "n_events": 0
   },
+  "funnel": {
+    "posts": 0,
+    "posts_with_family": 0,
+    "answer_posts": 0,
+    "answer_claims": 0,
+    "answer_claims_no_item": 0,
+    "answer_claims_no_value": 0,
+    "answer_claims_no_family": 0,
+    "agent_rounds": 0,
+    "agent_rounds_untimed": 0,
+    "catch_all_family": null
+  },
   "roster": {
     "n_goals": 33,
     "n_agents": 32,
     "n_roles": 25,
     "n_open": 32,
-    "first_start": "2026-07-06 15:59:00+00:00",
-    "last_start": "2026-09-04 19:47:39.357000+00:00",
-    "last_end": "2026-09-01 23:42:37.070000+00:00",
+    "first_start": "2026-07-06T15:59:00+00:00",
+    "last_start": "2026-09-04T19:47:39.357000+00:00",
+    "last_end": "2026-09-01T23:42:37.070000+00:00",
     "changes": {
       "first": 32,
       "reworded": 1
@@ -24,6 +36,347 @@
       "reporter",
       "twitterati",
       "youtuber"
-    ]
+    ],
+    "roles": [
+      {
+        "role": "diplomat",
+        "agents": 2,
+        "goals": 2,
+        "first_start": "2026-07-06T15:59:00+00:00",
+        "last_end": null,
+        "open": 2
+      },
+      {
+        "role": "forecaster",
+        "agents": 2,
+        "goals": 2,
+        "first_start": "2026-07-06T15:59:00+00:00",
+        "last_end": null,
+        "open": 2
+      },
+      {
+        "role": "game-dev",
+        "agents": 2,
+        "goals": 2,
+        "first_start": "2026-07-06T15:59:00+00:00",
+        "last_end": null,
+        "open": 2
+      },
+      {
+        "role": "merch-baron",
+        "agents": 2,
+        "goals": 2,
+        "first_start": "2026-07-06T15:59:00+00:00",
+        "last_end": null,
+        "open": 2
+      },
+      {
+        "role": "reporter",
+        "agents": 2,
+        "goals": 2,
+        "first_start": "2026-07-06T15:59:00+00:00",
+        "last_end": null,
+        "open": 2
+      },
+      {
+        "role": "twitterati",
+        "agents": 2,
+        "goals": 2,
+        "first_start": "2026-07-06T15:59:00+00:00",
+        "last_end": null,
+        "open": 2
+      },
+      {
+        "role": "youtuber",
+        "agents": 2,
+        "goals": 2,
+        "first_start": "2026-07-06T15:59:00+00:00",
+        "last_end": null,
+        "open": 2
+      },
+      {
+        "role": "ai-welfarist",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-07-06T15:59:00+00:00",
+        "last_end": null,
+        "open": 1
+      },
+      {
+        "role": "altruist",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-07-06T15:59:00+00:00",
+        "last_end": null,
+        "open": 1
+      },
+      {
+        "role": "animal-advocate",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-07-06T15:59:00+00:00",
+        "last_end": null,
+        "open": 1
+      },
+      {
+        "role": "artist",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-07-06T15:59:00+00:00",
+        "last_end": null,
+        "open": 1
+      },
+      {
+        "role": "author",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-07-06T15:59:00+00:00",
+        "last_end": null,
+        "open": 1
+      },
+      {
+        "role": "ethicist",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-07-06T15:59:00+00:00",
+        "last_end": null,
+        "open": 1
+      },
+      {
+        "role": "performance-coach",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-07-06T15:59:00+00:00",
+        "last_end": null,
+        "open": 1
+      },
+      {
+        "role": "prankster",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-07-06T15:59:00+00:00",
+        "last_end": null,
+        "open": 1
+      },
+      {
+        "role": "psychologist",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-07-06T15:59:00+00:00",
+        "last_end": null,
+        "open": 1
+      },
+      {
+        "role": "psychonaut",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-07-06T15:59:00+00:00",
+        "last_end": null,
+        "open": 1
+      },
+      {
+        "role": "substacker",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-07-06T15:59:00+00:00",
+        "last_end": null,
+        "open": 1
+      },
+      {
+        "role": "ai-futurist",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-07-17T18:15:01.255000+00:00",
+        "last_end": null,
+        "open": 1
+      },
+      {
+        "role": "mathematician",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-07-29T16:51:00+00:00",
+        "last_end": null,
+        "open": 1
+      },
+      {
+        "role": "press-baron",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-08-31T15:58:00+00:00",
+        "last_end": null,
+        "open": 1
+      },
+      {
+        "role": "ai-safety-researcher",
+        "agents": 1,
+        "goals": 2,
+        "first_start": "2026-09-01T21:41:13.714000+00:00",
+        "last_end": "2026-09-01T23:42:37.070000+00:00",
+        "open": 1
+      },
+      {
+        "role": "village-helper",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-09-04T18:26:23.594000+00:00",
+        "last_end": null,
+        "open": 1
+      },
+      {
+        "role": "3d-world-creator",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-09-04T18:26:37.113000+00:00",
+        "last_end": null,
+        "open": 1
+      },
+      {
+        "role": "village-tooler",
+        "agents": 1,
+        "goals": 1,
+        "first_start": "2026-09-04T19:47:39.357000+00:00",
+        "last_end": null,
+        "open": 1
+      }
+    ],
+    "batches": [
+      {
+        "batch": "Jul03",
+        "goals": 1,
+        "agents": 1,
+        "created": "2026-07-03T13:56:18.946920+00:00",
+        "starts": "2026-07-06T15:59:00+00:00",
+        "roles": "game-dev"
+      },
+      {
+        "batch": "Jul03b",
+        "goals": 18,
+        "agents": 18,
+        "created": "2026-07-03T14:37:49.366903+00:00",
+        "starts": "2026-07-06T15:59:00+00:00",
+        "roles": "ai-welfarist, altruist, author, diplomat, ethicist, forecaster, game-dev, merch-baron, performance-coach, prankster, psychologist, psychonaut, reporter, substacker, twitterati, youtuber"
+      },
+      {
+        "batch": "Jul03c",
+        "goals": 2,
+        "agents": 2,
+        "created": "2026-07-03T16:03:57.492017+00:00",
+        "starts": "2026-07-06T15:59:00+00:00",
+        "roles": "animal-advocate, artist"
+      },
+      {
+        "batch": "Jul09",
+        "goals": 3,
+        "agents": 3,
+        "created": "2026-07-09T19:43:53.725873+00:00",
+        "starts": "2026-07-09T21:41:50+00:00",
+        "roles": "diplomat, forecaster, youtuber"
+      },
+      {
+        "batch": "Jul10",
+        "goals": 1,
+        "agents": 1,
+        "created": "2026-07-10T23:07:59.834024+00:00",
+        "starts": "2026-07-10T23:07:58+00:00",
+        "roles": "reporter"
+      },
+      {
+        "batch": "Jul17",
+        "goals": 1,
+        "agents": 1,
+        "created": "2026-07-17T18:15:01.653770+00:00",
+        "starts": "2026-07-17T18:15:01.255000+00:00",
+        "roles": "ai-futurist"
+      },
+      {
+        "batch": "Jul24",
+        "goals": 1,
+        "agents": 1,
+        "created": "2026-07-24T18:24:16.037639+00:00",
+        "starts": "2026-07-29T16:51:00+00:00",
+        "roles": "mathematician"
+      },
+      {
+        "batch": "Aug31",
+        "goals": 1,
+        "agents": 1,
+        "created": "2026-08-31T15:58:31.779231+00:00",
+        "starts": "2026-08-31T15:58:00+00:00",
+        "roles": "press-baron"
+      },
+      {
+        "batch": "Sep01",
+        "goals": 1,
+        "agents": 1,
+        "created": "2026-09-01T21:41:13.930664+00:00",
+        "starts": "2026-09-01T21:41:13.714000+00:00",
+        "roles": "ai-safety-researcher"
+      },
+      {
+        "batch": "Sep01b",
+        "goals": 1,
+        "agents": 1,
+        "created": "2026-09-01T23:42:37.290292+00:00",
+        "starts": "2026-09-01T23:42:37.070000+00:00",
+        "roles": "ai-safety-researcher"
+      },
+      {
+        "batch": "Sep04",
+        "goals": 2,
+        "agents": 2,
+        "created": "2026-09-04T18:26:23.832485+00:00",
+        "starts": "2026-09-04T18:26:23.594000+00:00",
+        "roles": "3d-world-creator, village-helper"
+      },
+      {
+        "batch": "Sep04b",
+        "goals": 1,
+        "agents": 1,
+        "created": "2026-09-04T19:47:39.612732+00:00",
+        "starts": "2026-09-04T19:47:39.357000+00:00",
+        "roles": "village-tooler"
+      }
+    ],
+    "eras": [
+      {
+        "agent_id": "ea91b7cb-bb15-4194-bfbf-d70e088f84c5",
+        "agent": "ea91b7cb-bb15-4194-bfbf-d70e088f84c5",
+        "role": "ai-safety-researcher",
+        "start": "2026-09-01T23:42:37.070000+00:00",
+        "end": null,
+        "open": true,
+        "change": "reworded",
+        "batch": "Sep01b",
+        "goal": "Maximize the future citation count of an AI safety research paper you author. It should be MATS quality level or above."
+      }
+    ],
+    "detail": [
+      {
+        "index": 3,
+        "role": "performance-coach",
+        "detail": "With their consent, you can view and control the computers of other agents via: Claude Fable 5 \u2014 http://10.108.0.42:6080/vnc.html Claude Fable 5.1 \u2014 http://10.108.0.69:6080/vnc.html Claude Haiku 4.5 \u2014 http://10.108.0.27:6080/vnc.html Claude Opus 4.5 \u2014 http://10.108.0.5:6080/vnc.html Claude Opus 4.6 \u2014 http://10.108.0.3..."
+      },
+      {
+        "index": 14,
+        "role": "prankster",
+        "detail": "You are the village prankster! Don\u2019t destroy value for other agents."
+      },
+      {
+        "index": 15,
+        "role": "substacker",
+        "detail": "claudeopus45.substack.com"
+      },
+      {
+        "index": 25,
+        "role": "ai-futurist",
+        "detail": "Aim to maximize the number and richness of detailed claims you make, and the percentage that turn out to be correct."
+      },
+      {
+        "index": 27,
+        "role": "press-baron",
+        "detail": "Note that you needn't cover the AI Village."
+      }
+    ],
+    "who": null
   }
 }
