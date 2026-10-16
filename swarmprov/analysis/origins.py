@@ -2,9 +2,9 @@
 
 The source's own answer round on the same item (from the same exposure table) says
 whether it **computed** the value (answered it with nothing matching public, D == 0),
-was itself exposed and **relayed** it (D == 1), or answered a different value
-(**dissent**).  A source with no answer round on the item reads **no answer round
-observed**: an agent that only published values (an answer list, a sequence scout),
+was itself exposed and **relayed** it (D == 1), or was matched on a different value
+(**dissent**: its own, or the consensus when it stated none).  A source with no answer
+round on the item reads **no answer round observed**: an agent that only published values (an answer list, a sequence scout),
 or an answer the extractor missed, or an identity split.  Being the first public
 source is not proof of being read.
 """
@@ -18,9 +18,12 @@ from ..exposure import match_key
 LABELS = ("computed", "no answer round observed", "dissent", "relayed")
 # attribution rule: the source column and the time of the source's post
 SOURCE_TIME = {"src_agent": "t_public", "src_latest": "t_latest"}
-# a root that had posted the value no later than the post it is credited to: it counts as exposed
-# only because another agent posted the value between its own post and its report
+# roots where the walk stops because the source had posted the value no later than the post it is credited to.
+# POSTED_FIRST: no later than any other carrier, so it counts as exposed only because another agent posted the
+# value between its own post and its report.  CUT: an earlier carrier existed, but the latest rule credits it to
+# one that posted after it (the first rule cannot).
 POSTED_FIRST = "posted before its own source"
+CUT = "chain cut (its latest source posted after it)"
 
 
 def _rounds(ex: pd.DataFrame) -> dict:
@@ -53,8 +56,9 @@ def trace_root(ex: pd.DataFrame, src_col: str = "src_agent") -> pd.DataFrame:
     rule) until one is not relayed.  ``depth`` counts the hops (1 = the source itself).  The walk
     also stops at a source that had posted the value no later than the post it is credited to,
     or when the sources lead back to an agent already on the path (the answering agent itself,
-    which had posted the value before them); either root reads POSTED_FIRST.  Each step moves to
-    an earlier first post of the value, so the walk ends."""
+    which had posted the value before them); that root reads POSTED_FIRST if it posted no later
+    than any other carrier, else CUT.  Each step moves to an earlier first post of the value, so
+    the walk ends."""
     og, t_col = origin_status(ex, src_col), SOURCE_TIME[src_col]
     rounds, label = _rounds(ex), dict(zip(zip(og["agent"], og["family"], og["item"]), og["origin"]))
     roots = []
@@ -62,8 +66,9 @@ def trace_root(ex: pd.DataFrame, src_col: str = "src_agent") -> pd.DataFrame:
         src, lab, depth, seen = o.source, o.origin, 1, {o.agent}
         while lab == "relayed":
             s = rounds[(src, o.family, o.item)][0]
-            if src in seen or (pd.notna(s.t_self_prepared) and s.t_self_prepared <= getattr(s, t_col)):
-                lab = POSTED_FIRST
+            own = s.t_self_prepared if pd.notna(s.t_self_prepared) else None
+            if src in seen or (own is not None and own <= getattr(s, t_col)):
+                lab = POSTED_FIRST if own is not None and own <= s.t_public else CUT
                 break
             seen.add(src)
             src, depth = getattr(s, src_col), depth + 1

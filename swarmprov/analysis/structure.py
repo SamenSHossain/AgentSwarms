@@ -22,14 +22,20 @@ from ..plotting import plt
 EXACT_BETWEENNESS_NODES = 5000
 
 
-def relay_parents(ex: pd.DataFrame, edges: pd.DataFrame) -> pd.Series:
+def relay_parents(ex: pd.DataFrame, edges: pd.DataFrame, events: pd.DataFrame) -> pd.Series:
     """Each round's same-page relay parent: the ``relay`` edge into the agent for the value the
-    round was matched on (``exposure.match_key``); None for a cross-page hop or no edge at all."""
+    round was matched on (``exposure.match_key``); None for a cross-page hop, no edge at all, or a
+    parent whose post is not before the report (exposure's rule for a public copy; ``trace`` agrees)."""
     rel = edges[edges["kind"] == "relay"]
-    parent = dict(zip(zip(rel["dst"], rel["family"], rel["item"], rel["value_norm"]), rel["src"]))
-    return pd.Series([parent.get((a, f, i, match_key(v, c))) for a, f, i, v, c in
-                      zip(ex["agent"], ex["family"], ex["item"], ex["value_norm"], ex["consensus_value"])],
-                     index=ex.index, dtype=object)
+    ts = events.drop_duplicates("event_id").set_index("event_id")["ts"]
+    parent = dict(zip(zip(rel["dst"], rel["family"], rel["item"], rel["value_norm"]),
+                      zip(rel["src"], rel["src_event_id"].map(ts))))
+    out = []
+    for a, f, i, v, c, t in zip(ex["agent"], ex["family"], ex["item"], ex["value_norm"], ex["consensus_value"],
+                                ex["t_report"]):
+        src, t_src = parent.get((a, f, i, match_key(v, c)), (None, None))
+        out.append(None if pd.notna(t_src) and t_src >= t else src)
+    return pd.Series(out, index=ex.index, dtype=object)
 
 
 def concentration(sources: pd.Series, top_k: int = 10) -> dict:
@@ -41,12 +47,12 @@ def concentration(sources: pd.Series, top_k: int = 10) -> dict:
             "gini": gini(deg.values) if tot else float("nan")}
 
 
-def attribution(ex: pd.DataFrame, edges: pd.DataFrame, top_k: int = 10) -> pd.DataFrame:
+def attribution(ex: pd.DataFrame, edges: pd.DataFrame, events: pd.DataFrame, top_k: int = 10) -> pd.DataFrame:
     """Concentration of exposed answers (D == 1) under each attribution rule, on every exposed
     answer and on instant ones only.  ``unmatched`` counts the answers a rule credits to nobody."""
     x = ex[ex["D"] == 1]
     rules = {"first source": x["src_agent"], "latest source": x["src_latest"],
-             "same-page relay parent": relay_parents(x, edges)}
+             "same-page relay parent": relay_parents(x, edges, events)}
     rows = []
     for subset, idx in (("all exposed", x.index), ("instant only", x.index[x["y_instant"] == 1])):
         for rule, src in rules.items():
@@ -55,8 +61,10 @@ def attribution(ex: pd.DataFrame, edges: pd.DataFrame, top_k: int = 10) -> pd.Da
     return pd.DataFrame(rows)
 
 
-def analyze(edges: pd.DataFrame, chains: pd.DataFrame, top_k: int = 10, ex: pd.DataFrame | None = None) -> dict:
-    """``ex`` (the exposure table) adds the attribution-rule table and the per-item null."""
+def analyze(edges: pd.DataFrame, chains: pd.DataFrame, top_k: int = 10, ex: pd.DataFrame | None = None,
+            events: pd.DataFrame | None = None) -> dict:
+    """``ex`` (the exposure table) adds the attribution-rule table and the per-item null; it needs
+    ``events`` for the relay parents' post times."""
     outdeg = edges[edges["kind"] == "exposure"].groupby("src").size().sort_values(ascending=False)
     relay_out = edges[edges["kind"] == "relay"].groupby("src").size().sort_values(ascending=False)
     G = to_networkx(edges, kinds=("relay", "citation"))
@@ -90,7 +98,7 @@ def analyze(edges: pd.DataFrame, chains: pd.DataFrame, top_k: int = 10, ex: pd.D
                 "gini_item_exposures": gini(per_item.size().values) if len(x) else float("nan"),
                 "items_exposed": int(per_item.ngroups),
                 "items_one_source": int((per_item["src_agent"].nunique() == 1).sum()),
-                "attribution": attribution(ex, edges, top_k)}
+                "attribution": attribution(ex, edges, events, top_k)}
     return res
 
 

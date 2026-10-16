@@ -2,14 +2,15 @@
 latest post, the first post, or nothing; and the origin of each copied answer's source."""
 
 import json
+import shutil
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from swarmprov import exposure, pipeline, synth
+from swarmprov import cli, exposure, pipeline, report, synth
 from swarmprov.analysis import origins, structure
-from swarmprov.schema import TABLES
+from swarmprov.schema import TABLES, RunDir
 
 T0 = pd.Timestamp("2026-06-17T09:00:00Z")
 
@@ -19,17 +20,20 @@ def _t(minutes):
 
 
 def _accuracy(run, truth, col):
-    """Share of truly copied rounds whose ``col`` names the agent whose post was copied."""
+    """Share of truly copied rounds whose ``col`` (or ``relay_parent``) names the agent whose post was copied."""
     label = run.read("agents").set_index("author_raw")["agent_merged"]
     cp = truth[truth["copied"]].assign(agent=lambda d: d["agent"].map(label), src=lambda d: d["src_agent"].map(label))
-    j = cp.merge(run.read("exposures_merged"), on=["agent", "item"], suffixes=("_true", ""))
+    ex = run.read("exposures_merged")
+    ex = ex.assign(relay_parent=structure.relay_parents(ex, run.read("edges_merged"), run.read("events")))
+    j = cp.merge(ex, on=["agent", "item"], suffixes=("_true", ""))
     assert len(j) == len(cp)
     src = cp["src"].value_counts()
     return float((j[col] == j["src"]).mean()), float(src.head(10).sum() / src.sum())
 
 
 def _shares(run):
-    a = structure.analyze(run.read("edges_merged"), run.read("chains_merged"), ex=run.read("exposures_merged"))
+    a = structure.analyze(run.read("edges_merged"), run.read("chains_merged"), ex=run.read("exposures_merged"),
+                          events=run.read("events"))
     return a["attribution"].set_index(["rule", "answers"])
 
 
@@ -62,26 +66,34 @@ def test_match_key_falls_back_to_the_consensus():
 
 def test_relay_parent_join_uses_the_exposure_key():
     """A multi-number value joins on its first number, an unrestated answer on the consensus; a round whose post
-    arrived by a cross-page hop is unmatched."""
+    arrived by a cross-page hop is unmatched, and so is one whose parent posted at or after the report (as ``trace``
+    and exposure have it)."""
     ex = pd.DataFrame([
         {"agent": "B", "family": "f", "item": "x", "value_norm": "163139/166813", "consensus_value": "1", "D": 1,
-         "src_agent": "A", "src_latest": "A", "y_instant": 1},
+         "src_agent": "A", "src_latest": "A", "y_instant": 1, "t_report": _t(10)},
         {"agent": "C", "family": "f", "item": "y", "value_norm": None, "consensus_value": "7", "D": 1,
-         "src_agent": "A", "src_latest": "B", "y_instant": 0},
+         "src_agent": "A", "src_latest": "B", "y_instant": 0, "t_report": _t(10)},
         {"agent": "D", "family": "f", "item": "y", "value_norm": "7", "consensus_value": "7", "D": 1,
-         "src_agent": "A", "src_latest": "C", "y_instant": 0},
+         "src_agent": "A", "src_latest": "C", "y_instant": 0, "t_report": _t(10)},
         {"agent": "E", "family": "f", "item": "y", "value_norm": "8", "consensus_value": "7", "D": 0,
-         "src_agent": None, "src_latest": None, "y_instant": 0}])
+         "src_agent": None, "src_latest": None, "y_instant": 0, "t_report": _t(10)},
+        {"agent": "F", "family": "f", "item": "y", "value_norm": "7", "consensus_value": "7", "D": 1,
+         "src_agent": "A", "src_latest": "C", "y_instant": 0, "t_report": _t(10)},
+        {"agent": "G", "family": "f", "item": "y", "value_norm": "7", "consensus_value": "7", "D": 1,
+         "src_agent": "A", "src_latest": "C", "y_instant": 0, "t_report": _t(10)}])
     edges = pd.DataFrame([
-        {"src": "A", "dst": "B", "family": "f", "item": "x", "value_norm": "163139", "kind": "relay"},
-        {"src": "B", "dst": "C", "family": "f", "item": "y", "value_norm": "7", "kind": "relay"},
-        {"src": "A", "dst": "D", "family": "f", "item": "y", "value_norm": "7", "kind": "relay_xchannel"},
-        {"src": "A", "dst": "B", "family": "f", "item": "x", "value_norm": "163139", "kind": "exposure"}])
-    assert structure.relay_parents(ex, edges).tolist() == ["A", "B", None, None]
-    t = structure.attribution(ex, edges, top_k=1).set_index(["rule", "answers"])
-    assert t.loc[("same-page relay parent", "all exposed"), ["n", "sources", "unmatched"]].tolist() == [2, 2, 1]
-    assert t.loc[("first source", "all exposed"), ["n", "sources", "top1_share"]].tolist() == [3, 1, 1.0]
-    assert t.loc[("latest source", "all exposed"), "top1_share"] == pytest.approx(1 / 3)
+        {"src": "A", "dst": "B", "family": "f", "item": "x", "value_norm": "163139", "kind": "relay", "src_event_id": "a"},
+        {"src": "B", "dst": "C", "family": "f", "item": "y", "value_norm": "7", "kind": "relay", "src_event_id": "b"},
+        {"src": "A", "dst": "D", "family": "f", "item": "y", "value_norm": "7", "kind": "relay_xchannel", "src_event_id": "a"},
+        {"src": "C", "dst": "F", "family": "f", "item": "y", "value_norm": "7", "kind": "relay", "src_event_id": "now"},
+        {"src": "C", "dst": "G", "family": "f", "item": "y", "value_norm": "7", "kind": "relay", "src_event_id": "late"},
+        {"src": "A", "dst": "B", "family": "f", "item": "x", "value_norm": "163139", "kind": "exposure", "src_event_id": "a"}])
+    events = pd.DataFrame({"event_id": ["a", "b", "now", "late"], "ts": [_t(1), _t(2), _t(10), _t(11)]})
+    assert structure.relay_parents(ex, edges, events).tolist() == ["A", "B", None, None, None, None]
+    t = structure.attribution(ex, edges, events, top_k=1).set_index(["rule", "answers"])
+    assert t.loc[("same-page relay parent", "all exposed"), ["n", "sources", "unmatched"]].tolist() == [2, 2, 3]
+    assert t.loc[("first source", "all exposed"), ["n", "sources", "top1_share"]].tolist() == [5, 1, 1.0]
+    assert t.loc[("latest source", "all exposed"), "top1_share"] == pytest.approx(3 / 5)
     assert t.loc[("latest source", "instant only"), ["n", "sources"]].tolist() == [1, 1]
 
 
@@ -98,8 +110,9 @@ def test_item_null_and_single_source_items():
                        "src_agent": ["A", "A", "B", "C", None], "src_latest": ["A", "B", "B", "C", None],
                        "agent": list("PQRST"), "value_norm": "1", "consensus_value": "1", "y_instant": 0})
     edges = pd.DataFrame({"src": ["A", "A", "B", "C"], "dst": list("PQRS"), "kind": "exposure", "family": "f",
-                          "item": ["x", "x", "x", "y"], "value_norm": "1"})
-    r = structure.analyze(edges, pd.DataFrame(columns=["family", "n_agents", "max_depth"]), ex=ex)
+                          "item": ["x", "x", "x", "y"], "value_norm": "1", "src_event_id": None})
+    r = structure.analyze(edges, pd.DataFrame(columns=["family", "n_agents", "max_depth"]), ex=ex.assign(t_report=T0),
+                          events=pd.DataFrame(columns=["event_id", "ts"]))
     assert (r["items_exposed"], r["items_one_source"]) == (2, 1)
     assert r["gini_item_exposures"] == pytest.approx(structure.gini([3, 1]))
 
@@ -133,6 +146,35 @@ def test_trace_root_follows_a_three_hop_chain():
     assert set(r["origin"]) <= set(origins.LABELS)
 
 
+def test_trace_root_latest_rule_stops_where_the_source_posted():
+    """Under the latest rule the walk stops at a source whose own post came before its latest carrier: POSTED_FIRST
+    only if no other agent had posted the value before it (P), else CUT (B, exposed by A first); a chain leading back
+    to the answering agent (H) is judged by the same test.  Under the first rule B's source A computed the value."""
+    ex = _ex([
+        {"agent": "A", "D": 0, "src_agent": None, "t_public": None},
+        {"agent": "B", "src_agent": "A", "t_public": _t(1), "t_self_prepared": _t(2), "src_latest": "C", "t_latest": _t(3)},
+        {"agent": "C", "src_agent": "A", "t_public": _t(1), "src_latest": "A", "t_latest": _t(1)},
+        {"agent": "D", "src_agent": "A", "t_public": _t(1), "src_latest": "B", "t_latest": _t(4)},
+        {"agent": "P", "src_agent": "C", "t_public": _t(2), "t_self_prepared": _t(2), "src_latest": "C", "t_latest": _t(3),
+         "item": "y"},
+        {"agent": "C", "src_agent": "Q", "t_public": _t(1), "src_latest": "Q", "t_latest": _t(1), "item": "y"},
+        {"agent": "Q", "D": 0, "src_agent": None, "t_public": None, "item": "y"},
+        {"agent": "E", "src_agent": "Q", "t_public": _t(1), "src_latest": "P", "t_latest": _t(5), "item": "y"},
+        {"agent": "H", "src_agent": "A", "t_public": _t(1), "t_self_prepared": _t(2), "src_latest": "J", "t_latest": _t(4)},
+        {"agent": "J", "src_agent": "A", "t_public": _t(1), "src_latest": "H", "t_latest": _t(2)}])
+    latest = origins.trace_root(ex, "src_latest").set_index(["agent", "item"])
+    assert latest.loc[("D", "x"), ["source", "root", "root_origin", "depth"]].tolist() == ["B", "B", origins.CUT, 1]
+    assert latest.loc[("E", "y"), ["source", "root", "root_origin", "depth"]].tolist() == ["P", "P", origins.POSTED_FIRST, 1]
+    assert latest.loc[("H", "x"), ["root", "root_origin", "depth"]].tolist() == ["H", origins.CUT, 2]
+    first = origins.trace_root(ex).set_index(["agent", "item"])
+    assert first.loc[("D", "x"), ["root", "root_origin"]].tolist() == ["A", "computed"]
+    assert origins.CUT not in set(first["root_origin"])
+    text = "\n".join(report._origins_block({"merged": ex}, "merged", {"A5": {}})[0])
+    assert f"*{origins.POSTED_FIRST.capitalize()}* = the agent had posted the value no later than any other" in text
+    assert f". *{origins.CUT.capitalize()}* = the agent was exposed before its own post" in text
+    assert f"| {origins.CUT} | 0 | 3 |" in text   # D (at B), H (loop) and J (at H)
+
+
 def test_latest_rule_finds_the_copied_post(synth_run):
     """Copiers take the latest post: the latest source names it (0.98-1.0 on seeds 0-7), the first source does not
     (0.22-0.28), and on instant answers the latest rule's top-10 share equals the true one (within 0.01) while
@@ -140,6 +182,7 @@ def test_latest_rule_finds_the_copied_post(synth_run):
     run, truth = synth_run
     acc, true_top = _accuracy(run, truth, "src_latest")
     assert acc >= 0.95 and _accuracy(run, truth, "src_agent")[0] < 0.4
+    assert _accuracy(run, truth, "relay_parent")[0] >= 0.95   # the same-page relay parent: 0.98-1.0 on seeds 0-7
     a = _shares(run)
     assert abs(a.loc[("latest source", "instant only"), "top10_share"] - true_top) < 0.05
     assert a.loc[("first source", "instant only"), "top10_share"] - true_top > 0.25
@@ -151,6 +194,7 @@ def test_first_rule_finds_the_copied_post(synth_first):
     run, truth = synth_first
     acc, true_top = _accuracy(run, truth, "src_agent")
     assert acc >= 0.95 and _accuracy(run, truth, "src_latest")[0] < 0.4
+    assert _accuracy(run, truth, "relay_parent")[0] < 0.4   # 0.19-0.25 on seeds 0-7
     a = _shares(run)
     assert abs(a.loc[("first source", "instant only"), "top10_share"] - true_top) < 0.05
     assert true_top - a.loc[("latest source", "instant only"), "top10_share"] > 0.25
@@ -184,10 +228,22 @@ def test_report_shows_the_attribution_and_origins(synth_run):
     a5 = text[text.index("## A5."):text.index("## A6.")]
     for s in ("**Hub concentration by attribution rule.**", "**Where did copied answers come from?**",
               "| same-page relay parent | instant only |", "| src | answers | items | origin |",
-              "That share depends on who is credited", "who answered first on an item", "| root | first source | latest source |"):
+              "That share depends on who is credited", "who first posted the value on an item",
+              "| root | first source | latest source |", f"| {origins.CUT} | 0 | 0 |"):
         assert s in a5, s
     s = json.loads((run.path / "summary.json").read_text())["A5"]
-    assert len(s["attribution"]) == 6 and {"merged", "strict", "roots"} <= set(s["origins"])
-    assert s["origins"]["merged"]["first source"]["no answer round observed"] == 0
-    assert sum(s["origins"]["merged"]["first source"].values()) == s["n_exposure_edges"]
+    o = s["origins"]
+    assert len(s["attribution"]) == 6 and set(o["by_mapping"]) == {"merged", "strict"} and o["mapping"] == "merged"
+    assert o["by_mapping"]["merged"]["first source"]["no answer round observed"] == 0
+    assert sum(o["by_mapping"]["merged"]["first source"].values()) == s["n_exposure_edges"]
+    assert set(o["roots"]["latest source"]) == set(origins.LABELS[:3]) | {origins.POSTED_FIRST, origins.CUT}
     assert 0 < s["gini_item_exposures"] < 1 and s["items_one_source"] <= s["items_exposed"]
+
+
+def test_report_on_a_run_that_predates_the_latest_source(synth_run, tmp_path):
+    run, _ = synth_run
+    shutil.copytree(run.path, tmp_path / "run")
+    old = RunDir(tmp_path / "run")
+    old.write("exposures_merged", old.read("exposures_merged").drop(columns=["src_latest", "t_latest", "latest_event_id"]))
+    with pytest.raises(SystemExit, match=r"\(no src_latest, t_latest, latest_event_id\); rerun `swarmprov expose"):
+        cli.main(["report", str(old.path)])

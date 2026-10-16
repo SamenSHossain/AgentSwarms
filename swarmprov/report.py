@@ -13,7 +13,7 @@ from . import identity, lifecycle as lifecycle_mod, roster as roster_mod, villag
 from .adapters.base import read_capabilities
 from .analysis import causal, diffusion, errors, origins, provenance, structure
 from .claims import agent_rounds
-from .schema import RunDir
+from .schema import TABLES, RunDir
 
 
 # capability -> (consequence when the source has it, consequence when it does not)
@@ -219,6 +219,10 @@ def build(run: RunDir, mapping: str = "merged") -> str:
     ex = run.read(f"exposures_{mapping}")
     alt = "strict" if mapping == "merged" else "merged"
     ex_alt = run.read(f"exposures_{alt}")
+    missing = [c for c in TABLES["exposures"] if c not in ex.columns or c not in ex_alt.columns]
+    if missing and len(ex.columns):   # a 0x0 table from a run with no agent-rounds has nothing to miss
+        raise SystemExit(f"{run.path}: the exposure tables predate this version (no {', '.join(missing)}); "
+                         f"rerun `swarmprov expose {run.path}`, then `graph` and `report`")
     claims, tags, mentions = run.read("claims"), run.read("tags"), run.read("mentions")
     edges, chains = run.read(f"edges_{mapping}"), run.read(f"chains_{mapping}")
     events = run.read("events")
@@ -441,7 +445,7 @@ def build(run: RunDir, mapping: str = "merged") -> str:
     # A5 / A6
     r6 = structure.reach(chains)
     if len(edges):
-        r5 = structure.analyze(edges, chains, ex=ex if len(ex) else None)
+        r5 = structure.analyze(edges, chains, ex=ex if len(ex) else None, events=events)
         figs["structure"] = structure.figure(r5, chains, run.figure("a5_structure.png"))
         summary["A5"] = {k: v for k, v in r5.items() if not isinstance(v, (pd.Series, pd.DataFrame))}
         L.append(f"## {SECTIONS['A5']}\n")
@@ -622,18 +626,25 @@ def _hub_headline(r5: dict) -> str:
     """First-source concentration beside the per-item null, and its range across the attribution rules."""
     a = r5["attribution"]
     share = {sub: a.loc[(a["answers"] == sub) & (a["n"] > 0), "top10_share"] for sub in ("all exposed", "instant only")}
-    inst = share["instant only"]
-    return (f"{r5['exposure_sources']} agents were the first public source for someone's answer; "
+    inst, n_items, one = share["instant only"], r5["items_exposed"], r5["items_one_source"]
+
+    def span(s: pd.Series) -> str:
+        lo, hi = _pct(s.min()), _pct(s.max())
+        return lo if lo == hi else f"{lo} to {hi}"
+    whole = span(share["all exposed"])
+    n_src = r5["exposure_sources"]
+    return (f"{n_src} agent{'s were' if n_src != 1 else ' was'} the first public source for someone's answer; "
             f"the top 10 supplied **{_pct(r5['top10_share_exposure'])}** of all exposed answers "
-            f"(out-degree Gini {r5['gini_exposure_outdegree']:.2f}; the exposure counts of the {r5['items_exposed']} items "
-            f"alone have a Gini of {r5['gini_item_exposures']:.2f}, which is what first-source credit gives if each item "
-            "has one source of its own). **That share depends on who is credited**: across the three attribution rules "
-            f"below it runs from {_pct(share['all exposed'].min())} to {_pct(share['all exposed'].max())}"
-            + (f" ({_pct(inst.min())} to {_pct(inst.max())} on instant answers)" if len(inst) else "")
-            + ". First-source credit measures who answered first on an item: on "
-            + (f"all {r5['items_exposed']}" if r5["items_one_source"] == r5["items_exposed"] else
-               f"{r5['items_one_source']} of the {r5['items_exposed']}")
-            + " items with exposed answers, one agent was the first source of every one. ")
+            f"(out-degree Gini {r5['gini_exposure_outdegree']:.2f}; the exposure counts of the {n_items} "
+            f"item{'s' * (n_items != 1)} alone have a Gini of {r5['gini_item_exposures']:.2f}, which is what first-source "
+            "credit gives if each item has one source of its own). **That share depends on who is credited**: across the "
+            + ("three attribution rules below" if len(share["all exposed"]) == 3 else
+               "two attribution rules below that credit any answer")
+            + (f" it runs from {whole}" if " to " in whole else f" it is {whole} under each")
+            + (f" ({span(inst)} on instant answers)" if len(inst) else "")
+            + ". First-source credit measures who first posted the value on an item: on "
+            + ("the only item" if n_items == 1 else f"all {n_items} items" if one == n_items else f"{one} of the {n_items} items")
+            + " with exposed answers, one agent was the first source of every one. ")
 
 
 def _attribution_block(r5: dict, summary: dict) -> list[str]:
@@ -645,8 +656,8 @@ def _attribution_block(r5: dict, summary: dict) -> list[str]:
          "*First source* = the first other agent to post the item and value before the report (the exposure edges); "
          "*latest source* = the last one before the report; *same-page relay parent* = the graph's parent of the agent's "
          "first post of the value, matched on the value key exposure used, and *unmatched* when that post arrived by a "
-         "cross-page hop or the agent has no relay edge for the value. *Instant only* keeps answers reported as instant, "
-         "the copy signature. On synthetic swarms the rule that copies the way the simulated agents do finds the true "
+         "cross-page hop, the agent has no relay edge for the value, or the parent's post is not before the report. "
+         "*Instant only* keeps answers reported as instant, the copy signature. On synthetic swarms the rule that copies the way the simulated agents do finds the true "
          "source (latest when they copy the latest post, first when they copy the first), so a rule's success there "
          "describes how the simulated agents copy, not how a real swarm does.\n"]
     if no_instant:
@@ -666,7 +677,7 @@ def _origins_block(exs: dict[str, pd.DataFrame], mapping: str, summary: dict) ->
                                                       t["origin"].value_counts().reindex(origins.LABELS, fill_value=0)]
                         for (rule, m), t in tr.items()}, index=pd.Index(origins.LABELS, name="credited source"))
     rules = ("first source", "latest source")
-    root_labels = [k for k in origins.LABELS if k != "relayed"] + [origins.POSTED_FIRST]
+    root_labels = [k for k in origins.LABELS if k != "relayed"] + [origins.POSTED_FIRST, origins.CUT]
     roots = pd.DataFrame({r: tr[(r, mapping)]["root_origin"].value_counts().reindex(root_labels, fill_value=0) for r in rules})
     roots.index.name = "root"
     relayed = {r: tr[(r, mapping)].loc[tr[(r, mapping)]["origin"] == "relayed", "depth"] for r in rules}
@@ -674,23 +685,28 @@ def _origins_block(exs: dict[str, pd.DataFrame], mapping: str, summary: dict) ->
     audit = origins.by_source(first[first["origin"] == "no answer round observed"], exs[mapping])
     audit = audit[["answers", "items", "answer rounds (any item)"]].head(10)
     summary["A5"]["origins"] = {
-        m: {r: tr[(r, m)]["origin"].value_counts().reindex(origins.LABELS, fill_value=0).to_dict() for r in rules} for m in exs} | {
-        "roots": roots.to_dict(), "max depth": {r: int(tr[(r, mapping)]["depth"].max()) for r in rules},
+        "by_mapping": {m: {r: tr[(r, m)]["origin"].value_counts().reindex(origins.LABELS, fill_value=0).to_dict()
+                           for r in rules} for m in exs},
+        "mapping": mapping, "roots": roots.to_dict(), "max depth": {r: int(tr[(r, mapping)]["depth"].max()) for r in rules},
         "no answer round observed, top sources": audit.reset_index().to_dict("records")}
     L = ["**Where did copied answers come from?** Each exposed answer's credited source (under the two rules that credit "
          "every answer, and both identity mappings; answers in brackets), judged by the source's own answer round on the "
          "same item: **computed** = it answered the same value with nothing matching public before its report (D = 0); "
          "**no answer round observed** = no answer round of its own on the item was extracted, which fits an agent that "
          "only published values (an answer list, a sequence scout) but also a missed answer or an identity split, so audit "
-         "the sources below before calling them compilers; **dissent** = it answered a different value; **relayed** = it "
-         "answered the same value but was itself exposed. Being the first public source is not proof of being read.\n",
+         "the sources below before calling them compilers; **dissent** = its answer round matched a different value (its "
+         "own, or the consensus when it stated none); **relayed** = it answered the same value but was itself exposed. "
+         "Being the first public source is not proof of being read.\n",
          md_table(tbl),
          f"Roots ({mapping} mapping): a relayed source is followed through its own source under the same rule until one "
          "is not relayed" + (" (hops from a relayed answer to its root, median / max: " + ", ".join(
              f"{r} {d.median():g} / {d.max()}" for r, d in relayed.items() if len(d)) + ")" if any(map(len, relayed.values())) else "")
-         + (f". *{origins.POSTED_FIRST.capitalize()}* = the agent had posted the value no later than the post it is "
-            "credited to (or the chain leads back to the answering agent), so it counts as exposed only because another "
-            "agent posted the value between its own post and its report" if roots.loc[origins.POSTED_FIRST].any() else "")
+         + (f". *{origins.POSTED_FIRST.capitalize()}* = the agent had posted the value no later than any other agent "
+            "(the walk stops there, or the chain leads back to it), so it counts as exposed only because another agent "
+            "posted the value between its own post and its report" if roots.loc[origins.POSTED_FIRST].any() else "")
+         + (f". *{origins.CUT.capitalize()}* = the agent was exposed before its own post of the value, but the latest "
+            "carrier before its report posted after that post, so the latest rule names no earlier source for it"
+            if roots.loc[origins.CUT].any() else "")
          + ". Relayed means exposed, not copied: a chain can run past an agent that computed the value while a copy was "
          "already public, so a root can sit earlier than the true one.\n", md_table(roots)]
     if len(audit):

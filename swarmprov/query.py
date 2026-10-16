@@ -185,8 +185,8 @@ def answer_lineage(run: RunDir, claim_id: str | None = None, agent: str | None =
                   "within_clock_res": bool(parent.within_clock_res), "parent_event_id": parent.src_event_id,
                   "parent_ts": parent_ts, "carrier_event_id": parent.event_id,
                   "carrier_ts": carrier["ts"] if carrier is not None else None,
-                  # the parent posted the value only after this answer was reported: not its source
-                  "after_report": bool(parent_ts is not None and parent_ts > r.t_report)}
+                  # the parent's post is not before the report (exposure's rule for a public copy): not its source
+                  "after_report": bool(parent_ts is not None and parent_ts >= r.t_report)}
         path, a = ([r.agent] if (rp is not None and not rp["after_report"])
                    or (len(origin) and origin.iloc[0] == r.agent) else []), r.agent
         while path and a in parent_of:
@@ -336,7 +336,7 @@ def text_answers(answers: list[dict]) -> list[str]:
         L.append(f"  own earlier post: {_post_line(p)}" if p else "  own earlier post: none")
         rp = a["relay_parent"]
         if rp:
-            late = ["parent post after the report: not this answer's source"] if rp["after_report"] else []
+            late = ["parent post not before the report: not this answer's source"] if rp["after_report"] else []
             L.append(f"  inferred relay parent: {rp['agent']} ({rp['kind']}), parent post {rp['parent_event_id']} "
                      f"({_ts(rp['parent_ts'])}), {_dur(rp['dt_s'])} before this agent's first post of the value "
                      f"({rp['carrier_event_id']}, {_ts(rp['carrier_ts'])}){_flags(rp['kind'], rp['within_clock_res'], late)}")

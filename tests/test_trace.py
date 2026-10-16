@@ -183,8 +183,8 @@ def test_family_narrows_an_ambiguous_agent(synth_run, tmp_path):
 @pytest.fixture(scope="module")
 def edited(synth_run, tmp_path_factory):
     """A copy of the synthetic run with answers edited into the cases the wiki has: no value of its own
-    (matched on the consensus, posted or not), a value the agent never posted, a report made before its
-    relay parent posted, and claims that are not the agent-round's answer row."""
+    (matched on the consensus, posted or not), a value the agent never posted, a report in the same
+    second as its relay parent's post, and claims that are not the agent-round's answer row."""
     run, _ = synth_run
     d = tmp_path_factory.mktemp("edited") / "run"
     shutil.copytree(run.path, d)
@@ -197,7 +197,7 @@ def edited(synth_run, tmp_path_factory):
     ex.loc[ids["no_value_no_post"], ["value_norm", "consensus_value"]] = [None, "424242"]
     ex.loc[ids["unposted"], "value_norm"] = "424242"
     late = found[3]["relay_parent"]["parent_ts"]
-    ex.loc[ids["late_parent"], "t_report"] = late - pd.Timedelta(seconds=1)
+    ex.loc[ids["late_parent"], "t_report"] = late   # same second: exposure would not count the post as before it
     run.write("exposures_merged", ex.reset_index())
     cl = run.read("claims")
     first = cl[cl["claim_id"] == ids["unposted"]].assign(claim_id="later-report", ts=lambda c: c["ts"] + pd.Timedelta(hours=1))
@@ -220,7 +220,7 @@ def test_answers_without_a_value_or_a_post(edited):
     assert "no item-value mention of this value by the agent" in text["unposted"] and "never posted" not in text["unposted"]
     rp = by[ids["late_parent"]]["relay_parent"]
     assert rp["after_report"] and by[ids["late_parent"]]["path"] == []
-    assert "parent post after the report: not this answer's source" in text["late_parent"]
+    assert "parent post not before the report: not this answer's source" in text["late_parent"]
     assert "inferred path" not in text["late_parent"]
     assert not any(b["relay_parent"]["after_report"] for c, b in by.items() if b["relay_parent"] and c != ids["late_parent"])
 
