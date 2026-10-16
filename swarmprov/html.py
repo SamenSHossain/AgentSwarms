@@ -23,7 +23,7 @@ import pandas as pd
 from . import query
 from .claims import value_key
 from .graph import CLOCK_RES_S, KINDS
-from .report import _a2_identified, _pct, _span
+from .report import _pct, a2_identified, top10_range
 from .schema import RunDir, suffix
 
 MAX_FACTS = 200     # task facts carried by two or more agents, most carriers first
@@ -151,7 +151,7 @@ def _only(df: pd.DataFrame, facts: pd.DataFrame, value: str) -> pd.DataFrame:
 def explorer_data(run: RunDir, mapping: str = "merged", summary: dict | None = None) -> dict | None:
     """The fact explorer's data, or None for a run without the graph tables: the task facts (at most ``MAX_FACTS``)
     and URL facts (``MAX_URLS``) carried by two or more agents, most carriers first, and A4's featured slots, each
-    fact's hops from ``query.fact_lineage``, the posts they cite once each (excerpt and page), and each agent's
+    fact's hops from ``query.fact_lineage``, the posts they cite once per item (excerpt and page), and each agent's
     links (``_people``)."""
     need = (f"chains_{mapping}", f"edges_{mapping}", "events", "mentions")
     if not all(run.has(n) for n in need):
@@ -174,14 +174,16 @@ def explorer_data(run: RunDir, mapping: str = "merged", summary: dict | None = N
     def a(label) -> int:
         return agents.setdefault(label, len(agents))
 
-    def post(eid, excerpt, channel) -> int:
+    def post(eid, excerpt, channel, item) -> int:
+        """A post once per item it carries: query's excerpt is centred on the fact's item, and a digest's two items
+        can lie further apart than the excerpt is long."""
         if not isinstance(eid, str):
             return -1
-        if eid not in posts:
+        if (eid, item) not in posts:
             c = chans.setdefault(channel, len(chans)) if isinstance(channel, str) else -1
             cut = excerpt if len(excerpt or "") <= EXCERPT else excerpt[:EXCERPT].rstrip() + "…"
-            posts[eid] = (len(posts), cut, c)
-        return posts[eid][0]
+            posts[eid, item] = (len(posts), cut, c)
+        return posts[eid, item][0]
 
     def add(f: dict, kind: str) -> int:
         key = (f["family"], f["item"], f["value"])
@@ -190,9 +192,11 @@ def explorer_data(run: RunDir, mapping: str = "merged", summary: dict | None = N
             index[key] = len(facts)
             facts.append({"kind": kind, "family": f["family"], "item": f["item"], "value": f["value"],
                           "carriers": f["carriers"], "depth": f["max_depth"], "span": f["span_s"],
-                          "o": [a(o["agent"]), _t(o.get("ts")), post(o.get("event_id"), o.get("excerpt"), o.get("channel"))],
+                          "o": [a(o["agent"]), _t(o.get("ts")),
+                                post(o.get("event_id"), o.get("excerpt"), o.get("channel"), f["item"])],
                           "h": [[a(h["src"]), a(h["dst"]), int(h["kind"] == "relay"), _t(h["ts"]), _t(h["src_ts"]),
-                                 int(h["within_clock_res"]), post(h["event_id"], h["excerpt"], h["channel"]), h["depth"]]
+                                 int(h["within_clock_res"]), post(h["event_id"], h["excerpt"], h["channel"], f["item"]),
+                                 h["depth"]]
                                 for h in f["hops"]]})
         return index[key]
     for r in picked.itertuples(index=False):
@@ -216,7 +220,7 @@ def explorer_data(run: RunDir, mapping: str = "merged", summary: dict | None = N
     prof = json.loads((run.path / "profile.json").read_text()) if (run.path / "profile.json").exists() else {}
     return query.to_json({"clock": prof.get("clock") or "wall", "res": CLOCK_RES_S, "mapping": mapping,
                           "agents": list(agents), "channels": list(chans),
-                          "posts": [[e, x, c] for e, (_, x, c) in posts.items()],
+                          "posts": [[e, x, c] for (e, _), (_, x, c) in posts.items()],
                           "facts": facts, "slots": slots, "people": people})
 
 
@@ -265,14 +269,12 @@ def tiles(summary: dict) -> list[tuple[str, str, str]]:
         out += [(f"{a1['n_answers']:,}", "answers", f"by {a1['n_agents']:,} agents"),
                 (_pct(a1["share_exposed"]), "already public before the report", "a floor: only captured posts are searched"),
                 (f"≤ {a1['n_independent']:,}", "independent lookups", "nothing carrying the answer was public")]
-    if rows := [r for r in (summary.get("A5") or {}).get("attribution") or [] if r["answers"] == "all exposed" and r["n"]]:
-        lo, hi = min(r["top10_share"] for r in rows), max(r["top10_share"] for r in rows)
-        out.append((_pct(lo) if _pct(lo) == _pct(hi) else _span(lo, hi), "top-10 source share",
-                    "the range across attribution rules"))
+    if rng := top10_range(summary.get("A5") or {}):
+        out.append((rng[0], "top-10 source share", f"of {rng[1]:,} exposed answers, across attribution rules"))
     if (tv := (summary.get("A6") or {}).get("task values")) and tv.get("max_hops") is not None:
         out.append((f"{tv['max_hops']:,}", "longest relay chain (hops)", "inferred paths, not proven ones"))
     if summary.get("A2"):
-        main, hit = _a2_identified(summary["A2"])
+        main, hit = a2_identified(summary["A2"])
         if main:
             out.append(("identified" if hit else "not identified", "does availability cause copying?",
                         "A2: two-way fixed effects on agent-rounds"))
@@ -481,6 +483,7 @@ const dur = s => { if (s == null || isNaN(s)) return "?"; if (SEQ) { const k = M
   const a = Math.abs(s); return a < 120 ? s.toFixed(0) + " s" : a < 7200 ? (s / 60).toFixed(1) + " min" : (s / 3600).toFixed(1) + " h"; };
 const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const COL = ["--s1", "--s2", "--s3"];
+const pl = (k, w) => `${k} ${w}${k === 1 ? "" : "s"}`;
 
 // the timeline model: rows (a carrier each, in order of first post) and hops between rows
 function model(sel) {
@@ -532,7 +535,7 @@ function draw() {
   let lo = Math.min(...ts), hi = Math.max(...ts); if (!(hi > lo)) { lo -= 60; hi += 60; }
   const X = t => x0 + (t - lo) / (hi - lo) * (x1 - x0), Y = k => top + (k + 0.5) * rh;
   const svg = sv("svg", {viewBox: `0 0 ${W} ${H}`, height: H, tabindex: 0, role: "img",
-    "aria-label": `Timeline of ${n} carriers; arrow keys step through them`});
+    "aria-label": `Timeline of ${pl(n, "carrier")}; arrow keys step through them`});
   const g = sv("g");
   svg.append(sv("rect", {x: 0, y: 0, width: W, height: H, fill: css("--surface")}));
   for (const [t, lab] of ticks(lo, hi, Math.max(2, Math.floor((x1 - x0) / 110)))) {
@@ -608,12 +611,14 @@ function legend(sel) {
   const dot = (c, r) => g => g.append(sv("circle", {cx: 11, cy: 6, r, fill: css(c)}));
   const items = [];
   const both = c => g => { line(c)(g); dot(c, 4)(g); };
+  // a slot whose carriers were matched by pattern has no hops, so no hop or tie to explain
+  const hops = sel.type === "fact" || D.slots[sel.i].variants.some(v => v.fact != null);
   if (sel.type === "slot") D.slots[sel.i].variants.forEach((v, k) => items.push(sw(both(COL[k] || "--muted"),
     `${v.value}: carriers` + (v.fact != null ? " and same-page relays" : ""))));
   else items.push(sw(line("--s1"), "same-page relay, from the parent's post (small dot)"));
-  items.push(sw(line("--xch"), "cross-page hop: source unknown, from the originator"),
-    sw(dot("--ink", 5), "originator"));
-  if (!SEQ) items.push(sw(g => g.append(sv("circle", {cx: 11, cy: 6, r: 5, fill: "none", stroke: css("--ink")})),
+  if (hops) items.push(sw(line("--xch"), "cross-page hop: source unknown, from the originator"));
+  items.push(sw(dot("--ink", 5), "originator"));
+  if (hops && !SEQ) items.push(sw(g => g.append(sv("circle", {cx: 11, cy: 6, r: 5, fill: "none", stroke: css("--ink")})),
     `within ${D.res} s of the parent: direction unreliable`));
   L.replaceChildren(...items);
 }
@@ -623,7 +628,7 @@ function select(sel) {
   const head = document.getElementById("fx-head");
   if (sel.type === "fact") { const f = D.facts[sel.i], xs = f.h.filter(h => h[2] === 0).length, ties = f.h.filter(h => h[5] === 1).length;
     head.replaceChildren(document.createTextNode(f.kind === "url" ? f.value : `${f.family} | ${f.item} | ${f.value}`),
-      el("small", {}, `${f.carriers} carriers, ${f.h.length} hops (${f.h.length - xs} same-page relay, ${xs} cross-page` +
+      el("small", {}, `${pl(f.carriers, "carrier")}, ${pl(f.h.length, "hop")} (${f.h.length - xs} same-page relay, ${xs} cross-page` +
         (SEQ ? "" : `, ${ties} within the clock resolution`) + `), max depth ${f.depth}, span ${dur(f.span)}`)); }
   else { const s = D.slots[sel.i];
     head.replaceChildren(document.createTextNode(s.slot), el("small", {}, `A4 ${s.kind} slot, ${s.status}: first ${s.first ?? "none (two first seen together)"}, winner ${s.winner ?? "none (a tie)"}` +
@@ -636,7 +641,7 @@ function select(sel) {
 
 const items = [...D.slots.map((s, i) => ({type: "slot", i, label: s.slot, sub: `A4 dispute · ${s.status}`})),
   ...D.facts.map((f, i) => ({type: "fact", i, label: f.kind === "url" ? f.value : `${f.family} | ${f.item} | ${f.value}`,
-    sub: `${f.kind === "url" ? "URL" : "task value"} · ${f.carriers} carriers · max depth ${f.depth}`}))];
+    sub: `${f.kind === "url" ? "URL" : "task value"} · ${pl(f.carriers, "carrier")} · max depth ${f.depth}`}))];
 const list = document.getElementById("fx-list"), q = document.getElementById("fx-q");
 function fill() { const s = q.value.trim().toLowerCase();
   const hit = items.filter(it => !s || it.label.toLowerCase().includes(s)).slice(0, 80);

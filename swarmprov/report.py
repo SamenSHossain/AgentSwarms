@@ -872,7 +872,7 @@ def _kf_a1(a: dict, s: dict, seq: bool) -> str:
     return out + ". These are floors: only the posts this run captured are searched, so a copy anywhere else is invisible."
 
 
-def _a2_identified(rows: list[dict]) -> tuple[list[dict], list[dict]]:
+def a2_identified(rows: list[dict]) -> tuple[list[dict], list[dict]]:
     """A2's headline rows (the extra ``y_winner`` row aside) and those identified: an estimate on at least twice
     ``causal.MIN_SWITCHERS`` agents that switch exposure status whose 95% CI excludes 0."""
     main = [r for r in rows if r["outcome"] not in causal.OPTIONAL]
@@ -881,17 +881,22 @@ def _a2_identified(rows: list[dict]) -> tuple[list[dict], list[dict]]:
 
 
 def _kf_a2(rows: list[dict], s: dict, seq: bool) -> str | None:
-    main, hit = _a2_identified(rows)
+    main, hit = a2_identified(rows)
     if not main:
         return None
 
     def switch(rs: list[dict]) -> str:
         k = sorted({r["agents_with_D_variation"] for r in rs})
         return f"{k[0]:,}" + (f"–{k[-1]:,}" if len(k) > 1 else "")
-    fe = "two-way fixed effects (`Y ~ D_cons | agent + item`, SEs clustered by agent)"
+
+    def either(key: str) -> str:
+        names = [f"`{x}`" for x in dict.fromkeys(r[key] for r in main)]
+        return names[0] if len(names) == 1 else ", ".join(names[:-1]) + f" or {names[-1]}"
+    fe = "two-way fixed effects (`Y ~ D | agent + item`, SEs clustered by agent)"
     if not hit:
-        return (f"Its effect is not identified ({switch(main)} agents switch exposure status): no estimate from {fe} "
-                "rests on enough switching agents with a 95% CI that excludes 0.")
+        return (f"Its effect is not identified ({switch(main)} agents switch exposure status): no estimate of "
+                f"{either('outcome')} under {either('treatment')} from {fe} rests on enough switching agents with a "
+                "95% CI that excludes 0.")
     by = {}
     for r in hit:   # an outcome's identified treatments, in the table's order
         by.setdefault(r["outcome"], []).append(r)
@@ -910,14 +915,13 @@ def _kf_a2(rows: list[dict], s: dict, seq: bool) -> str | None:
 
 def _kf_a3(rows: list[dict], s: dict, seq: bool) -> str:
     top = sorted(rows, key=lambda r: -(r["adoption_share"] if r["adoption_share"] is not None else -1))
-    at_risk = ("active after its first post" if not (s.get("funnel") or {}).get("posts_with_family") else
+    fun = s.get("funnel") or {}
+    at_risk = ("active after its first post" if not fun.get("posts_with_family") or fun.get("catch_all_family") else
                "active in its task families after its first post")
     out = (f"adoption share = the share of the agents at risk ({at_risk}) that went on to use it: " + ", ".join(
         f"`{r['technique']}`{' (mined)' if r.get('mined') else ''} {_pct(r['adoption_share'])} "
         f"({r['adopters']:,} of {r['at_risk']:,})" for r in top[:5]) + ("; lower for the rest" if len(top) > 5 else ""))
-    hits = [r["technique"] for r in rows if (c := r.get("contagion")) and not c.get("excluded") and c.get("n_adopters")
-            and c["n_adopters"] >= diffusion.MIN_ADOPTERS and c["share_on_carrying"] > c["baseline"]
-            and c.get("p_holm", c["p"]) < diffusion.ALPHA]
+    hits = [r["technique"] for r in rows if _contagion_hit(r.get("contagion"))]
     if hits:
         out += (". Consistent with contagion (adoptions landed on a page that already carried the technique more often "
                 "than the adopters' own posts did, after Holm's correction; posting on a page is not reading it): "
@@ -933,10 +937,12 @@ def _kf_a4(a: dict, s: dict, seq: bool) -> str:
     tail = "third" if abs(rule["tail_share"] - 1 / 3) < 1e-9 else _pct(rule["tail_share"])
     keep = "holds the majority of all the slot's carriers" if seq else "kept the majority of new carriers"
 
-    def leads(r: dict) -> str:
+    def leads(r: dict, but: bool = False) -> str:
         n = sorted(r["tail counts"].values(), reverse=True)
-        return (f"`{r['winner']}` leads the late carriers {' to '.join(map(str, n))}" if len(n) > 1 else
-                f"all {n[0]} late carriers carry `{r['winner']}`")
+        if len(n) > 1:
+            return f"`{r['winner']}` leads the late carriers {' to '.join(map(str, n))}" + (" but" if but else "")
+        return (f"all {n[0]} late carriers carry" if n[0] != 1 else "the one late carrier carries") \
+            + f" `{r['winner']}`" + (", which" if but else "")
 
     def slot(r: dict) -> str:
         st, first, win, h = r["status"], r["first variant"], r["winner"], r.get("hours to overtake")
@@ -950,7 +956,7 @@ def _kf_a4(a: dict, s: dict, seq: bool) -> str:
         elif r["first seen tie"]:
             out = f"contested: two variants were first seen at the same moment, and {leads(r)}"
         elif st == "contested":
-            out = f"`{first}` first, {leads(r)} but {'does not hold' if seq else 'never kept'} the majority of " \
+            out = f"`{first}` first, {leads(r, but=True)} {'does not hold' if seq else 'never kept'} the majority of " \
                   f"{'all the slot' + chr(39) + 's' if seq else 'new'} carriers: contested"
         else:
             out = f"`{first}` first, {leads(r)}, fewer than {rule['min_tail']}: {st}"
@@ -962,10 +968,10 @@ def _kf_a4(a: dict, s: dict, seq: bool) -> str:
 def _kf_a5(a: dict, s: dict, seq: bool) -> str:
     rows = {r["rule"]: r for r in a.get("attribution") or [] if r["answers"] == "all exposed" and r["n"]}
     if not rows:
-        return (f"{a['n_nodes']:,} agents linked by {a['n_relay_edges']:,} same-page relay hops; no answer had a first "
-                "public source, so there is no hub concentration to report.")
-    shares = [r["top10_share"] for r in rows.values()]
-    whole = _pct(min(shares)) if _pct(min(shares)) == _pct(max(shares)) else _span(min(shares), max(shares))
+        k, e = a["n_nodes"], a["n_relay_edges"]
+        return (f"{k:,} agent{'s' * (k != 1)} linked by {e:,} same-page relay hop{'s' * (e != 1)}; no answer had a "
+                "first public source, so there is no hub concentration to report.")
+    whole, n = top10_range(a)
     parts = []
     if (f := rows.get("first source")) is not None:
         loo = a.get("top10_share_exposure_loo")
@@ -976,9 +982,20 @@ def _kf_a5(a: dict, s: dict, seq: bool) -> str:
         parts.append(f"{_pct(r['top10_share'])} to the latest earlier carrier")
     if (r := rows.get("same-page relay parent")) is not None:
         parts.append(f"{_pct(r['top10_share'])} of the {r['n']:,} with a same-page relay parent")
-    n = max(r["n"] for r in rows.values())
     return (f"the top 10 sources supplied {whole} of {n:,} exposed answers, depending on who is credited (nothing "
             "records who read whom, so each rule credits one source per answer): " + ", ".join(parts) + ".")
+
+
+def top10_range(a5: dict) -> tuple[str, int] | None:
+    """A5's top-10 share across the attribution rules that credit every exposed answer (first and latest source; the
+    relay parent credits only the answers it matches), as text, and how many answers that is; None without one."""
+    rows = [r for r in a5.get("attribution") or [] if r["answers"] == "all exposed" and r["n"]]
+    if not rows:
+        return None
+    n = max(r["n"] for r in rows)
+    shares = [r["top10_share"] for r in rows if r["n"] == n]
+    lo, hi = min(shares), max(shares)
+    return (_pct(lo) if _pct(lo) == _pct(hi) else _span(lo, hi)), n
 
 
 def _kf_a6(a: dict, s: dict, seq: bool) -> str | None:
@@ -1121,13 +1138,21 @@ def _contagion_cells(techniques: pd.Series, con: dict) -> dict:
     return {"adopted on carrying page": on, "baseline": base, "p (within-agent permutation)": p}
 
 
+def _contagion_hit(c: dict | None) -> bool:
+    """A technique consistent with contagion (``diffusion.contagion``'s entry, as in ``summary.json``): enough
+    adopters, more of them on a carrying page than the baseline, and p below ``diffusion.ALPHA`` after Holm's
+    correction."""
+    return bool(c) and not c["excluded"] and c["n_adopters"] >= diffusion.MIN_ADOPTERS \
+        and c["share_on_carrying"] > c["baseline"] and c["p_holm"] < diffusion.ALPHA
+
+
 def _contagion_note(con: dict) -> str:
     """What the contagion columns mean, which rows are consistent with contagion, and the rows not to read."""
     tested = {t: c for t, c in con.items() if not c["excluded"] and c["n_adopters"]}
     small = [f"{t} ({c['n_adopters']})" for t, c in tested.items() if c["n_adopters"] < diffusion.MIN_ADOPTERS]
     above = {t: c for t, c in tested.items() if c["share_on_carrying"] > c["baseline"]
              and c["n_adopters"] >= diffusion.MIN_ADOPTERS and c["p"] < diffusion.ALPHA}
-    hits = [t for t, c in above.items() if c["p_holm"] < diffusion.ALPHA]
+    hits = [t for t, c in above.items() if _contagion_hit(c)]
     lost = [f"{t} (p = {c['p']:.3f}, {c['p_holm']:.3f} after it)" for t, c in above.items() if t not in hits]
     m = len(tested)
     out = ("**Contagion.** Did adopters adopt where the technique was already posted? *Adopted on carrying page* = the "

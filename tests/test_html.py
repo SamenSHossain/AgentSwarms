@@ -99,12 +99,48 @@ def test_explorer_facts_are_fact_lineage(page):
     assert len(d["facts"]) == min(html.MAX_FACTS, int(((ch["n_agents"] > 1) & (ch["family"] != "url")).sum()))
 
 
-def test_explorer_posts_once_and_short(page):
+def test_explorer_posts_once_per_item_and_short(page):
     _, _, d, _ = page
-    ids = [p[0] for p in d["posts"]]
-    assert len(ids) == len(set(ids)) and all(len(p[1]) <= html.EXCERPT + 1 for p in d["posts"])
-    used = {h[6] for f in d["facts"] for h in f["h"]} | {f["o"][2] for f in d["facts"]}
-    assert used - {-1} == set(range(len(ids)))
+    assert all(len(p[1]) <= html.EXCERPT + 1 for p in d["posts"])
+    cited: dict = {}   # post index -> the (event, item) pairs that cite it
+    for f in d["facts"]:
+        for k in [f["o"][2], *(h[6] for h in f["h"])]:
+            if k >= 0:
+                cited.setdefault(k, set()).add((d["posts"][k][0], f["item"]))
+    assert set(cited) == set(range(len(d["posts"]))) and all(len(v) == 1 for v in cited.values())
+    assert len(set().union(*cited.values())) == len(d["posts"])
+
+
+@pytest.fixture(scope="module")
+def digest(tmp_path_factory):
+    """Three posts on one page: Ohio's and Texas's first reports, then a digest that carries both values with the
+    items further apart than an excerpt is long."""
+    from swarmprov import pipeline
+    d = tmp_path_factory.mktemp("digest")
+    filler = " ".join(["the board looks steady and nobody disputes this reading"] * 4)
+    posts = [("08:00", "AgentAlpha", "R1 CONFIRMED: Ohio arrived 07:59:50, 14s timer; answered 91.04 at +9s."),
+             ("08:05", "AgentBeta", "R1 CONFIRMED: Texas arrived 08:04:50, 14s timer; answered 90.30 at +9s."),
+             ("08:10", "AgentGamma", f"R1 CONFIRMED: Ohio arrived 08:09:50, 14s timer; answered 91.04 at +9s. {filler}. "
+                                     "Texas 90.30 is on the board too.")]
+    (d / "t.jsonl").write_text("".join(json.dumps({"ts": f"2026-06-16T{t}:00Z", "author": a, "channel": "alpha-board",
+                                                   "text": x}) + "\n" for t, a, x in posts))
+    (d / "c.json").write_text(json.dumps({"name": "t", "families": {"alpha-task": "alpha"},
+                                          "extra_items": {"alpha-task": ["Ohio", "Texas"]}}))
+    run = RunDir(d / "run")
+    pipeline.ingest(d / "t.jsonl", run, "chat", str(d / "c.json"))
+    pipeline.extract(run)
+    pipeline.expose(run)
+    pipeline.build_graph(run)
+    return html.explorer_data(run)
+
+
+def test_a_post_carrying_two_facts_shows_each_its_own_item(digest):
+    assert sorted(f["item"] for f in digest["facts"]) == ["Ohio", "Texas"]
+    for f in digest["facts"]:
+        (hop,) = f["h"]   # the digest relays each value from its first report
+        assert digest["agents"][hop[1]] == "agentgamma" and f["item"] in digest["posts"][hop[6]][1]
+    ids = [p[0] for p in digest["posts"]]
+    assert len(ids) == 4 and len(set(ids)) == 3   # the digest once per item
 
 
 def test_explorer_slots_are_the_featured_a4_slots(page):
