@@ -117,6 +117,28 @@ def test_report_has_village_block(village_run):
     assert json.loads((village_run.path / "summary.json").read_text())["village"]["n_rooms"] > 0   # real tables keep their summary
 
 
+def test_checks_pass_under_room_audiences(village_run):
+    """The integrity checks re-derive exposure with the rooms' audiences: a copy in "best" is not public to Opus."""
+    integrity = json.loads((village_run.path / "summary.json").read_text())["integrity"]
+    assert integrity["n_pass"] == integrity["n_checks"] and integrity["failing"] == []
+
+
+def test_message_deletions_join_room_deletions(tmp_path):
+    """A message's own deleted_at ends its visibility when that comes before its room's deletion."""
+    for f in RAW.glob("*.jsonl.gz"):
+        shutil.copy(f, tmp_path / f.name)
+    side, t = "058df0e7-7447-47d4-8506-f79cadede3e3", pd.Timestamp("2026-07-07T10:00:00Z")   # side-room: deleted 07-25
+    msgs = [_post(0, SONNET45, GENERAL, t, "a") | {"deleted_at": "2026-07-08 00:00:00"},
+            _post(1, SONNET45, side, t, "b") | {"deleted_at": "2026-07-30 00:00:00"},
+            _post(2, SONNET45, side, t, "c"), _post(3, SONNET45, GENERAL, t, "d")]
+    (tmp_path / "chat_messages.jsonl").write_text("\n".join(json.dumps(m) for m in msgs))
+    b = adapters.get("village").load(tmp_path)
+    vu = b.events.set_index("event_id")["visible_until"]
+    room = pd.Timestamp("2026-07-25 00:52:34.652", tz="UTC")
+    assert vu["m0"] == pd.Timestamp("2026-07-08", tz="UTC") and vu["m1"] == vu["m2"] == room and pd.isna(vu["m3"])
+    assert b.capabilities.has_lifecycle
+
+
 def test_audience_unit():
     rounds = pd.DataFrame([{"claim_id": "c", "agent": "B", "family": "f", "episode": 1, "item": "Utah",
                             "value_norm": "73.74", "t_report": pd.Timestamp("2026-07-07T11:00Z"),

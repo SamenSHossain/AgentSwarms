@@ -14,7 +14,7 @@ from typing import Callable
 import pandas as pd
 
 # the chat adapter's canonical fields, each mappable to a source key with ``fields`` / ``--field``
-FIELD_NAMES = ("ts", "author", "author_alt", "text", "channel", "id", "parent")
+FIELD_NAMES = ("ts", "author", "author_alt", "text", "channel", "id", "parent", "visible_until")
 
 
 def did_you_mean(name: str, options) -> str:

@@ -86,7 +86,7 @@ class VillageAdapter(Adapter):
         if "messages" in found:
             b = ChatAdapter(self.mapping).load(found["messages"])
             events, caps = b.events, b.capabilities
-            caps.has_lifecycle = channels is not None
+            caps.has_lifecycle = caps.has_lifecycle or channels is not None   # messages may carry deleted_at too
             caps.has_activity = activity is not None
             if directory is not None:  # ids -> names
                 names = dict(zip(directory["agent_id"], directory["name"]))
@@ -96,7 +96,10 @@ class VillageAdapter(Adapter):
                 cmap = dict(zip(channels["channel_id"], channels["channel"]))
                 events["channel"] = events["channel"].map(lambda c: cmap.get(str(c), str(c)))
                 gone = dict(zip(channels["channel"], channels["deleted"]))
-                events["visible_until"] = events["channel"].map(gone)
+                room = events["channel"].map(gone)
+                # a message deleted before its room keeps its own time
+                events["visible_until"] = room if not b.notes.get("n_deleted") else pd.concat(
+                    [pd.to_datetime(events["visible_until"], utc=True), pd.to_datetime(room, utc=True)], axis=1).min(axis=1)
             notes.update(b.notes)
         notes.update({"n_agents": 0 if directory is None else int(len(directory)),
                       "n_rooms": 0 if channels is None else int(len(channels)),

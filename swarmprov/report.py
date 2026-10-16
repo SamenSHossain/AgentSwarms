@@ -10,7 +10,7 @@ from fractions import Fraction
 import numpy as np
 import pandas as pd
 
-from . import graph, identity, lifecycle as lifecycle_mod, roster as roster_mod, village as village_mod
+from . import checks, graph, identity, lifecycle as lifecycle_mod, roster as roster_mod, village as village_mod
 from .adapters.base import read_capabilities
 from .adapters.chat import no_author_warning
 from .analysis import agents as agents_mod, causal, diffusion, errors, origins, provenance, structure, uncertainty
@@ -726,18 +726,26 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
                  f"({rc['dump_edges_without_revision']} have no revision to match), {rc['pipeline_only']} extra"
                  + (f" ({rc['pipeline_only_after_cutoff']} after the source's cutoff)" if rc.get("cutoff") else "")
                  + f". {rc['restored_posts']} of {rc['posts_on_recreations']} posts on those revisions restore pre-deletion text.\n")
+    L += _integrity(checks.check_run(run, summary), summary)
     vfiles = sorted(run.path.glob("validation*.json"))
     if vfiles:
         summary["validation"] = {}
         for vpath in vfiles:
             v = json.loads(vpath.read_text())
             summary["validation"][vpath.stem] = v
-            L.append(f"**{vpath.stem}** — {v['n']} labelled posts ({v.get('split') or 'labels'}; labeller: {v.get('labeller')}); "
-                     f"{v.get('gold_answers', '?')} gold answers, {v.get('predicted_answers', '?')} predicted.\n")
+            cov = v.get("coverage")   # absent from scores written before coverage was recorded
+            part = f" of {cov['labelled']} (the others are not posts of this run)" \
+                if cov and cov["in_run"] < cov["labelled"] else ""
+            L.append(f"**{vpath.stem}** — {v['n']}{part} labelled posts ({v.get('split') or 'labels'}; labeller: "
+                     f"{v.get('labeller')}); {v.get('gold_answers', '?')} gold answers, "
+                     f"{v.get('predicted_answers', '?')} predicted.\n")
             L.append(md_table(pd.DataFrame(v["fields"]).T, floatfmt="{:.2f}"))
     else:
         L.append("No gold labels yet. `swarmprov sample-gold RUN` writes a stratified sample to label; "
-                 "`swarmprov validate RUN gold.jsonl` scores the extractor against it.\n")
+                 "`swarmprov validate RUN gold.jsonl` scores the extractor against it, and `swarmprov run ... --gold "
+                 "DIR` scores every label file in DIR before the report.\n")
+    if (run.path / "truth_validation.json").exists():
+        L += _truth_block(json.loads((run.path / "truth_validation.json").read_text()), summary)
 
     L.append("## Limitations\n")
     if run.has("roster"):
@@ -776,6 +784,72 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
                 "not the agents' own messages: who-did-what-when and technique mentions are plausible, the provenance of specific "
                 "values is not, and anything the digest's author chose to omit is invisible.\n" if caps.get("derived_text") else ""))
     return _write(run, L, summary)
+
+
+def _integrity(chk: pd.DataFrame, summary: dict) -> list[str]:
+    """One line: how many of ``checks.check_run``'s checks pass, naming those that do not."""
+    fail = chk[chk["n_violations"] > 0]
+    summary["integrity"] = {"n_checks": len(chk), "n_pass": len(chk) - len(fail),
+                            "failing": fail[["check", "table", "n_violations", "severity"]].to_dict("records")}
+    named = []
+    for c, g in fail.groupby("check", sort=False):
+        where = ", ".join(f"{n:,} in {t}" for t, n in zip(g["table"], g["n_violations"]))
+        named.append(f"`{c}` ({g['severity'].iloc[0]}; {where}: {checks.MEANING[c]})")
+    return [f"**Integrity: {len(chk) - len(fail)}/{len(chk)} checks pass** (`checks.json`; `swarmprov check RUN` reruns "
+            "them): exposure re-derived from the mentions, flag nesting, relay hops and exposure edges against the "
+            "chains and rounds, the posts behind edges and exposures, the strict mapping inside the merged one, "
+            "and summary.json against the tables. " + ("Not passing: " + "; ".join(named) + "." if named else
+                                                       "None fails.") + "\n"]
+
+
+def _truth_block(tv: dict, summary: dict) -> list[str]:
+    """The ``truth-score`` scorecard: what this synthetic run recovered of what the simulation planted."""
+    summary["truth_validation"] = tv
+    pct = lambda v: "–" if v is None else f"{v:.0%}"
+    d, dv, a2 = tv["D"], tv["D_visible"], tv["A2"]
+    c = d["confusion"]
+    rows = [("`D` per answer round", pct(d["share"]),
+             f"{pct(d['true_public_at_arrival'])} on the board at arrival; {pct(d['true_earlier_copy'])} an earlier "
+             "post of the same value",
+             f"{pct(d['accuracy_vs_public_at_arrival'])} of rounds with the first (D=1 and public {c['D1_public']}, "
+             f"D=1 and not {c['D1_not_public']}, D=0 and public {c['D0_public']}, D=0 and not {c['D0_not_public']}), "
+             f"{pct(d['accuracy_vs_earlier_copy'])} with the second")]
+    if dv["deleted_posts"]:
+        rows.append((f"`D_visible` ({dv['deleted_posts']:,} posts deleted)", pct(dv["share"]),
+                     f"{pct(dv['true_visible_copy'])} an earlier post of the value still undeleted",
+                     f"{pct(dv['accuracy'])} of rounds"))
+    if a2:
+        est = (a2["note"] or "not estimated") if a2["beta"] is None else \
+            f"{a2['beta']:.3f} (95% CI {a2['ci_lo']:.3f} to {a2['ci_hi']:.3f}, " \
+            + ("p < 0.001)" if a2["p"] < 0.001 else f"p {a2['p']:.3f})")
+        rows.append(("A2 `y_instant ~ D_cons`", est,
+                     f"{a2['true_effect']:.3f} (the share of rounds public at arrival that copied)",
+                     {True: "inside the interval", False: "outside the interval", None: "–"}[a2["covers"]]))
+    for r in tv["sources"]:
+        rule = r["rule"] + (" (not an A5 rule)" if r["rule"] == "first copy still visible" else "")
+        rows.append((f"A5 top-10 share of instant answers, {rule}", pct(r["top10_share"]), pct(r["true_top10_share"])
+                     + " of copied answers",
+                     f"names the true source of {pct(r['names_true_source'])} of {r['copied_answers']:,} copied answers"
+                     + (f" ({r['credits_nobody']:,} credited to nobody)" if r["credits_nobody"] else "")))
+    for r in tv["A3"]:
+        rows.append((f"A3 `{r['technique']}` adoption share", f"{pct(r['adoption_share'])} of {r['at_risk']}",
+                     f"{pct(r['true_adoption_share'])} of {r['true_at_risk']}", ""))
+        if r["median_hours_to_adopt"] is not None or r["true_median_hours_to_adopt"] is not None:
+            h = lambda v: "not reached" if v is None else f"{v:.1f} h"
+            rows.append((f"A3 `{r['technique']}` median time to adopt", h(r["median_hours_to_adopt"]),
+                         h(r["true_median_hours_to_adopt"]), ""))
+    a4 = tv["A4"]
+    rows.append(("A4 disputed value slots", f"{a4['slots']}", f"{a4['true_slots']} (A4's rule on the true answers)",
+                 f"in both {a4['in_both']}: status agrees on {a4['status_agrees']}, outcome on {a4['outcome_agrees']}"))
+    for m, r in tv["identity"].items():
+        rows.append((f"identity, {m} mapping", f"{r['agents']:,} agents", f"{r['true_agents']:,} agents",
+                     f"purity {pct(r['purity'])}, {r['true_agents_split']:,} true agents split"))
+    return [f"**Synthetic truth** ({tv['label']}; `truth_validation.json` from `swarmprov truth-score`, "
+            f"{tv['mapping']} mapping, {tv['rounds']['matched']:,} of {tv['rounds']['truth']:,} true answer rounds "
+            "matched): each analysis against what the simulation planted. It shows the pipeline recovers this "
+            "simulation's provenance, not that it is right on a real swarm, whose agents need not copy, delete or "
+            "sign the way the simulation's do.\n",
+            md_table(pd.DataFrame(rows, columns=["measure", "this run", "truth", "agreement"]), index=False)]
 
 
 def _rounds_cell(s: dict, prov: dict | None) -> str | None:

@@ -11,6 +11,9 @@
     swarmprov report   runs/wiki [--mapping merged|strict] [--boot 1000]
     swarmprov sample-gold runs/wiki [-n 120]
     swarmprov validate runs/wiki gold.jsonl
+    swarmprov run      data/raw -o runs/wiki --gold validation/   # also score the extractor on each label file
+    swarmprov check    runs/wiki                          # do the tables agree? exit 1 on an error
+    swarmprov truth-score runs/synth data/synth           # a synthetic run against what synth planted
     swarmprov crosssite runs/wiki data/raw2 -o runs/crosssite
     swarmprov trace    runs/wiki --agent "Mar16|oecd-equity" --item "Czech Republic"   # one answer's sources
     swarmprov trace    runs/wiki --fact "oecd-equity|Hungary|9.9" --png hungary.png     # one fact's relay tree
@@ -24,6 +27,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 
@@ -86,6 +90,9 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--llm", default=None, help="model id for optional LLM extraction (needs ANTHROPIC_API_KEY)")
     s.add_argument("--config", default=None, help="JSON/TOML file overriding the adapter config (families, techniques, ...)")
     s.add_argument("--roster", default=None, help="agent-goal table (AI Village agent_goals) to attach: goals become families and cohorts")
+    s.add_argument("--gold", nargs="+", default=None, metavar="FILE_OR_DIR",
+                   help="hand-label files (a directory: its *.jsonl) to score the extractor on before the report, as "
+                        "validation_<split>.json; a file with no labelled post in this run is skipped")
     _add_fields(s)
 
     s = sub.add_parser("ingest")
@@ -127,6 +134,14 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("run")
     s.add_argument("gold")
     s.add_argument("--out-name", default="validation.json", help="file name in the run dir for the scores")
+
+    s = sub.add_parser("check", help="integrity checks: do the run's tables agree with each other? (exit 1 on an error)")
+    s.add_argument("run")
+
+    s = sub.add_parser("truth-score", help="score a synthetic run against the truth synth wrote beside the transcript")
+    s.add_argument("run")
+    s.add_argument("truth", help="the directory holding the transcript's truth.csv and config.json")
+    s.add_argument("--mapping", choices=["merged", "strict"], default="merged")
 
     s = sub.add_parser("crosssite", help="technique spread between surfaces, timeline, coverage bounds")
     s.add_argument("wiki_run", help="run directory of the primary wiki (e.g. runs/wiki)")
@@ -177,6 +192,18 @@ def main(argv: list[str] | None = None) -> int:
                         "--copy-rate at H hours (default: constant)")
     s.add_argument("--format", choices=["chat", "autogen"], default="chat",
                    help="autogen: an untimed AutoGen message stream with each computed answer's own tool call")
+    s.add_argument("--delete-rate", type=float, default=0.0, metavar="P",
+                   help="share of posts deleted (a deleted_at 15 min to 6 h after posting); a deleted post leaves the board")
+    s.add_argument("--technique", default=None, metavar="TOKEN",
+                   help="a token such as TRICK-A that one agent uses from its first post and every agent of its family "
+                        "once it has read a post carrying it (truth_techniques.csv, and a techniques pattern in config.json)")
+    s.add_argument("--boards", type=_positive, default=1, metavar="N",
+                   help="boards per family: each agent posts on its own and reads them all (cross-page hops)")
+    s.add_argument("--alias-rate", type=float, default=0.0, metavar="P",
+                   help="share of posts signed with the agent's variant handle (truth gains true_agent)")
+    s.add_argument("--confound", type=float, default=0.0, metavar="P",
+                   help="share of agents, the latest to start, that never copy and answer half their questions "
+                        "instantly, whatever is on the board (a null with outcome variance)")
 
     a = p.parse_args(argv)
     fields = {k: v for d in getattr(a, "field", []) for k, v in d.items()}
@@ -184,7 +211,7 @@ def main(argv: list[str] | None = None) -> int:
                              or (a.family is not None and a.agent is None and not a.list)):
         p.error("trace: --item goes with --agent, --family with --agent or --list")
     if a.cmd == "run":
-        pipeline.run_all(a.input, a.out, a.adapter, a.llm, a.config, a.roster, fields)
+        pipeline.run_all(a.input, a.out, a.adapter, a.llm, a.config, a.roster, fields, gold=a.gold)
     elif a.cmd == "ingest":
         pipeline.ingest(a.input, RunDir(a.out), a.adapter, a.config, a.roster, fields)
     elif a.cmd == "inspect":
@@ -204,7 +231,17 @@ def main(argv: list[str] | None = None) -> int:
         validate.sample(RunDir(a.run), a.n, a.seed, a.exclude, a.name)
     elif a.cmd == "validate":
         from . import validate
-        validate.score(RunDir(a.run), a.gold, a.out_name)
+        res = validate.score(RunDir(a.run), a.gold, a.out_name)
+        if res is None:
+            print(f"none of the labelled posts in {a.gold} is in {a.run}: nothing to score", file=sys.stderr)
+            return 1
+        print(json.dumps(res, indent=2))
+    elif a.cmd == "check":
+        from . import checks
+        return checks.main(RunDir(a.run))
+    elif a.cmd == "truth-score":
+        from . import truthscore
+        return truthscore.main(RunDir(a.run), a.truth, a.mapping)
     elif a.cmd == "crosssite":
         from .crosssite_pipeline import run_crosssite
         run_crosssite(a.wiki_run, a.corpus, a.out)
@@ -221,7 +258,8 @@ def main(argv: list[str] | None = None) -> int:
     elif a.cmd == "synth":
         from . import synth
         synth.write(a.out, n_agents=a.agents, copy_rate=a.copy_rate, seed=a.seed, copy_from=a.copy_from, fmt=a.format,
-                    copy_ramp_h=a.copy_ramp_h)
+                    copy_ramp_h=a.copy_ramp_h, delete_rate=a.delete_rate, technique=a.technique, n_boards=a.boards,
+                    alias_rate=a.alias_rate, confound=a.confound)
     return 0
 
 

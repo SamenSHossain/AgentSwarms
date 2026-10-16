@@ -9,7 +9,9 @@ guessed from common aliases (``ALIASES``); map any of them with ``fields`` in th
 config or ``--field author=source`` (a dotted key such as ``author.name`` reaches
 into nested objects), and ``swarmprov inspect`` shows what each resolved to.
 Each message is one post, public from its timestamp (a channel is a page for A5's
-relay rule; only an AI Village room table restricts who can read a room), except in
+relay rule; only an AI Village room table restricts who can read a room) to its
+deletion, if it carries a deletion time (``deleted_at`` or ``visible_until``; the run
+then has a lifecycle and A1 states D_visible beside D), except in
 framework traces (``framework``: messages with an OpenAI/Anthropic ``role`` or a
 LangChain/AutoGen ``type``), where task messages (author ``task``) and tool results
 (the calling agent's, also written as ``reads``) are kept with ``source_kind``
@@ -52,6 +54,7 @@ ALIASES = {
     "channel": ["channel", "room", "thread", "conversation", "chat", "chat_id", "room_id", "chat_room_id", "channel_id"],
     "id": ["id", "message_id", "uuid", "event_id"],
     "parent": ["parent_id", "reply_to", "in_reply_to", "thread_ts", "reference.messageId"],   # the last is Discord's
+    "visible_until": ["visible_until", "deleted_at", "deletedAt"],   # when the message was deleted
 }
 # AutoGen's speaker, read only when no author alias and no id fallback holds a value: elsewhere `source`
 # often names a data source (web, api), and one naming a URL or a path is never a speaker
@@ -416,7 +419,7 @@ class ChatAdapter(Adapter):
             mid = _pick(m, "id", self.mapping)
             n_no_author += not author
             raw_ts, parent = _pick(m, "ts", self.mapping), _pick(m, "parent", self.mapping)
-            ts = _to_ts(raw_ts)
+            ts, gone = _to_ts(raw_ts), _to_ts(_pick(m, "visible_until", self.mapping))
             n_ts_values += raw_ts is not None
             if bad_ts is None and raw_ts is not None and pd.isna(ts):
                 bad_ts = raw_ts
@@ -428,7 +431,7 @@ class ChatAdapter(Adapter):
                 "author_alt": alt,
                 "text": text,
                 "parent_id": None if parent is None else str(parent),
-                "visible_until": pd.NaT,
+                "visible_until": gone,
                 "channel_family": "",
                 "source_ref": ref,
                 "site": _site(path),
@@ -456,17 +459,19 @@ class ChatAdapter(Adapter):
                          "in the file, and neither an AutoGen `source` nor a single agent with calls pending names the "
                          f"caller, so {'they are' if many else 'it is'} attributed to `tool`, not to the agent that called "
                          f"the tool, and count{'' if many else 's'} as no agent's own lookup.")
+        n_deleted = int(ev["visible_until"].notna().sum())
         if clock == "sequence":
             ev["ts"] = SEQUENCE_EPOCH + pd.to_timedelta(pos, unit="s")
+            ev["visible_until"] = pd.NaT   # a real deletion time cannot be ordered against message positions
         tools = ev[(ev["source_kind"] == "tool_result") & (ev["author_raw"] != "tool")]
         reads = pd.DataFrame({"agent_raw": tools["author_raw"], "ts": tools["ts"], "channel": tools["channel"],
                               "event_id": tools["event_id"], "method": "tool_result"}).reset_index(drop=True)
         caps = Capabilities(has_wall_clock=bool(has_ts), has_order=clock != "none", has_explicit_author=True,
-                            has_reads=bool(len(reads)), has_lifecycle=False,
+                            has_reads=bool(len(reads)), has_lifecycle=bool(n_deleted),
                             has_threading=bool(ev["parent_id"].notna().any()))
         notes = {"n_messages": len(ev), "n_channels": int(ev["channel"].nunique()),
                  "n_authors": int(ev["author_raw"].nunique()), "clock": clock, "n_timestamps": n_timed,
-                 "n_no_author": n_no_author, "warnings": warns}
+                 "n_no_author": n_no_author, "warnings": warns} | ({"n_deleted": n_deleted} if n_deleted else {})
         kinds = ev["source_kind"].value_counts()
         if kinds.get("task") or kinds.get("tool_result") or n_inner:
             notes.update(n_task=int(kinds.get("task", 0)), n_tool_results=int(kinds.get("tool_result", 0)),

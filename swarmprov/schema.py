@@ -188,5 +188,7 @@ class RunDir:
         for name in self.STAGE_OUTPUTS:
             self.table_path(name).unlink(missing_ok=True)
         graphs = [f"provenance_{m}.{x}" for m in ("merged", "strict") for x in ("graphml", "json")]
-        for f in ("items.json", "agent_aliases.csv", "report.md", "summary.json", *graphs):
+        scores = [f.name for f in self.path.glob("validation*.json")]   # they score the claims of the earlier run
+        for f in ("items.json", "agent_aliases.csv", "report.md", "summary.json", "checks.json", "truth_validation.json",
+                  *graphs, *scores):
             (self.path / f).unlink(missing_ok=True)

@@ -5,7 +5,10 @@ with the extractor's output pre-filled under ``pred`` and an editable ``gold``
 block.  Annotators correct ``gold`` (set ``is_answer`` and the answer fields;
 for posts with several answers use the ``answers`` list) and save the file as
 gold.jsonl.  ``score`` compares predictions with labels and writes
-``validation.json``, which the report picks up.
+``validation.json``, which the report picks up.  It scores only the labelled
+posts the run holds and states that coverage; a label file none of whose posts
+is in the run (labels of another source) is not scored.  ``swarmprov run --gold``
+scores each label file with ``validation_<split>.json`` (``split_name``).
 """
 
 from __future__ import annotations
@@ -68,10 +71,22 @@ def _norm(field: str, v):
     return str(v).strip().lower()
 
 
-def score(run: RunDir, gold_path: str | Path, out_name: str = "validation.json") -> dict:
-    """Score the run's *current* claims against the labels (not the template's stale ``pred``)."""
+def split_name(path: str | Path) -> str:
+    """``validation/test_labels.jsonl`` -> ``test``: the name ``validation_<split>.json`` takes."""
+    stem = Path(path).name.split(".")[0]
+    return stem.removesuffix("_labels") or stem
+
+
+def score(run: RunDir, gold_path: str | Path, out_name: str = "validation.json") -> dict | None:
+    """Score the run's *current* claims against the labels (not the template's stale ``pred``), on the labelled
+    posts the run holds (``coverage``); None, and nothing written, when it holds none of them."""
     rows = [json.loads(l) for l in open(gold_path) if l.strip()]
     rows = [r for r in rows if r["gold"].get("labelled", True)]
+    posts = set(run.read("events")["event_id"])
+    n_labelled = len(rows)
+    rows = [r for r in rows if r["event_id"] in posts]
+    if not rows:
+        return None
     cl = run.read("claims")
     for r in rows:
         ans = _answers_for(cl, r["event_id"])
@@ -108,6 +123,6 @@ def score(run: RunDir, gold_path: str | Path, out_name: str = "validation.json")
     }}
     res["split"] = rows[0].get("split") if rows else None
     res["labels_file"] = str(gold_path)
+    res["coverage"] = {"labelled": n_labelled, "in_run": len(rows), "share": len(rows) / n_labelled}
     (run.path / out_name).write_text(json.dumps(res, indent=2))
-    print(json.dumps(res, indent=2))
     return res

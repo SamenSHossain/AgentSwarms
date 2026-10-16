@@ -342,3 +342,16 @@ def test_synth_cli_writes_the_autogen_format(tmp_path, capsys):
     types = {json.loads(line)["type"] for line in (tmp_path / "ag.jsonl").read_text().splitlines()}
     assert types == {"TextMessage", "ToolCallRequestEvent", "ToolCallExecutionEvent"}
     assert not any("ts" in json.loads(line) for line in (tmp_path / "ag.jsonl").read_text().splitlines())
+
+
+def test_truth_score_on_message_order(autogen):
+    """The scorecard on the untimed swarm: no A2 (its latency outcome needs a wall clock), A4 under the one-bin rule
+    on both sides, and `task` left out of identity."""
+    from swarmprov import truthscore
+    run, _, path = autogen
+    r = truthscore.score(run, path.parent)
+    assert r["A2"] is None and r["D"]["accuracy_vs_earlier_copy"] == 1.0
+    assert r["A4"]["slots"] == r["A4"]["status_agrees"] == r["A4"]["outcome_agrees"]
+    assert r["identity"]["merged"] == {"agents": 60, "true_agents": 60, "purity": 1.0, "true_agents_split": 0}
+    assert (run.path / "checks.json").exists() and json.loads((run.path / "summary.json").read_text())["integrity"][
+        "n_pass"] == 18

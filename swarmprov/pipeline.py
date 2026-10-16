@@ -256,12 +256,32 @@ def build_graph(run: RunDir) -> None:
         _log(f"  [{name}] {len(edges)} edges{note}, {len(chains)} fact chains, {len(profiles)} agent profiles")
 
 
-def run_all(path, out, adapter="auto", llm=None, config=None, roster=None, fields=None) -> RunDir:
+def score_gold(run: RunDir, paths) -> None:
+    """Score the extractor against each label file (a directory gives its ``*.jsonl``) as ``validation_<split>.json``;
+    a file whose labelled posts are none of this run's is skipped, not scored as zero."""
+    from . import validate
+    files = [f for p in map(Path, paths) for f in (sorted(p.glob("*.jsonl")) if p.is_dir() else [p])]
+    if not files:
+        _log(f"gold labels: no *.jsonl label file in {', '.join(map(str, paths))}")
+    for f in files:
+        res = validate.score(run, f, f"validation_{validate.split_name(f)}.json")
+        if res is None:
+            _log(f"gold labels {f}: none of its labelled posts is in this run (labels of another source?): skipped")
+            continue
+        ap, cov = res["fields"]["answer_post"], res["coverage"]
+        _log(f"gold labels {f}: {cov['in_run']} of {cov['labelled']} labelled posts in the run; answer posts "
+             f"precision {ap['precision']:.2f}, recall {ap['recall']:.2f} -> validation_{validate.split_name(f)}.json")
+
+
+def run_all(path, out, adapter="auto", llm=None, config=None, roster=None, fields=None, gold=None) -> RunDir:
+    """``gold``: label files or directories, scored before the report (``score_gold``)."""
     run = RunDir(out)
     ingest(path, run, adapter, config, roster, fields)
     extract(run, llm=llm)
     expose(run)
     build_graph(run)
+    if gold:
+        score_gold(run, gold)
     from . import report
     report.build(run)
     return run
