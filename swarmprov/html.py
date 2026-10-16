@@ -13,12 +13,14 @@ from __future__ import annotations
 
 import base64
 import html
+import io
 import json
 import re
 import time
 from pathlib import Path
 
 import pandas as pd
+from PIL import Image
 
 from . import query
 from .analysis import causal
@@ -32,6 +34,7 @@ MAX_FACTS = 200     # task facts carried by two or more agents, most carriers fi
 MAX_URLS = 3        # URL facts, most carriers first (their trees run to hundreds of carriers)
 MAX_LINKS = 6       # agents listed per direction in an agent's links
 EXCERPT = 120       # characters of a post kept for the explorer (query's excerpt, centred on the item, cut shorter)
+MAX_BYTES = 1_000_000   # the listed facts' hops and posts in the page's JSON: no further fact is traced past it
 LINK_KINDS = [k for k in KINDS if k != "reply"]   # a reply is an interaction, not a knowledge transfer
 PEOPLE_COLS = ["family", "n_posts", "n_answers", "n_no_prior_copy", "n_exposed", "answers_supplied", "relay_in",
                "relay_out", "facts_originated", "agents_reached"]
@@ -79,8 +82,20 @@ def _figure(alt: str, src: str, base: Path) -> str:
     p, a = (base / src).resolve(), html.escape(alt)
     if p.parent != (base / "figures").resolve() or p.suffix != ".png" or not p.is_file():
         return f'<p class="missing">Figure not found: {html.escape(src)}</p>'
-    data = base64.b64encode(p.read_bytes()).decode("ascii")
+    data = base64.b64encode(_palette(p.read_bytes())).decode("ascii")
     return f'<figure><img alt="{a}" src="data:image/png;base64,{data}"></figure>'
+
+
+def _palette(png: bytes) -> bytes:
+    """A figure re-encoded with a 256-colour palette (Pillow, which matplotlib requires): about a third of the bytes
+    and as sharp, since a figure has few colours.  The file as it is when that is no smaller or not a readable image."""
+    try:
+        with Image.open(io.BytesIO(png)) as im:
+            out = io.BytesIO()
+            im.convert("RGBA").quantize(256, method=Image.Quantize.FASTOCTREE).save(out, "PNG")
+    except (OSError, ValueError, Image.DecompressionBombError):
+        return png
+    return min(png, out.getvalue(), key=len)
 
 
 def _slug(text: str, seen: dict) -> str:
@@ -153,9 +168,9 @@ def _only(df: pd.DataFrame, facts: pd.DataFrame, value: str) -> pd.DataFrame:
 
 def explorer_data(run: RunDir, mapping: str = "merged", summary: dict | None = None) -> dict | None:
     """The fact explorer's data, or None for a run without the graph tables: the task facts (at most ``MAX_FACTS``)
-    and URL facts (``MAX_URLS``) carried by two or more agents, most carriers first, and A4's featured slots, each
-    fact's hops from ``query.fact_lineage``, the posts they cite once per item (excerpt and page), and each agent's
-    links (``_people``)."""
+    and URL facts (``MAX_URLS``) carried by two or more agents, most carriers first, until they take ``MAX_BYTES``
+    (``left_out`` counts the rest), and A4's featured slots in full, each fact's hops from ``query.fact_lineage``, the
+    posts they cite once per item (excerpt and page), and each agent's links (``_people``)."""
     need = (f"chains_{mapping}", f"edges_{mapping}", "events", "mentions")
     if not all(run.has(n) for n in need):
         return None
@@ -168,11 +183,16 @@ def explorer_data(run: RunDir, mapping: str = "merged", summary: dict | None = N
     picked = pd.concat([rep[rep["family"] != "url"].head(MAX_FACTS), rep[rep["family"] == "url"].head(MAX_URLS)])
     on_slots = ch.merge(slot_rows.loc[slot_rows["kind"] == "value", ["family", "item"]].drop_duplicates(),
                         on=["family", "item"]) if len(slot_rows) else ch.iloc[:0]
-    # fact_lineage reads only its fact's rows, so the tables shrink to the facts traced here
+    # fact_lineage reads only its fact's rows: the tables shrink to the facts traced here, grouped by fact once
     keep = pd.concat([picked, on_slots]).drop_duplicates(["family", "item", "value_key"])
-    tables |= {"chains": keep, "mentions": _only(tables["mentions"], keep, "value_key"),
-               "edges": _only(edges[edges["kind"].isin(RELAY_KINDS)], keep, "value_norm")}
-    agents, chans, posts, facts, index = {}, {}, {}, [], {}
+    parts = {"chains": (keep, "value_key"), "mentions": (_only(tables["mentions"], keep, "value_key"), "value_key"),
+             "edges": (_only(edges[edges["kind"].isin(RELAY_KINDS)], keep, "value_norm"), "value_norm")}
+    by = {n: (df, df.groupby(["family", "item", col], sort=False).indices) for n, (df, col) in parts.items()}
+
+    def lineage(family, item, value) -> dict | None:
+        t = {n: df.iloc[at.get((family, item, value), [])] for n, (df, at) in by.items()} | {"events": tables["events"]}
+        return next(iter(query.fact_lineage(run, family, item, value, mapping, t)), None)
+    agents, chans, posts, facts, index, size = {}, {}, {}, [], {}, 0
 
     def a(label) -> int:
         return agents.setdefault(label, len(agents))
@@ -180,15 +200,18 @@ def explorer_data(run: RunDir, mapping: str = "merged", summary: dict | None = N
     def post(eid, excerpt, channel, item) -> int:
         """A post once per item it carries: query's excerpt is centred on the fact's item, and a digest's two items
         can lie further apart than the excerpt is long."""
+        nonlocal size
         if not isinstance(eid, str):
             return -1
         if (eid, item) not in posts:
             c = chans.setdefault(channel, len(chans)) if isinstance(channel, str) else -1
             cut = excerpt if len(excerpt or "") <= EXCERPT else excerpt[:EXCERPT].rstrip() + "…"
             posts[eid, item] = (len(posts), cut, c)
+            size += len(_script_json([eid, cut, c]).encode())
         return posts[eid, item][0]
 
     def add(f: dict, kind: str) -> int:
+        nonlocal size
         key = (f["family"], f["item"], f["value"])
         if key not in index:
             o = f["origin"]
@@ -201,20 +224,23 @@ def explorer_data(run: RunDir, mapping: str = "merged", summary: dict | None = N
                                  int(h["within_clock_res"]), post(h["event_id"], h["excerpt"], h["channel"], f["item"]),
                                  h["depth"]]
                                 for h in f["hops"]]})
+            size += len(_script_json(facts[-1]).encode())
         return index[key]
+    traced = 0
     for r in picked.itertuples(index=False):
-        for f in query.fact_lineage(run, r.family, r.item, r.value_key, mapping, tables):
-            add(f, "url" if r.family == "url" else "task")
+        if size > MAX_BYTES:
+            break
+        add(lineage(r.family, r.item, r.value_key), "url" if r.family == "url" else "task")
+        traced += 1
     slots = []
     for r in feat:
         g = slot_rows[slot_rows["slot"] == r["slot"]].sort_values(["t_first", "agent"]) if len(slot_rows) else slot_rows
         if not len(g):
             continue
         fam, item, kind = g["family"].iloc[0], g["item"].iloc[0], g["kind"].iloc[0]
-        lin = {f["value"]: f for f in query.fact_lineage(run, fam, item, None, mapping, tables)} if kind == "value" else {}
         variants = []
         for v, gv in g.groupby("variant", sort=False):
-            f = lin.get(value_key(v)) or lin.get(v)
+            f = lineage(fam, item, value_key(v)) or lineage(fam, item, v) if kind == "value" else None
             variants.append({"value": v, "fact": add(f, "task") if f else None,
                              "c": [[a(x), _t(t)] for x, t in zip(gv["agent"], gv["t_first"])]})
         slots.append({"slot": r["slot"], "kind": kind, "status": r["status"], "first": r.get("first variant"),
@@ -224,7 +250,7 @@ def explorer_data(run: RunDir, mapping: str = "merged", summary: dict | None = N
     return json_safe({"clock": prof.get("clock") or "wall", "res": CLOCK_RES_S, "mapping": mapping,
                           "agents": list(agents), "channels": list(chans),
                           "posts": [[e, x, c] for (e, _), (_, x, c) in posts.items()],
-                          "facts": facts, "slots": slots, "people": people})
+                          "facts": facts, "slots": slots, "people": people, "left_out": len(picked) - traced})
 
 
 def _people(run: RunDir, mapping: str, edges: pd.DataFrame, a, named: set) -> dict:
@@ -312,7 +338,10 @@ def build_html(run: RunDir, mapping: str = "merged") -> Path | None:
     if summary.get("A1") or summary.get("A5"):
         data = explorer_data(run, mapping, summary)
         if data and (data["facts"] or data["slots"]):
-            explorer = EXPLORER
+            n = data["left_out"]
+            cut = (f" Facts are traced most carried first (task values, then URLs) until their hops and posts take "
+                   f"{MAX_BYTES / 1e6:g} MB of the page; {n:,} more are left out.") if n else ""
+            explorer = EXPLORER.format(caveat=CAVEAT, cut=cut)
         else:
             why = NO_TABLES if data is None else "no value was posted by two or more agents and A4 features no slot"
             print(f"[swarmprov] {run.path}: no fact explorer ({why})")
@@ -355,11 +384,11 @@ def main(run_path: str, mapping: str = "merged") -> int:
     return 0
 
 
-EXPLORER = f"""<section id="fact-explorer"><h2>Fact explorer</h2>
+EXPLORER = """<section id="fact-explorer"><h2>Fact explorer</h2>
 <p>How one value travelled: pick a fact (an item and value two or more agents posted) or one of A4's featured
 disputes. Each row is a carrier, in order of its first post of the value; hover or tap a row, or step through
-rows with the arrow keys, to see the post that carried it, its page and the delay from its inferred parent.</p>
-<p class="caveat"><strong>{CAVEAT}</strong></p>
+rows with the arrow keys, to see the post that carried it, its page and the delay from its inferred parent.{cut}</p>
+<p class="caveat"><strong>{caveat}</strong></p>
 <div class="fx"><div class="fx-pick"><label for="fx-q">Find a fact</label>
 <input id="fx-q" type="search" placeholder="item, value or family" autocomplete="off">
 <ul id="fx-list" class="pick" aria-label="Facts"></ul></div>

@@ -2,6 +2,7 @@
 with headline tiles and a fact explorer built from query.fact_lineage and the agent profiles."""
 
 import base64
+import io
 import json
 import os
 import re
@@ -10,8 +11,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pandas as pd
+import numpy as np
 import pytest
+from PIL import Image
 
 from swarmprov import cli, html, query
 from swarmprov.schema import RunDir
@@ -106,15 +108,80 @@ def test_report_builds_a_self_contained_page(page):
 
 
 def test_explorer_facts_are_fact_lineage(page):
+    """Every fact, the slots' included, is what fact_lineage gives on the run's whole tables."""
     run, _, d, _ = page
-    f = d["facts"][0]
-    (lin,) = query.fact_lineage(run, f["family"], f["item"], f["value"])
-    assert f["carriers"] == lin["carriers"] and len(f["h"]) == len(lin["hops"]) == f["carriers"] - 1
-    assert [d["agents"][h[1]] for h in f["h"]] == [h["dst"] for h in lin["hops"]]
-    assert [h[2] for h in f["h"]] == [int(h["kind"] == "relay") for h in lin["hops"]]
-    assert d["posts"][f["h"][0][6]][0] == lin["hops"][0]["event_id"]
+    tables = query.lineage_tables(run)
+    for f in d["facts"]:
+        (lin,) = [x for x in query.fact_lineage(run, f["family"], f["item"], f["value"], tables=tables)
+                  if x["value"] == f["value"]]
+        assert f["carriers"] == lin["carriers"] and len(f["h"]) == len(lin["hops"]) == f["carriers"] - 1
+        assert d["agents"][f["o"][0]] == lin["origin"]["agent"]
+        assert [[d["agents"][h[0]], d["agents"][h[1]], h[2], d["posts"][h[6]][0], h[7]] for h in f["h"]] \
+            == [[h["src"], h["dst"], int(h["kind"] == "relay"), h["event_id"], h["depth"]] for h in lin["hops"]]
     ch = run.read("chains_merged")
-    assert len(d["facts"]) == min(html.MAX_FACTS, int(((ch["n_agents"] > 1) & (ch["family"] != "url")).sum()))
+    assert sum(f["kind"] == "task" for f in d["facts"]) \
+        == min(html.MAX_FACTS, int(((ch["n_agents"] > 1) & (ch["family"] != "url")).sum()))
+
+
+def test_each_fact_is_traced_from_its_own_rows(synth_run, monkeypatch):
+    """The explorer groups the tables by fact once and hands fact_lineage only that fact's rows (tracing each fact
+    on the whole tables took 28 s on a 30,000-post chat)."""
+    run = synth_run[0]
+    calls, lineage = [], query.fact_lineage
+
+    def spy(run, family, item, value, mapping, tables):
+        calls.append({n: {tuple(k) for k in t[["family", "item", c]].itertuples(index=False)}
+                      for n, t, c in [("chains", tables["chains"], "value_key"), ("edges", tables["edges"], "value_norm"),
+                                      ("mentions", tables["mentions"], "value_key")]} | {"key": (family, item, value)})
+        return lineage(run, family, item, value, mapping, tables)
+    monkeypatch.setattr(query, "fact_lineage", spy)
+    html.explorer_data(run, summary=json.loads((run.path / "summary.json").read_text()))
+    assert len(calls) > 10 and all(c[n] <= {c["key"]} for c in calls for n in ("chains", "edges", "mentions"))
+    assert all(c["chains"] == {c["key"]} for c in calls if c["edges"])
+
+
+def test_the_explorer_stops_tracing_past_its_byte_cap(synth_run, tmp_path, monkeypatch):
+    """Past ``MAX_BYTES`` of facts and posts no further fact is traced (most carried first); the featured slots stay
+    whole, and the page says how many facts are left out."""
+    d = tmp_path / "run"
+    shutil.copytree(synth_run[0].path, d)
+    run, s = RunDir(d), json.loads((d / "summary.json").read_text())
+    full = html.explorer_data(run, summary=s)
+    monkeypatch.setattr(html, "MAX_BYTES", 3_000)
+    cut = html.explorer_data(run, summary=s)
+    url = run.read("chains_merged").query("n_agents > 1")["family"] == "url"
+    picked = min(html.MAX_FACTS, int((~url).sum())) + min(html.MAX_URLS, int(url.sum()))
+    kept = picked - cut["left_out"]   # the facts traced before the slots' own
+    assert full["left_out"] == 0 and 1 <= kept < picked and cut["facts"][:kept] == full["facts"][:kept]
+
+    def used(facts):   # their JSON and that of the posts they cite, as the page holds them
+        cited = {k for f in facts for k in [f["o"][2], *(h[6] for h in f["h"])] if k >= 0}
+        return sum(len(html._script_json(x).encode()) for x in [*facts, *(cut["posts"][k] for k in cited)])
+    assert used(cut["facts"][:kept - 1]) <= 3_000 < used(cut["facts"][:kept])
+    variants = [[(v["value"], v["fact"] is None, len(v["c"])) for v in x["variants"]] for x in full["slots"]]
+    assert [[(v["value"], v["fact"] is None, len(v["c"])) for v in x["variants"]] for x in cut["slots"]] == variants
+    text = html.build_html(run).read_text()
+    assert f"until their hops and posts take 0.003 MB of the page; {cut['left_out']:,} more are left out." in text
+
+
+def test_figures_are_inlined_with_a_palette(tmp_path):
+    """A figure goes into the page re-encoded with a 256-colour palette: well under the file's bytes, the same size
+    and nearly the same pixels."""
+    from swarmprov.plotting import plt
+    (tmp_path / "figures").mkdir()
+    fig, ax = plt.subplots(figsize=(6, 3))
+    ax.plot(range(30), [x * x for x in range(30)], label="carriers")
+    ax.fill_between(range(30), 0, [x * 20 for x in range(30)], alpha=0.3)
+    ax.set_title("Who supplied whom")
+    ax.legend()
+    fig.savefig(tmp_path / "figures" / "a.png", dpi=150)
+    plt.close(fig)
+    raw = (tmp_path / "figures" / "a.png").read_bytes()
+    png = base64.b64decode(re.search(r'base64,([^"]+)"', html.md_to_html("![a](figures/a.png)\n", tmp_path)).group(1))
+    with Image.open(io.BytesIO(png)) as q, Image.open(io.BytesIO(raw)) as o:
+        assert q.mode == "P" and q.size == o.size and len(png) < 0.6 * len(raw)
+        assert np.abs(np.asarray(q.convert("RGBA"), float) - np.asarray(o.convert("RGBA"), float)).mean() < 1
+    assert html._palette(b"not a png") == b"not a png" and html._palette(PNG) == PNG   # nothing smaller to write
 
 
 def test_explorer_posts_once_per_item_and_short(page):
