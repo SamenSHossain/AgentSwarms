@@ -7,7 +7,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from swarmprov import pipeline, validate
+from swarmprov import cli, pipeline, validate
 from swarmprov.schema import RunDir, conform
 
 RAW = Path(__file__).resolve().parents[1] / "data" / "raw"
@@ -36,6 +36,7 @@ def toy(tmp_path_factory):
     gold = run.path / "toy_labels.jsonl"
     gold.write_text("".join(json.dumps(r) + "\n" for r in labels))
     (run.path / "other_labels.jsonl").write_text(json.dumps(_label("nowhere", [])) + "\n")
+    (run.path / "notes.jsonl").write_text(json.dumps({"event_id": "e1", "text": "a"}) + "\n")   # no gold block
     return run, gold
 
 
@@ -62,8 +63,33 @@ def test_score_gold_writes_one_file_per_split(toy, capsys):
     run, _ = toy
     pipeline.score_gold(run, [run.path])
     out = capsys.readouterr().out
-    assert "3 of 4 labelled posts in the run" in out and "skipped" in out
+    assert "3 of 4 labelled posts in the run" in out and "none of its labelled posts is in this run" in out
+    assert "notes.jsonl: not a label file" in out and not (run.path / "validation_notes.json").exists()
     assert (run.path / "validation_toy.json").exists() and not (run.path / "validation_other.json").exists()
+    with pytest.raises(ValueError, match="not a label file"):
+        validate.score(run, run.path / "notes.jsonl")
+    assert validate.read_labels(run.path / "notes.jsonl") is None and len(validate.read_labels(run.path / "toy_labels.jsonl")) == 4
+
+
+def test_run_gold_scores_each_label_file_before_the_report(synth_null):
+    run, _ = synth_null
+    toy, held = (json.loads((run.path / f"validation_{s}.json").read_text()) for s in ("toy", "heldout"))
+    assert toy["coverage"] == {"labelled": 8, "in_run": 4, "share": 0.5} and held["coverage"]["share"] == 1.0
+    assert not (run.path / "validation_notes.json").exists()   # the transcript beside the labels is skipped
+    text = (run.path / "report.md").read_text()
+    assert "**validation_toy** — 4 of 8 (the others are not posts of this run) labelled posts (toy; labeller: toy)" in text
+    assert "**validation_heldout** — 4 labelled posts (heldout; labeller: toy)" in text
+
+
+def test_run_gold_refuses_a_missing_or_non_label_file_before_any_stage(synth_null, tmp_path, capsys):
+    run, d = synth_null
+    for gold, why in ((tmp_path / "nope_labels.jsonl", "does not exist"), (d / "transcript.jsonl", "is not a label file")):
+        with pytest.raises(SystemExit) as e:
+            cli.main(["run", str(d / "transcript.jsonl"), "-o", str(tmp_path / "run"), "--gold", str(gold)])
+        assert e.value.code == 2 and why in capsys.readouterr().err
+    assert not (tmp_path / "run").exists()
+    assert cli.main(["validate", str(run.path), str(d / "transcript.jsonl")]) == 1
+    assert "not a label file" in capsys.readouterr().err
 
 
 @pytest.mark.skipif(not (RAW / "events.jsonl").exists(), reason="full wiki dump not present")

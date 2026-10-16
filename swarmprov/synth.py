@@ -57,6 +57,7 @@ def _truth_values(rng: random.Random) -> dict[tuple[str, str], float]:
 COPY_FROM = ("latest", "first", "random")
 FAST_P = 0.5   # a fast agent's chance of answering a question instantly (``confound``)
 FORMATS = ("chat", "autogen")
+TOKEN = r"[A-Za-z][\w-]*"   # a technique token
 TASK = "Work through the questions you are given in order and post each answer on the board."
 
 
@@ -70,7 +71,7 @@ def _check(copy_from, copy_ramp_h, delete_rate, technique, n_boards, alias_rate,
             raise ValueError(f"{name} must be a share between 0 and 1")
     if isinstance(n_boards, bool) or not isinstance(n_boards, int) or n_boards < 1:
         raise ValueError("n_boards must be a whole number of at least 1")
-    if technique is not None and not re.fullmatch(r"[A-Za-z][\w-]*", technique):
+    if technique is not None and not re.fullmatch(TOKEN, technique):
         raise ValueError("technique must be a token of letters, digits, '_' and '-', starting with a letter")
 
 
@@ -223,13 +224,18 @@ CONFIG = {
 def write(out: str | Path, n_agents: int = 60, copy_rate: float = 0.7, seed: int = 0, copy_from: str = "latest",
           fmt: str = "chat", copy_ramp_h: float | None = None, **scenario) -> Path:
     """``scenario``: ``simulate``'s delete_rate, technique, n_boards, alias_rate and confound.  A technique adds its
-    pattern to config.json and its adoptions as ``truth_techniques.csv`` (``technique_truth``)."""
+    pattern to config.json and its adoptions as ``truth_techniques.csv`` (``technique_truth``).  ValueError, and
+    nothing written, on an invalid option, or deletions or several boards in the autogen format (it has neither
+    timestamps nor channels to carry them)."""
     if fmt not in FORMATS:
         raise ValueError(f"format must be one of {FORMATS}")
-    out = Path(out)
-    out.parent.mkdir(parents=True, exist_ok=True)
+    if fmt == "autogen" and (scenario.get("delete_rate") or scenario.get("n_boards", 1) > 1):
+        raise ValueError("the autogen format writes no timestamps and no channels, so it cannot carry deletions "
+                         "(delete_rate) or several boards (n_boards); write the chat format for those")
     posts, truth = simulate(n_agents=n_agents, copy_rate=copy_rate, seed=seed, copy_from=copy_from,
                             trace=fmt == "autogen", copy_ramp_h=copy_ramp_h, **scenario)
+    out = Path(out)
+    out.parent.mkdir(parents=True, exist_ok=True)
     with open(out, "w") as fh:
         for p in posts:
             fh.write(json.dumps(_autogen(p) if fmt == "autogen" else p) + "\n")

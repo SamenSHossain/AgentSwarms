@@ -9,7 +9,7 @@ import shutil
 import pandas as pd
 import pytest
 
-from swarmprov import cli, pipeline, report, synth, truthscore
+from swarmprov import checks, cli, pipeline, report, synth, truthscore
 from swarmprov.adapters.chat import ChatAdapter
 from swarmprov.schema import RunDir
 
@@ -91,6 +91,18 @@ def test_scenario_options_are_checked(bad):
         synth.simulate(n_agents=4, **bad)
 
 
+def test_bad_scenario_options_are_usage_errors_and_autogen_takes_no_deletions_or_boards(tmp_path, capsys):
+    for opt in ({"delete_rate": 0.1}, {"n_boards": 2}):   # no timestamps or channels to carry them
+        with pytest.raises(ValueError, match="autogen format"):
+            synth.write(tmp_path / "ag" / "autogen.jsonl", n_agents=4, fmt="autogen", **opt)
+    for argv in (["--format", "autogen", "--boards", "2"], ["--delete-rate", "2"], ["--alias-rate", "-0.1"],
+                 ["--confound", "x"], ["--technique", "two words"]):
+        with pytest.raises(SystemExit) as e:
+            cli.main(["synth", "-o", str(tmp_path / "x" / "t.jsonl"), "--agents", "4", *argv])
+        assert e.value.code == 2 and "error:" in capsys.readouterr().err
+    assert not (tmp_path / "ag").exists() and not (tmp_path / "x").exists()   # nothing written
+
+
 def test_chat_reads_deletion_times(tmp_path, capsys):
     msgs = [{"ts": f"2026-06-16T08:0{i}:00Z", "author": a, "text": f"post {i}", "deleted_at": d}
             for i, (a, d) in enumerate([("A", "2026-06-16T09:00:00Z"), ("B", None), ("C", None)])]
@@ -105,7 +117,10 @@ def test_chat_reads_deletion_times(tmp_path, capsys):
     assert ChatAdapter().load(p).notes["n_deleted"] == 1
     p.write_text(json.dumps([{k: v for k, v in m.items() if k != "ts"} for m in msgs]))   # message order only
     b = ChatAdapter().load(p)
-    assert b.notes["clock"] == "sequence" and b.events["visible_until"].isna().all() and b.capabilities.has_lifecycle
+    # message order only: the deletion times are set aside, so nothing is deletion-aware, but the count is kept
+    assert b.notes["clock"] == "sequence" and b.events["visible_until"].isna().all()
+    assert not b.capabilities.has_lifecycle and b.notes["n_deleted"] == 1
+    assert "the deletion times of 1 message were set aside too" in report._when({"clock": "sequence"}, b.notes)
     p.write_text(json.dumps([{k: v for k, v in m.items() if k != "deleted_at"} for m in msgs]))
     assert not ChatAdapter().load(p).capabilities.has_lifecycle
 
@@ -145,6 +160,8 @@ def test_exposure_and_identity_match_the_truth(scored, name):
     assert a4["slots"] == a4["true_slots"] == a4["in_both"] == a4["status_agrees"] == a4["outcome_agrees"]
     n_x = int((run.read("edges_merged")["kind"] == "relay_xchannel").sum())
     assert (n_x > 0) == (SCENARIOS[name].get("n_boards", 1) > 1)   # 80-85 hops on 3 boards, none on one
+    # the integrity checks re-derive exposure under deletions, boards and aliases too
+    assert not checks.check_run(run)["n_violations"].any()
 
 
 @pytest.mark.parametrize("name", ["copy latest", "copy first, boards, aliases, deletions, technique"])
@@ -228,5 +245,42 @@ def test_truth_score_rebuilds_each_report_the_run_has(tmp_path, monkeypatch):
                                                                "accuracy_vs_earlier_copy": 1},
                                                          "A2": None, "rounds": {"matched": 1, "truth": 1}})
     monkeypatch.setattr(report, "build", lambda r, mapping, boot: built.append((mapping, boot)))
+    monkeypatch.setattr(truthscore, "_missing", lambda *a: None)
     assert truthscore.main(run, tmp_path) == 0
     assert built == [("merged", 7), ("strict", 0)]
+
+
+def test_truth_score_on_a_swarm_that_never_copies(synth_null, tmp_path, capsys):
+    """copy_rate 0 without the confound: no answer is instant, so A2's fit is a point at 0 and claims no coverage;
+    truth-score and the report it rebuilds run through.  The copy has its exposure edges dropped, so the rebuilt
+    report also names that failing check."""
+    run = RunDir(shutil.copytree(synth_null[0].path, tmp_path / "run"))
+    e = run.read("edges_merged")
+    run.write("edges_merged", e[e["kind"] != "exposure"])
+    assert cli.main(["truth-score", str(run.path), str(synth_null[1])]) == 0
+    assert "; A2 not estimated: every round has the same y_instant\n" in capsys.readouterr().out
+    tv = json.loads((run.path / "truth_validation.json").read_text())
+    a2 = tv["A2"]
+    assert a2["covers"] is None and a2["se"] == 0 and a2["y_instant_sd"] == 0 and a2["true_effect"] == 0
+    row = "| A2 `y_instant ~ D_cons` | not estimated: every round has the same y_instant | 0.000 (the share of rounds " \
+          "public at arrival that copied) | – |"
+    text = (run.path / "report.md").read_text()
+    assert row in text and "Not passing: `exposure_edges` (error; " in text
+    # a scorecard written before a point interval claimed no coverage renders without a p value too
+    old = report._truth_block(tv | {"A2": a2 | {"covers": True, "note": None}}, {})[1]
+    assert "| A2 `y_instant ~ D_cons` | not estimated | 0.000 (the share" in old and old.count("| – |") >= 1
+
+
+def test_truth_score_names_what_is_missing(synth_null, tmp_path, capsys):
+    run, d = synth_null
+    part = tmp_path / "part"
+    part.mkdir()
+    for f in ("profile.json", "events.parquet"):   # an ingest, nothing after it
+        shutil.copy(run.path / f, part / f)
+    assert cli.main(["truth-score", str(part), str(d)]) == 1
+    assert f"has no agents, tags: run `swarmprov extract {part}`" in capsys.readouterr().out
+    assert not (part / "truth_validation.json").exists()
+    bare = tmp_path / "truth"
+    bare.mkdir()
+    shutil.copy(d / "truth.csv", bare)
+    assert cli.main(["truth-score", str(run.path), str(bare)]) == 1 and "no config.json" in capsys.readouterr().out

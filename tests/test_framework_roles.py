@@ -353,5 +353,5 @@ def test_truth_score_on_message_order(autogen):
     assert r["A2"] is None and r["D"]["accuracy_vs_earlier_copy"] == 1.0
     assert r["A4"]["slots"] == r["A4"]["status_agrees"] == r["A4"]["outcome_agrees"]
     assert r["identity"]["merged"] == {"agents": 60, "true_agents": 60, "purity": 1.0, "true_agents_split": 0}
-    assert (run.path / "checks.json").exists() and json.loads((run.path / "summary.json").read_text())["integrity"][
-        "n_pass"] == 18
+    integrity = json.loads((run.path / "summary.json").read_text())["integrity"]
+    assert (run.path / "checks.json").exists() and integrity["n_pass"] == integrity["n_checks"] == 19

@@ -43,3 +43,30 @@ def synth_strict(synth_run, tmp_path_factory):
     run = RunDir(d)
     report.build(run, mapping="strict", boot=0)
     return run
+
+
+@pytest.fixture(scope="session")
+def synth_null(tmp_path_factory):
+    """A 20-agent swarm that never copies (copy_rate 0: no answer is instant, so A2's latency outcome has no
+    variance), run through ``swarmprov run --gold`` on a label directory: ``toy_labels.jsonl``, four of whose eight
+    labelled posts are in the run, ``heldout_labels.jsonl``, all of whose four are, and ``notes.jsonl``, which is no
+    label file.  Returns (RunDir, truth dir)."""
+    import json
+    from swarmprov import cli, synth
+    from swarmprov.schema import RunDir
+    d = tmp_path_factory.mktemp("synth_null")
+    path = synth.write(d / "transcript.jsonl", n_agents=20, seed=2, copy_rate=0.0)
+    posts = [json.loads(line) for line in open(path)]
+    path.write_text("".join(json.dumps(p | {"id": f"m{i}"}) + "\n" for i, p in enumerate(posts)))   # ids to label
+    cfg = json.loads((d / "config.json").read_text()) | {"bootstrap_reps": 0}
+    (d / "cfg.json").write_text(json.dumps(cfg))
+    labels = d / "labels"
+    labels.mkdir()
+    for split, ids in (("toy", ("m0", "m1", "m2", "m3", "x0", "x1", "x2", "x3")), ("heldout", ("m4", "m5", "m6", "m7"))):
+        rows = [{"event_id": eid, "split": split, "labeller": "toy",
+                 "gold": {"is_answer": True, "labelled": True, "answers": []}} for eid in ids]
+        (labels / f"{split}_labels.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
+    (labels / "notes.jsonl").write_text(path.read_text())
+    assert cli.main(["run", str(path), "-o", str(d / "run"), "--adapter", "chat", "--config", str(d / "cfg.json"),
+                     "--gold", str(labels)]) == 0
+    return RunDir(d / "run"), d

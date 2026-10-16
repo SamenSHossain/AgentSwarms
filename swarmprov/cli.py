@@ -33,6 +33,7 @@ import argparse
 import json
 import re
 import sys
+from pathlib import Path
 
 from . import pipeline
 from .adapters import ADAPTERS
@@ -60,6 +61,24 @@ def _hours(v: str) -> float:
     if not 0 < h < float("inf"):
         raise argparse.ArgumentTypeError(f"expected a positive, finite number of hours, got {v!r}")
     return h
+
+
+def _share(v: str) -> float:
+    try:
+        x = float(v)
+    except ValueError:
+        x = float("nan")
+    if not 0 <= x <= 1:
+        raise argparse.ArgumentTypeError(f"expected a share from 0 to 1, got {v!r}")
+    return x
+
+
+def _token(v: str) -> str:
+    from .synth import TOKEN
+    if not re.fullmatch(TOKEN, v):
+        raise argparse.ArgumentTypeError(f"expected one token of letters, digits, '_' and '-' starting with a letter "
+                                         f"(such as TRICK-A), got {v!r}")
+    return v
 
 
 def _fields(v: str) -> dict[str, str]:
@@ -232,16 +251,18 @@ def main(argv: list[str] | None = None) -> int:
                         "--copy-rate at H hours (default: constant)")
     s.add_argument("--format", choices=["chat", "autogen"], default="chat",
                    help="autogen: an untimed AutoGen message stream with each computed answer's own tool call")
-    s.add_argument("--delete-rate", type=float, default=0.0, metavar="P",
-                   help="share of posts deleted (a deleted_at 15 min to 6 h after posting); a deleted post leaves the board")
-    s.add_argument("--technique", default=None, metavar="TOKEN",
+    s.add_argument("--delete-rate", type=_share, default=0.0, metavar="P",
+                   help="share of posts deleted (a deleted_at 15 min to 6 h after posting); a deleted post leaves the "
+                        "board (chat format only)")
+    s.add_argument("--technique", type=_token, default=None, metavar="TOKEN",
                    help="a token such as TRICK-A that one agent uses from its first post and every agent of its family "
                         "once it has read a post carrying it (truth_techniques.csv, and a techniques pattern in config.json)")
     s.add_argument("--boards", type=_positive, default=1, metavar="N",
-                   help="boards per family: each agent posts on its own and reads them all (cross-page hops)")
-    s.add_argument("--alias-rate", type=float, default=0.0, metavar="P",
+                   help="boards per family: each agent posts on its own and reads them all (cross-page hops; chat "
+                        "format only)")
+    s.add_argument("--alias-rate", type=_share, default=0.0, metavar="P",
                    help="share of posts signed with the agent's variant handle (truth gains true_agent)")
-    s.add_argument("--confound", type=float, default=0.0, metavar="P",
+    s.add_argument("--confound", type=_share, default=0.0, metavar="P",
                    help="share of agents, the latest to start, that never copy and answer half their questions "
                         "instantly, whatever is on the board (a null with outcome variance)")
 
@@ -250,6 +271,14 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "trace" and ((a.item is not None and a.agent is None)
                              or (a.family is not None and a.agent is None and not a.list)):
         p.error("trace: --item goes with --agent, --family with --agent or --list")
+    if a.cmd == "run" and a.gold:   # before the stages, not after them
+        from . import validate
+        for g in map(Path, a.gold):
+            if not g.exists():
+                p.error(f"--gold: {g} does not exist")
+            if g.is_file() and validate.read_labels(g) is None:
+                p.error(f"--gold: {g} is not a label file (each row needs an event_id and a gold block; "
+                        "`swarmprov sample-gold` writes one to fill in)")
     if a.cmd == "run":
         pipeline.run_all(a.input, a.out, a.adapter, a.llm, a.config, a.roster, fields, gold=a.gold)
     elif a.cmd == "ingest":
@@ -271,7 +300,11 @@ def main(argv: list[str] | None = None) -> int:
         validate.sample(RunDir(a.run), a.n, a.seed, a.exclude, a.name)
     elif a.cmd == "validate":
         from . import validate
-        res = validate.score(RunDir(a.run), a.gold, a.out_name)
+        try:
+            res = validate.score(RunDir(a.run), a.gold, a.out_name)
+        except (OSError, ValueError) as e:
+            print(e, file=sys.stderr)
+            return 1
         if res is None:
             print(f"none of the labelled posts in {a.gold} is in {a.run}: nothing to score", file=sys.stderr)
             return 1
@@ -303,9 +336,12 @@ def main(argv: list[str] | None = None) -> int:
         return export.export(a.run, a.out, a.tables or export.DEFAULT, a.format, a.mapping, a.all_columns)
     elif a.cmd == "synth":
         from . import synth
-        synth.write(a.out, n_agents=a.agents, copy_rate=a.copy_rate, seed=a.seed, copy_from=a.copy_from, fmt=a.format,
-                    copy_ramp_h=a.copy_ramp_h, delete_rate=a.delete_rate, technique=a.technique, n_boards=a.boards,
-                    alias_rate=a.alias_rate, confound=a.confound)
+        try:
+            synth.write(a.out, n_agents=a.agents, copy_rate=a.copy_rate, seed=a.seed, copy_from=a.copy_from,
+                        fmt=a.format, copy_ramp_h=a.copy_ramp_h, delete_rate=a.delete_rate, technique=a.technique,
+                        n_boards=a.boards, alias_rate=a.alias_rate, confound=a.confound)
+        except ValueError as e:   # an option the other options rule out (autogen with deletions or boards)
+            p.error(f"synth: {e}")
     return 0
 
 

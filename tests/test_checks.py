@@ -36,10 +36,10 @@ def test_every_check_passes_on_the_synthetic_run(synth_run, clean):
     assert out["n_violations"].sum() == 0 and set(out["table"]) >= {"agents", "exposures_merged", "edges_strict"}
     saved = json.loads((clean / "checks.json").read_text())
     assert saved["n_checks"] == saved["n_pass"] == len(out) and saved["n_errors"] == 0
-    # the report runs them with its own summary: 18 checks, the summary one included
+    # the report runs them with its own summary: 19 checks, the summary one included
     text = (synth_run[0].path / "report.md").read_text()
-    assert "**Integrity: 18/18 checks pass**" in text
-    assert json.loads((synth_run[0].path / "summary.json").read_text())["integrity"]["n_pass"] == 18
+    assert "**Integrity: 19/19 checks pass**" in text and "None fails." in text and "Not run" not in text
+    assert json.loads((synth_run[0].path / "summary.json").read_text())["integrity"]["n_pass"] == 19
 
 
 def test_a_flipped_exposure_flag_fails_the_exposure_checks(clean, tmp_path):
@@ -85,7 +85,10 @@ def test_other_corruptions_fail_their_own_check(clean, tmp_path):
     run.write("edges_merged", e)
     out = checks.check_run(run)
     bad = out[out["n_violations"] > 0].set_index("check")
-    assert set(bad.index) == {"strict_refines_merged", "self_prepared_before_public", "edge_posts_resolve"}
+    # the doctored own-post time follows from no mention either
+    assert set(bad.index) == {"strict_refines_merged", "self_prepared_before_public", "edge_posts_resolve",
+                              "exposure_matches_mentions"}
+    assert bad.loc["exposure_matches_mentions", "example_ids"] == [f"{ex.loc[i, 'claim_id']} (t_self_prepared)"]
     assert bad.loc["self_prepared_before_public", "severity"] == "warning"
     assert bad.loc["strict_refines_merged", "example_ids"] == [ag["agent_strict"].iloc[0]]
 
@@ -103,7 +106,7 @@ def test_summary_numbers_are_checked_against_the_tables(synth_run, clean, tmp_pa
 
 def test_check_command_exits_1_on_an_error(clean, tmp_path, capsys):
     assert cli.main(["check", str(clean)]) == 0
-    assert "17 of 17 checks pass: 0 errors, 0 warnings" in capsys.readouterr().out   # no summary.json here
+    assert "18 of 18 checks pass: 0 errors, 0 warnings" in capsys.readouterr().out   # no summary.json here
     run = _copy(clean, tmp_path)
     e = run.read("edges_merged")
     run.write("edges_merged", e[e["kind"] != "relay"])
@@ -111,3 +114,73 @@ def test_check_command_exits_1_on_an_error(clean, tmp_path, capsys):
     out = capsys.readouterr().out
     assert "ERROR relay_hops_per_chain" in out and "1 error, 0 warnings" in out
     assert cli.main(["check", str(tmp_path / "nothing")]) == 2
+
+
+def test_each_exposure_column_is_rederived(clean, tmp_path):
+    """One round per column, that column alone corrupted: the loop names each round and the column that is off."""
+    run = _copy(clean, tmp_path)
+    ex = run.read("exposures_merged")
+    hour, used = pd.Timedelta(hours=1), set()
+
+    def row(mask):
+        i = next(i for i in ex.index[mask] if i not in used)
+        used.add(i)
+        return i
+    d1, dc, d0 = ex["D"] == 1, ex["D_cons"] == 1, ex["D"] == 0
+    edits = [("D", d0, 1), ("D_cons", dc, 0), ("t_cons", dc, lambda v: v - hour), ("gap_cons_s", dc, lambda v: v * 3),
+             ("D_cons_w60m", dc & (ex["gap_cons_s"] < 3600), 1), ("D_visible", d1, 0),
+             ("t_public_visible", d1, pd.Timestamp("2000-01-01", tz="UTC")), ("src_visible_event_id", d1, "elsewhere"),
+             ("src_deleted_before_report", d1, 1), ("src_latest", d1, "Nobody"), ("t_latest", d1, lambda v: v - hour),
+             ("latest_event_id", d1, "elsewhere"), ("src_channel", d1, "another-board"),
+             ("self_prepared", d0, 1), ("t_self_prepared", d0, pd.Timestamp("2000-01-01", tz="UTC")),
+             ("gap_s", d1, lambda v: v + 1), ("D_w10m", d1 & (ex["gap_s"] < 600), 1)]
+    want = set()
+    for col, mask, v in edits:
+        i = row(mask)
+        ex.loc[i, col] = v(ex.loc[i, col]) if callable(v) else v
+        want.add(f"{ex.loc[i, 'claim_id']} ({col})")
+    run.write("exposures_merged", ex)
+    got = checks._exposure(run.read("exposures_merged"), checks._facts(run.read("mentions"), "agent_merged"), {}, True)
+    assert set(got) == want
+    out = checks.check_run(run).set_index(["check", "table"])
+    assert out.loc[("exposure_matches_mentions", "exposures_merged"), "n_violations"] == len(edits)
+    assert out.loc[("exposure_matches_mentions", "exposures_strict"), "n_violations"] == 0
+
+
+def test_handles_kept_apart_by_cohort_or_roster_only_warn(clean, tmp_path, capsys):
+    ag = pd.DataFrame({"author_raw": ["Bot", "bot", "Ann", "ann", "Cy", "cy"],
+                       "agent_strict": ["bot", "bot", "ann", "ann", "cy", "cy"],
+                       "agent_merged": ["Mar16|a", "Apr02|a", "r1", "r2", "Mar16|a", "Mar16|b"],
+                       "cohort": ["Mar16", "Apr02", None, None, "Mar16", "Mar16"],
+                       "roster_agent": [None, None, "r1", "r2", None, None]})
+    assert checks._split(ag) == (["cy"], ["ann", "bot"])   # cy: one cohort, no roster, yet two merged agents
+    run = _copy(clean, tmp_path)
+    ag = run.read("agents")
+    twin = ag.iloc[[0]].assign(author_raw=ag["author_raw"].iloc[0].upper(), cohort="Dec31",
+                               agent_merged="Dec31|alpha-task")   # what identity.resolve does with a second cohort
+    run.write("agents", pd.concat([ag, twin], ignore_index=True))
+    assert _failing(run) == {"strict_handles_kept_apart"}
+    assert cli.main(["check", str(run.path)]) == 0
+    assert "warn  strict_handles_kept_apart" in capsys.readouterr().out
+
+
+def test_check_needs_stage_tables_and_a_summary_to_compare(clean, tmp_path, capsys):
+    (tmp_path / "ingested").mkdir()
+    shutil.copy(clean / "profile.json", tmp_path / "ingested")
+    assert cli.main(["check", str(tmp_path / "ingested")]) == 2
+    assert "no exposure or edge tables to check" in capsys.readouterr().out
+    assert checks._summary({"mapping": "merged"}, RunDir(clean)) is None   # a summary stating no A1 or A5 number
+
+
+def test_integrity_line_names_what_ran_what_had_nothing_to_compare_and_what_fails():
+    from swarmprov import report
+    chk = pd.DataFrame([["strict_refines_merged", "agents", 0, "error", []],
+                        ["relay_hops_per_chain", "edges_merged", 2, "error", ["f|a|1", "f|b|2"]]], columns=checks.COLS)
+    line = report._integrity(chk, summary := {}, "merged")[0]
+    assert line.startswith("**Integrity: 1/2 checks pass** (`checks.json`; `swarmprov check RUN` reruns them): ")
+    assert "reruns them): relay hops and chain carriers against the mentions and the strict mapping inside the " \
+           "merged one. Not run, as this run has nothing for them to compare: exposure re-derived from the mentions, " in line
+    assert ", rounds held before the first public copy, and summary.json against the tables. Not passing" in line
+    assert line.rstrip().endswith("Not passing: `relay_hops_per_chain` (error; 2 in edges_merged: facts without one "
+                                  "relay hop per carrier after the first).")
+    assert summary["integrity"]["n_checks"] == 2 and summary["integrity"]["failing"][0]["n_violations"] == 2

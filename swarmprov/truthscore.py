@@ -75,15 +75,22 @@ def _identity(agents: pd.DataFrame, handle: dict) -> dict:
 
 
 def _a2(ex: pd.DataFrame, truth: pd.DataFrame) -> dict:
+    """A fit with a zero standard error (every outcome the same, as at ``copy_rate=0`` without ``confound``) has a
+    point interval: no coverage is claimed (``covers`` None) and ``note`` says why."""
     est = causal.estimate(ex).set_index(["outcome", "treatment"])
     r = est.loc[("y_instant", "D_cons")]
     exposed = truth[truth["public_at_arrival"]]
     true = float(exposed["copied"].mean()) if len(exposed) else float("nan")
-    ok = pd.notna(r["ci_lo"])
+    sd = float(ex["y_instant"].std())
+    note = r["note"] if isinstance(r["note"], str) else None
+    ok = pd.notna(r["p"]) and r["se"] > 0
+    if pd.notna(r["beta"]) and not ok:
+        note = "not estimated: " + ("every round has the same y_instant" if sd == 0 else
+                                    "the fixed effects leave no outcome variance (standard error 0)")
     return {"outcome": "y_instant", "treatment": "D_cons", "beta": r["beta"], "se": r["se"], "p": r["p"],
-            "ci_lo": r["ci_lo"], "ci_hi": r["ci_hi"], "note": r["note"] if isinstance(r["note"], str) else None,
-            "true_effect": true, "covers": bool(ok and r["ci_lo"] <= true <= r["ci_hi"]) if ok else None,
-            "y_instant_sd": float(ex["y_instant"].std()), "mean_y_D0": r["mean_y_D0"], "mean_y_D1": r["mean_y_D1"]}
+            "ci_lo": r["ci_lo"], "ci_hi": r["ci_hi"], "note": note, "true_effect": true,
+            "covers": bool(r["ci_lo"] <= true <= r["ci_hi"]) if ok and pd.notna(true) else None,
+            "y_instant_sd": sd, "mean_y_D0": r["mean_y_D0"], "mean_y_D1": r["mean_y_D1"]}
 
 
 def _sources(ex: pd.DataFrame, j: pd.DataFrame, edges: pd.DataFrame, events: pd.DataFrame, label: pd.Series,
@@ -202,23 +209,42 @@ def score(run: RunDir, truth_dir: str | Path, mapping: str = "merged") -> dict:
     return out
 
 
+def _missing(run: RunDir, truth_dir: Path, mapping: str) -> str | None:
+    """What ``score`` needs and does not find, and which command writes it."""
+    for f in ("truth.csv", "config.json"):
+        if not (truth_dir / f).exists():
+            return f"{truth_dir}: no {f} (synth writes truth.csv and config.json beside the transcript)"
+    if not (run.path / "profile.json").exists():
+        return f"{run.path}: not a run directory (no profile.json); run `swarmprov run` on the transcript first"
+    for stage, tables in (("ingest", ("events",)), ("extract", ("agents", "tags")),
+                          ("expose", ("mentions", f"exposures_{mapping}")), ("graph", (f"edges_{mapping}",))):
+        if gone := [t for t in tables if not run.has(t)]:
+            return (f"{run.path} has no {', '.join(gone)}: run `swarmprov {stage} {run.path}` and the stages after it, "
+                    "or `swarmprov run`")
+    return None
+
+
 def main(run: RunDir, truth_dir: str | Path, mapping: str = "merged") -> int:
-    """``swarmprov truth-score``: write the scorecard, print its headline, and rebuild the report when there is one."""
-    if not (Path(truth_dir) / "truth.csv").exists():
-        print(f"{truth_dir}: no truth.csv (it is written beside the transcript by `swarmprov synth`)")
+    """``swarmprov truth-score``: write the scorecard, print its headline, and rebuild the report when there is one;
+    exit status 1, and nothing written, when a table or truth file is missing or no round matches the truth."""
+    if why := _missing(run, Path(truth_dir), mapping):
+        print(why)
         return 1
     try:
         r = score(run, truth_dir, mapping)
     except ValueError as e:
         print(e)
         return 1
-    d, a2 = r["D"], r["A2"]
+    d, a2, a2_txt = r["D"], r["A2"], ""
+    if a2 and (a2["note"] or a2["beta"] is None):
+        a2_txt = f"; A2 {a2['note'] or 'not estimated'}"
+    elif a2:
+        a2_txt = f"; A2 beta {a2['beta']:.3f} " + (
+            "(no round was public at arrival: no true effect to compare)" if a2["covers"] is None else
+            f"against a true {a2['true_effect']:.3f} ({'inside' if a2['covers'] else 'outside'} its 95% CI)")
     print(f"truth score {LABEL} ({mapping} mapping), {r['rounds']['matched']} of {r['rounds']['truth']} true rounds "
           f"matched: D agrees with on-the-board-at-arrival for {d['accuracy_vs_public_at_arrival']:.0%} of rounds, "
-          f"with an earlier post of the value for {d['accuracy_vs_earlier_copy']:.0%}"
-          + (f"; A2 beta {a2['beta']:.3f} against a true {a2['true_effect']:.3f} ("
-             + ("not estimated" if a2["covers"] is None else "inside" if a2["covers"] else "outside") + " its 95% CI)"
-             if a2 and a2["beta"] is not None else ""))
+          f"with an earlier post of the value for {d['accuracy_vs_earlier_copy']:.0%}{a2_txt}")
     print(f"wrote {run.path / 'truth_validation.json'}")
     for m in ("merged", "strict"):   # each report rebuilt as it was built: its mapping and bootstrap resamples
         if (run.path / f"summary{suffix(m)}.json").exists():

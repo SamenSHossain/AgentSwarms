@@ -77,10 +77,24 @@ def split_name(path: str | Path) -> str:
     return stem.removesuffix("_labels") or stem
 
 
+def read_labels(path: str | Path) -> list[dict] | None:
+    """A label file's rows, or None when it is not one: empty, or a row that is not JSON or lacks an ``event_id`` or
+    a ``gold`` block (a transcript beside the labels, say)."""
+    try:
+        rows = [json.loads(l) for l in open(path) if l.strip()]
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return None
+    ok = rows and all(isinstance(r, dict) and "event_id" in r and isinstance(r.get("gold"), dict) for r in rows)
+    return rows if ok else None
+
+
 def score(run: RunDir, gold_path: str | Path, out_name: str = "validation.json") -> dict | None:
     """Score the run's *current* claims against the labels (not the template's stale ``pred``), on the labelled
-    posts the run holds (``coverage``); None, and nothing written, when it holds none of them."""
-    rows = [json.loads(l) for l in open(gold_path) if l.strip()]
+    posts the run holds (``coverage``); None, and nothing written, when it holds none of them.  ValueError when the
+    file is not a label file (``read_labels``)."""
+    rows = read_labels(gold_path)
+    if rows is None:
+        raise ValueError(f"{gold_path}: not a label file (each row needs an event_id and a gold block)")
     rows = [r for r in rows if r["gold"].get("labelled", True)]
     posts = set(run.read("events")["event_id"])
     n_labelled = len(rows)
@@ -116,12 +130,12 @@ def score(run: RunDir, gold_path: str | Path, out_name: str = "validation.json")
     rec = tp / (tp + fn) if tp + fn else float("nan")
     n_gold_answers = sum(len(r["gold"]["answers"]) for r in rows if r["gold"]["is_answer"])
     n_pred_answers = sum(len(r["pred"]["answers"]) for r in rows if r["pred"]["is_answer"])
-    res = {"n": len(rows), "labeller": rows[0].get("labeller", "unknown") if rows else None,
+    res = {"n": len(rows), "labeller": rows[0].get("labeller", "unknown"),
            "gold_answers": n_gold_answers, "predicted_answers": n_pred_answers, "fields": {
         "answer_post": {"precision": prec, "recall": rec, "support": tp + fn},
         **{f: {"accuracy": (c / n) if n else float("nan"), "support": n} for f, (c, n) in field_hits.items()},
     }}
-    res["split"] = rows[0].get("split") if rows else None
+    res["split"] = rows[0].get("split")
     res["labels_file"] = str(gold_path)
     res["coverage"] = {"labelled": n_labelled, "in_run": len(rows), "share": len(rows) / n_labelled}
     (run.path / out_name).write_text(json.dumps(res, indent=2))

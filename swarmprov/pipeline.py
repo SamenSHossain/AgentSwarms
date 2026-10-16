@@ -276,12 +276,16 @@ def build_graph(run: RunDir) -> None:
 
 def score_gold(run: RunDir, paths) -> None:
     """Score the extractor against each label file (a directory gives its ``*.jsonl``) as ``validation_<split>.json``;
-    a file whose labelled posts are none of this run's is skipped, not scored as zero."""
+    a file whose labelled posts are none of this run's is skipped, not scored as zero, and so is a ``*.jsonl`` that
+    holds no labels (``validate.read_labels``)."""
     from . import validate
     files = [f for p in map(Path, paths) for f in (sorted(p.glob("*.jsonl")) if p.is_dir() else [p])]
     if not files:
         _log(f"gold labels: no *.jsonl label file in {', '.join(map(str, paths))}")
     for f in files:
+        if validate.read_labels(f) is None:
+            _log(f"gold labels {f}: not a label file (each row needs an event_id and a gold block): skipped")
+            continue
         res = validate.score(run, f, f"validation_{validate.split_name(f)}.json")
         if res is None:
             _log(f"gold labels {f}: none of its labelled posts is in this run (labels of another source?): skipped")

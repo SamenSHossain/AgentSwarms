@@ -467,7 +467,7 @@ class ChatAdapter(Adapter):
         reads = pd.DataFrame({"agent_raw": tools["author_raw"], "ts": tools["ts"], "channel": tools["channel"],
                               "event_id": tools["event_id"], "method": "tool_result"}).reset_index(drop=True)
         caps = Capabilities(has_wall_clock=bool(has_ts), has_order=clock != "none", has_explicit_author=True,
-                            has_reads=bool(len(reads)), has_lifecycle=bool(n_deleted),
+                            has_reads=bool(len(reads)), has_lifecycle=bool(n_deleted) and clock != "sequence",
                             has_threading=bool(ev["parent_id"].notna().any()))
         notes = {"n_messages": len(ev), "n_channels": int(ev["channel"].nunique()),
                  "n_authors": int(ev["author_raw"].nunique()), "clock": clock, "n_timestamps": n_timed,

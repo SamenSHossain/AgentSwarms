@@ -29,7 +29,8 @@ CONSEQUENCES = {
                   "exposure to other agents' posts is still inferred from what was public",
                   "no read events, so exposure is inferred from what was public"),
     "has_lifecycle": ("deletions are recorded, posts carry visible_until, and A1 states D_visible beside D",
-                      "no deletions are recorded, so D_visible equals D"),
+                      "no deletion times are used (none recorded, or no wall clock to order them by), so D_visible "
+                      "equals D"),
     "has_request_log": ("request-level rows exist; still no page views, so exposure stays inferred",
                         "no request-level rows"),
     "derived_text": ("posts are an LLM digest of what agents did, not their words: values and quotes are second-hand",
@@ -810,7 +811,8 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
 
 
 def _integrity(chk: pd.DataFrame, summary: dict, mapping: str) -> list[str]:
-    """One line: how many of ``checks.check_run``'s checks pass, naming those that do not."""
+    """One line: how many of ``checks.check_run``'s checks pass, what they compared (and what this run gave them
+    nothing to compare), naming those that do not pass."""
     fail, sfx = chk[chk["n_violations"] > 0], suffix(mapping)
     summary["integrity"] = {"n_checks": len(chk), "n_pass": len(chk) - len(fail),
                             "failing": fail[["check", "table", "n_violations", "severity"]].to_dict("records")}
@@ -818,12 +820,16 @@ def _integrity(chk: pd.DataFrame, summary: dict, mapping: str) -> list[str]:
     for c, g in fail.groupby("check", sort=False):
         where = ", ".join(f"{n:,} in {t}" for t, n in zip(g["table"], g["n_violations"]))
         named.append(f"`{c}` ({g['severity'].iloc[0]}; {where}: {checks.MEANING[c]})")
+    scope, done = list(dict.fromkeys(checks.SCOPE.values())), {checks.SCOPE[c] for c in chk["check"]}
+
+    def series(vs: list[str]) -> str:
+        vs = [v.replace("summary.json", f"summary{sfx}.json") for v in vs]
+        return ", ".join(vs[:-1]) + (", and " if len(vs) > 2 else " and ") + vs[-1] if len(vs) > 1 else "".join(vs)
+    ran, idle = series([v for v in scope if v in done]), series([v for v in scope if v not in done])
     return [f"**Integrity: {len(chk) - len(fail)}/{len(chk)} checks pass** (`checks{sfx}.json`; `swarmprov check RUN"
-            + (f" --mapping {mapping}" if sfx else "") + "` reruns "
-            "them): exposure re-derived from the mentions, flag nesting, relay hops and exposure edges against the "
-            "chains and rounds, the posts behind edges and exposures, the strict mapping inside the merged one, "
-            f"and summary{sfx}.json against the tables. " + ("Not passing: " + "; ".join(named) + "." if named else
-                                                       "None fails.") + "\n"]
+            + (f" --mapping {mapping}" if sfx else "") + "` reruns them): " + (ran or "none ran") + ". "
+            + (f"Not run, as this run has nothing for them to compare: {idle}. " if idle else "")
+            + ("Not passing: " + "; ".join(named) + "." if named else "None fails." if len(chk) else "") + "\n"]
 
 
 def _truth_block(tv: dict, summary: dict) -> list[str]:
@@ -843,12 +849,15 @@ def _truth_block(tv: dict, summary: dict) -> list[str]:
                      f"{pct(dv['true_visible_copy'])} an earlier post of the value still undeleted",
                      f"{pct(dv['accuracy'])} of rounds"))
     if a2:
-        est = (a2["note"] or "not estimated") if a2["beta"] is None else \
-            f"{a2['beta']:.3f} (95% CI {a2['ci_lo']:.3f} to {a2['ci_hi']:.3f}, " \
-            + ("p < 0.001)" if a2["p"] < 0.001 else f"p {a2['p']:.3f})")
+        # a point interval (standard error 0: every round has the same outcome) is no estimate
+        fit = a2["p"] is not None and a2["ci_lo"] is not None and a2["ci_lo"] < a2["ci_hi"]
+        est = f"{a2['beta']:.3f} (95% CI {a2['ci_lo']:.3f} to {a2['ci_hi']:.3f}, " \
+            + ("p < 0.001)" if a2["p"] < 0.001 else f"p {a2['p']:.3f})") if fit else a2["note"] or "not estimated"
         rows.append(("A2 `y_instant ~ D_cons`", est,
-                     f"{a2['true_effect']:.3f} (the share of rounds public at arrival that copied)",
-                     {True: "inside the interval", False: "outside the interval", None: "–"}[a2["covers"]]))
+                     ("–" if a2["true_effect"] is None else f"{a2['true_effect']:.3f}")
+                     + " (the share of rounds public at arrival that copied)",
+                     {True: "inside the interval", False: "outside the interval", None: "–"}[a2["covers"]]
+                     if fit else "–"))
     for r in tv["sources"]:
         rule = r["rule"] + (" (not an A5 rule)" if r["rule"] == "first copy still visible" else "")
         rows.append((f"A5 top-10 share of instant answers, {rule}", pct(r["top10_share"]), pct(r["true_top10_share"])
@@ -1106,10 +1115,12 @@ def _needs_clock(what: str) -> str:
 def _when(prof: dict, notes: dict) -> str:
     """The header's span: real times, message positions or none, and the posts no timestamp places."""
     if prof.get("clock") == "sequence":
-        k = notes.get("timestamps_discarded")
+        k, d = notes.get("timestamps_discarded"), notes.get("n_deleted")
         return ("ordered by message position (no wall clock"
                 + (f"; the {k:,} of {notes['n_messages']:,} messages that carried a timestamp were too few to order by, "
-                   "so their timestamps were set aside" if k else "") + "). ")
+                   "so their timestamps were set aside" if k else "")
+                + (f"; the deletion times of {d:,} message{'s' * (d != 1)} were set aside too, as a real time cannot be "
+                   "ordered against message positions, so D_visible equals D" if d else "") + "). ")
     if not prof.get("first_ts"):
         return "no timestamps. "
     n = prof.get("n_untimed") or 0
