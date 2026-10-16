@@ -51,6 +51,18 @@ def test_score_gives_known_precision_recall_and_coverage(toy):
     assert json.loads((run.path / "validation_toy.json").read_text()) == res
 
 
+def test_a_score_without_a_denominator_is_null_in_strict_json(toy):
+    """Only a missed answer: no predicted answer post (precision 0/0) and no field compared (accuracy 0/0)."""
+    run, _ = toy
+    gold = run.path / "missed_labels.jsonl"
+    gold.write_text(json.dumps(_label("e3", [{"item": "Utah", "value": "3", "episode": 1, "latency_class": None}])))
+    validate.score(run, gold, "validation_missed.json")
+    raw = (run.path / "validation_missed.json").read_text()
+    saved = json.loads(raw, parse_constant=lambda c: pytest.fail(f"validation_missed.json holds {c}"))
+    assert saved["fields"]["answer_post"] == {"precision": None, "recall": 0.0, "support": 1}
+    assert saved["fields"]["item"] == {"accuracy": None, "support": 0}
+
+
 def test_labels_of_another_source_are_skipped(toy):
     run, _ = toy
     assert validate.score(run, run.path / "other_labels.jsonl", "validation_other.json") is None
