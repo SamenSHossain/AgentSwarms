@@ -7,7 +7,7 @@ import pandas as pd
 
 from .. import plotting
 from ..plotting import plt
-from .uncertainty import cluster_bootstrap, wmean, wmedian
+from .uncertainty import MIN_CLUSTERS, cluster_bootstrap, wmean, wmedian
 
 # exposure by required head start: thresholds in hours, and the answers a family needs for a row
 HOURS = (0, 1 / 6, 0.5, 1, 3, 6, 12, 24, 48)
@@ -43,7 +43,8 @@ def summarize(ex: pd.DataFrame, min_n: int = 10, wall_clock: bool = True, boot: 
     ``boot`` > 0 adds 95% percentile intervals from that many resamples of whole items (``item_fe``): ``<stat>_ci``
     = [lo, hi] for each ``HEADLINE`` statistic, and ``exposed_lo`` / ``exposed_hi`` (and the same for
     ``exposed_60m``) in the family and round tables, whose items are resampled within each row (none for a row
-    with fewer than ``uncertainty.MIN_CLUSTERS`` items).  No interval is measured in hours without a wall clock."""
+    with fewer than ``uncertainty.MIN_CLUSTERS`` items, and none for the median head start when fewer items have an
+    exposed answer).  No interval is measured in hours without a wall clock."""
     n = len(ex)
     out = {
         "n_answers": n,
@@ -65,6 +66,8 @@ def summarize(ex: pd.DataFrame, min_n: int = 10, wall_clock: bool = True, boot: 
                                          exposed_60m=("D_w60m", "mean"), instant=("y_instant", "mean"))
     if boot and n:
         lo, hi = cluster_bootstrap(ex, CLUSTER, _headline, boot, seed)
+        if ex.loc[ex["gap_s"].notna(), CLUSTER].nunique() < MIN_CLUSTERS:   # the head starts' own items are too few
+            lo[-1] = hi[-1] = np.nan
         out |= {f"{k}_ci": [float(a), float(b)] if a == a else None for k, a, b in zip(HEADLINE, lo, hi)}
         cols = list(TABLE_SHARES) if wall_clock else ["exposed"]
         by_fam = by_fam.join(_table_ci(ex, ex["family"], by_fam.index, cols, boot, seed))
@@ -112,15 +115,25 @@ def threshold_curve(ex: pd.DataFrame, hours=HOURS, min_n: int = CURVE_MIN_N, vis
     return out.astype({"n": int}).rename_axis("answers")
 
 
-def instant_sweep(ex: pd.DataFrame, ks=KS) -> dict:
-    """The share of answers counted instant under each threshold k in ``ks`` (seconds).  Only an answer with a
-    stated latency (``latency_s``, a number) moves: it is instant when the number is at most k.  The rest keep their
-    class, instant from wording alone ("instantly", no number) or no latency stated."""
+def instant_sweep(ex: pd.DataFrame, ks=KS, k_cfg: float | None = None) -> dict:
+    """The share of answers counted instant under each threshold k in ``ks`` (seconds; ``k_cfg``, the configured
+    threshold, is added when missing).  Only an answer with a stated latency (``latency_s``, a number) moves: it is
+    instant when the number is at most k.  The rest keep their class from wording alone: instant ("instantly", no
+    number), delayed (an LLM extractor's class with no number) or no latency stated.  ``n_class_differs_at_configured``
+    counts the answers whose number puts them on the other side of ``k_cfg`` from their class (the wording "instantly"
+    sets the class whatever the number), which is why the sweep there can differ from the *instant* column."""
     lat = pd.to_numeric(ex["latency_s"], errors="coerce")
-    fixed = int(((ex["latency_class"] == "instant") & lat.isna()).sum())
+    cls = ex["latency_class"]
+    fixed = int(((cls == "instant") & lat.isna()).sum())
+    ks = sorted({*ks, k_cfg}) if k_cfg is not None else list(ks)
     n = len(ex)
-    return {"n_answers": n, "n_stated_latency": int(lat.notna().sum()), "n_instant_by_wording": fixed, "ks": list(ks),
-            "share_instant": [(fixed + int((lat <= k).sum())) / n if n else float("nan") for k in ks]}
+    out = {"n_answers": n, "n_stated_latency": int(lat.notna().sum()), "n_instant_by_wording": fixed,
+           "n_delayed_by_wording": int((cls.notna() & (cls != "instant") & lat.isna()).sum()), "ks": ks,
+           "share_instant": [(fixed + int((lat <= k).sum())) / n if n else float("nan") for k in ks]}
+    if k_cfg is not None:
+        out |= {"n_class_differs_at_configured": int((lat.notna() & ((lat <= k_cfg) != (cls == "instant"))).sum()),
+                "k_configured": k_cfg}
+    return out
 
 
 def threshold_figure(ex: pd.DataFrame, path, hours=HOURS, min_n: int = CURVE_MIN_N, visible: bool = False,

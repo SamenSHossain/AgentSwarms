@@ -125,6 +125,7 @@ def test_sequence_clock_suppresses_every_hour_based_number(runs):
                  "Exposure vs required head start", "a1_threshold.png", "Sensitivity to the relay window", "within 1 h"):
         assert gone not in text, gone
     assert text.count("need a wall clock and are not shown") == 3          # A1 shares, A4 bins, A6 relay window
+    assert "Relay-window sweeps (a window W in minutes and hours) need a wall clock" in text
     assert "**Message order is not time.**" in text
     a1 = json.loads((run.path / "summary.json").read_text())["A1"]
     assert a1["share_exposed_60m"] is None and a1["median_gap_h"] is None and a1["share_exposed"] == pytest.approx(6 / 9)

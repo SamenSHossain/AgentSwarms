@@ -3,8 +3,10 @@
 The bootstrap resamples whole clusters with replacement (A1 resamples items: one first poster supplies most of an
 item's answers, so answers to one item are not independent) and takes the 2.5th and 97.5th percentiles.  It is
 vectorised: a statistic sees every resample at once as a matrix of row weights (how often each row's cluster was
-drawn), so a mean is one matrix product.  The intervals cover sampling noise across clusters only, not
-identity-mapping or extraction error.
+drawn), so a mean is one matrix product.  A statistic undefined in more than ``MAX_UNDEFINED`` of the resamples
+(a median of exposed head starts when few items have one) gets no interval, rather than one taken over the resamples
+that happen to define it.  The intervals cover sampling noise across clusters only, not identity-mapping or
+extraction error.
 """
 
 from __future__ import annotations
@@ -18,6 +20,8 @@ import pandas as pd
 LEVEL = 0.95
 # fewer clusters than this give no interval: three items have only 10 distinct resamples
 MIN_CLUSTERS = 5
+# the share of resamples a statistic may be undefined (NaN) in and still get an interval
+MAX_UNDEFINED = 0.05
 # rows x resamples held in memory at once
 CHUNK_CELLS = 4_000_000
 
@@ -27,15 +31,18 @@ def cluster_bootstrap(df: pd.DataFrame, cluster_col: str | None, stat_fn, B: int
     """The 95% percentile interval of ``stat_fn(df, w)`` over ``B`` resamples of whole clusters of ``cluster_col``
     (None: every row is its own cluster, the plain bootstrap).  ``w`` is a (resamples, rows) weight matrix and
     ``stat_fn`` returns one value per resample, or a (resamples, m) array for m statistics at once.  Returns
-    (lo, hi), NaN with ``B`` = 0 or fewer than ``min_clusters`` clusters."""
+    (lo, hi), NaN with ``B`` <= 0, fewer than ``min_clusters`` clusters, or for a statistic undefined in more than
+    ``MAX_UNDEFINED`` of the resamples.  A row with no cluster key raises: it would belong to no cluster."""
     if cluster_col is None:
         k, code = len(df), np.arange(len(df))
     else:
+        if df[cluster_col].isna().any():
+            raise ValueError(f"{int(df[cluster_col].isna().sum())} rows have no `{cluster_col}` to resample by")
         members = df.groupby(cluster_col, sort=True).indices   # cluster -> its row positions
         k, code = len(members), np.empty(len(df), dtype=np.intp)
         for c, rows in enumerate(members.values()):
             code[rows] = c
-    if not B or k < min_clusters:
+    if B <= 0 or k < min_clusters:
         shape = np.shape(stat_fn(df, np.ones((1, len(df)))))[1:]
         return np.full(shape, np.nan), np.full(shape, np.nan)
     rng = np.random.default_rng(seed)
@@ -46,10 +53,12 @@ def cluster_bootstrap(df: pd.DataFrame, cluster_col: str | None, stat_fn, B: int
         draws = rng.integers(0, k, size=(b, k)) + k * np.arange(b)[:, None]
         counts = np.bincount(draws.ravel(), minlength=b * k).reshape(b, k)
         stats.append(np.asarray(stat_fn(df, counts[:, code])))
+    stats = np.concatenate(stats)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)   # a statistic undefined in every resample stays NaN
-        lo, hi = np.nanpercentile(np.concatenate(stats), [50 * (1 - LEVEL), 50 * (1 + LEVEL)], axis=0)
-    return lo, hi
+        lo, hi = np.nanpercentile(stats, [50 * (1 - LEVEL), 50 * (1 + LEVEL)], axis=0)
+    undefined = np.isnan(stats).mean(axis=0) > MAX_UNDEFINED
+    return np.where(undefined, np.nan, lo)[()], np.where(undefined, np.nan, hi)[()]
 
 
 def wmean(x, w: np.ndarray) -> np.ndarray:

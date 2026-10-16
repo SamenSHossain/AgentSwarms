@@ -248,6 +248,9 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
     from .pipeline import load_config
     cfg = load_config(run)
     boot = cfg.bootstrap_reps if boot is None else boot
+    if isinstance(boot, bool) or not isinstance(boot, (int, np.integer)) or boot < 0:
+        raise SystemExit(f"bootstrap_reps (the config setting, or report --boot) must be a whole number, 0 or more "
+                         f"(0 leaves the intervals out); got {boot!r}")
     caps = read_capabilities(prof)
     if not prof["n_events"]:
         summary = {"profile": {k: prof[k] for k in ("adapter", "source", "n_events")},
@@ -351,7 +354,8 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
                  + (". " if seq else
                     f", {_pct(r1['share_exposed_60m'])}{ci('share_exposed_60m')} at least an hour before (robust to the "
                     "unknown lag between a question's arrival and its report). "
-                    f"Median head start: {r1['median_gap_h']:.1f} h{ci('median_gap_h', hours=True)}. ")
+                    + (f"Median head start: {r1['median_gap_h']:.1f} h{ci('median_gap_h', hours=True)}. "
+                       if r1["median_gap_h"] == r1["median_gap_h"] else ""))
                  + f"In {_pct(r1['share_self_prepared'])}{ci('share_self_prepared')} of rounds the agent itself had posted "
                    "the answer in advance.\n")
         if ci("share_exposed"):
@@ -388,7 +392,7 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
         if not seq:
             L += _threshold_block(run, ex, bool(caps.get("has_lifecycle")), summary)
         lat = ex.assign(latency_s=ex["claim_id"].map(rounds.set_index("claim_id")["latency_s"]))
-        L += _instant_block(provenance.instant_sweep(lat), cfg.instant_threshold_s, summary)
+        L += _instant_block(provenance.instant_sweep(lat, k_cfg=cfg.instant_threshold_s), summary)
     else:
         L += _skipped("A1", "needs agent-rounds (an agent's answer to an item in a task family); "
                       + _a1_gap(claims, rounds, _family_hint(cfg, roster)))
@@ -450,7 +454,8 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
                      "own that is every agent active after its first post, which lowers adoption shares)" if catch_all else ""))
                  + "; adoption = first post mentioning or using it"
                  + ("." if seq else "; non-adopters censored at their last post (Kaplan–Meier). The median time to "
-                    "adopt is given where at least half the at-risk agents adopted, with Greenwood's 95% interval "
+                    "adopt is given where the Kaplan–Meier curve falls to one half (non-adopters leave the risk set "
+                    "when censored, so this can happen with fewer than half adopting), with Greenwood's 95% interval "
                     "(log-log); an upper bound reads *not reached* where the band's upper edge never falls to half.") + "\n")
         if seq:
             L.append(_needs_clock("Times to adoption (hours, the Kaplan–Meier median) and the first-seen time") + "\n")
@@ -613,7 +618,7 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
         if ws is not None:
             L += _window_block(ws, (r6.get("urls") or {}).get("facts", 0))
         elif seq:
-            L.append(_needs_clock("The relay-window sweep (a window W in minutes and hours)") + "\n")
+            L.append(_needs_clock("Relay-window sweeps (a window W in minutes and hours)") + "\n")
     else:
         L += _skipped("A6", "needs facts (an item–value pair or a URL) to follow; none was posted" if r5 else
                       "needs the provenance graph (see A5)")
@@ -704,17 +709,25 @@ def _threshold_block(run: RunDir, ex: pd.DataFrame, visible: bool, summary: dict
             md_table(curve, pct=tuple(curve.columns[1:]))]
 
 
-def _instant_block(sw: dict, k_cfg: float, summary: dict) -> list[str]:
+def _instant_block(sw: dict, summary: dict) -> list[str]:
     """The instant-answer threshold sweep, one table row (also ``summary['A1']['instant_sweep']``)."""
-    summary["A1"]["instant_sweep"] = sw | {"k_configured": k_cfg}
+    summary["A1"]["instant_sweep"] = sw
+    k_cfg = sw["k_configured"]
     row = pd.DataFrame([[f"{sw['n_stated_latency']:,} of {sw['n_answers']:,}",
                          *[_pct(v) for v in sw["share_instant"]]]],
                        columns=["answers with a stated latency",
                                 *[f"k = {k:g} s" + (" (configured)" if k == k_cfg else "") for k in sw["ks"]]])
+    fixed = [f"{sw['n_instant_by_wording']:,} called instant in words with no number stay instant at every k"]
+    if sw["n_delayed_by_wording"]:
+        fixed.append(f"{sw['n_delayed_by_wording']:,} called delayed in words with no number stay delayed")
+    differ = sw["n_class_differs_at_configured"]
     return ["**Instant-answer threshold k.** The share of answers counted *instant* if the threshold were k seconds. "
-            "Only an answer that states its latency as a number moves; "
-            f"{sw['n_instant_by_wording']:,} called instant in words with no number stay instant at every k, and the rest "
-            "state no latency.\n", md_table(row, index=False)]
+            "Only an answer that states its latency as a number moves; " + ", ".join(fixed)
+            + ", and the rest state no latency."
+            + (f" At the configured k = {k_cfg:g} s the sweep goes by the number and A1's *instant* column by the class, "
+               f"and {differ:,} answer{'s have' if differ > 1 else ' has'} a number on the other side of k from "
+               f"{'their' if differ > 1 else 'its'} class (the wording \"instantly\" sets the class whatever the number)."
+               if differ else "") + "\n", md_table(row, index=False)]
 
 
 def _skipped(section: str, reason: str) -> list[str]:
@@ -950,17 +963,22 @@ def _hub_headline(r5: dict) -> str:
     def span(s: pd.Series) -> str:
         lo, hi = _pct(s.min()), _pct(s.max())
         return lo if lo == hi else f"{lo} to {hi}"
+
+    def moves(what: str, lo: str, hi: str) -> tuple[str, str]:
+        return ("leaves", f"the {what} at {lo}") if lo == hi else ("moves", f"the {what} between {lo} and {hi}")
     whole = span(share["all exposed"])
     n_src = r5["exposure_sources"]
     (s_lo, s_hi), (g_lo, g_hi) = r5["top10_share_exposure_loo"], r5["gini_exposure_outdegree_loo"]
+    v_share, share_loo = moves("share", _pct(s_lo), _pct(s_hi))
+    v_gini, gini_loo = moves("Gini", f"{g_lo:.2f}", f"{g_hi:.2f}")
+    loo = f"{v_share} {share_loo} and " + (gini_loo if v_gini == v_share else f"{v_gini} {gini_loo}")
     return (f"{n_src} agent{'s were' if n_src != 1 else ' was'} the first public source for someone's answer; "
             f"the top 10 supplied **{_pct(r5['top10_share_exposure'])}** of all exposed answers "
             f"(out-degree Gini {r5['gini_exposure_outdegree']:.2f}; the exposure counts of the {n_items} "
             f"item{'s' * (n_items != 1)} alone have a Gini of {r5['gini_item_exposures']:.2f}, which is what first-source "
             "credit gives if each item has one source of its own). "
-            + (f"Leaving out any one item moves the share between {_pct(s_lo)} and {_pct(s_hi)} and the Gini between "
-               f"{g_lo:.2f} and {g_hi:.2f}; concentration gets no bootstrap interval, since resampling items would repeat "
-               "their sources and inflate it. " if s_lo == s_lo else "")
+            + (f"Leaving out any one item {loo}; concentration gets no bootstrap interval, since resampling items would "
+               "repeat their sources and inflate it. " if s_lo == s_lo else "")
             + "**That share depends on who is credited**: across the "
             + ("three attribution rules below" if len(share["all exposed"]) == 3 else
                "two attribution rules below that credit any answer")
@@ -988,9 +1006,12 @@ def _attribution_block(r5: dict, summary: dict) -> list[str]:
          "describes how the simulated agents copy, not how a real swarm does.\n"]
     if no_instant:
         L.append("No exposed answer was reported as instant, so the copy-signature subset is empty and has no concentration.\n")
-    t = a.assign(**{"top-10 share, one item left out": [_span(lo, hi) if lo == lo else "" for lo, hi in
+
+    def cell(lo: float, hi: float, fmt: str) -> str:   # one value where the range collapses
+        return "" if lo != lo else fmt.format(lo) if fmt.format(lo) == fmt.format(hi) else _span(lo, hi, fmt=fmt)
+    t = a.assign(**{"top-10 share, one item left out": [cell(lo, hi, "{:.0%}") for lo, hi in
                                                        zip(a["top10_share_loo_lo"], a["top10_share_loo_hi"])],
-                    "Gini, one item left out": [_span(lo, hi, fmt="{:.2f}") if lo == lo else "" for lo, hi in
+                    "Gini, one item left out": [cell(lo, hi, "{:.2f}") for lo, hi in
                                                 zip(a["gini_loo_lo"], a["gini_loo_hi"])]})
     t = t.drop(columns=["top10_share_loo_lo", "top10_share_loo_hi", "gini_loo_lo", "gini_loo_hi"])
     L.append(md_table((t[t["answers"] == "all exposed"] if no_instant else t)

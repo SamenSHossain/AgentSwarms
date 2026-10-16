@@ -66,10 +66,18 @@ def leave_one_item_out(sources: pd.Series, items: pd.Series, top_k: int = 10) ->
     ``*_loo_hi``) over the credits with each item's answers left out in turn; NaN with fewer than two items.
     Concentration gets no bootstrap interval: resampling items repeats their sources and inflates it."""
     keys = items.unique()
-    runs = [concentration(sources[items != i], top_k) for i in keys] if len(keys) > 1 else []
+    credited = sources.notna().to_numpy()
+    src, _ = pd.factorize(sources[credited])
+    total = np.bincount(src)
+    own = pd.Series(src).groupby(items[credited].to_numpy()).indices   # item -> its credits
+    runs = []
+    for i in keys if len(keys) > 1 else []:   # each source's credits without item i: the total less its own
+        deg = total - np.bincount(src[own[i]], minlength=len(total)) if i in own else total
+        deg = np.sort(deg[deg > 0])[::-1]
+        runs.append((deg[:top_k].sum() / deg.sum(), gini(deg)) if len(deg) else (np.nan, np.nan))
     out = {}
-    for stat in (f"top{top_k}_share", "gini"):
-        v = np.array([r[stat] for r in runs], dtype=float)
+    for j, stat in enumerate((f"top{top_k}_share", "gini")):
+        v = np.array([r[j] for r in runs], dtype=float)
         ok = v[~np.isnan(v)]
         out |= {f"{stat}_loo_lo": float(ok.min()) if len(ok) else float("nan"),
                 f"{stat}_loo_hi": float(ok.max()) if len(ok) else float("nan")}
@@ -141,7 +149,8 @@ def analyze(edges: pd.DataFrame, chains: pd.DataFrame, top_k: int = 10, ex: pd.D
 
 def reach(chains: pd.DataFrame, boot: int = 0, seed: int = 0) -> dict:
     """A6: for every fact (item+value, or URL): how many agents repeated it, how many hops.  ``boot`` > 0 adds a
-    95% interval for ``mean_repeaters`` (``mean_repeaters_lo`` / ``_hi``) from that many resamples of the facts."""
+    95% interval for ``mean_repeaters`` (``mean_repeaters_lo`` / ``_hi``) from that many resamples of the facts,
+    when there are ``uncertainty.MIN_CLUSTERS`` facts or more."""
     if chains.empty:
         return {}
     out = {}
@@ -154,8 +163,8 @@ def reach(chains: pd.DataFrame, boot: int = 0, seed: int = 0) -> dict:
             "p90_repeaters": float((g["n_agents"] - 1).quantile(0.9)),
             "max_hops": int(g["max_depth"].max()), "mean_hops_repeated": float(g.loc[g["n_agents"] > 1, "max_depth"].mean()),
         }
-        if boot:
-            lo, hi = cluster_bootstrap(g, None, lambda d, w: wmean(d["n_agents"] - 1, w), boot, seed)
+        lo, hi = cluster_bootstrap(g, None, lambda d, w: wmean(d["n_agents"] - 1, w), boot, seed)
+        if lo == lo:
             out[kind] |= {"mean_repeaters_lo": float(lo), "mean_repeaters_hi": float(hi)}
     return out
 

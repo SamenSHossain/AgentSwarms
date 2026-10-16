@@ -78,7 +78,13 @@ def test_relay_window_cuts_old_parents_into_roots():
                       "agent_merged": list("ABCDE"), "channel": ["p", "p", "p", "p", "q"],
                       "family": "f", "item": "Ohio", "value_key": "1.5"})
     e, c = graph.relay_edges(m, "agent_merged")
-    assert len(e) == 4 and c["max_depth"].iloc[0] == 3 and c["n_agents"].iloc[0] == 5
+    assert list(zip(e["src"], e["dst"], e["kind"], e["dt_s"], e["event_id"], e["src_event_id"])) == [
+        ("A", "B", "relay", 600, "b", "a"), ("A", "E", "relay_xchannel", 1800, "e", "a"),
+        ("B", "C", "relay", 6600, "c", "b"), ("C", "D", "relay", 300, "d", "c")]   # the default, written out
+    assert c["max_depth"].iloc[0] == 3 and c["n_agents"].iloc[0] == 5
+    wide = graph.relay_edges(m, "agent_merged", max_gap_s=6600)          # every parent inside W: the same graph
+    pd.testing.assert_frame_equal(wide[0], e)
+    pd.testing.assert_frame_equal(wide[1], c)
     e, c = graph.relay_edges(m, "agent_merged", max_gap_s=3600)
     assert set(zip(e["src"], e["dst"], e["kind"])) == {("A", "B", "relay"), ("A", "E", "relay_xchannel"),
                                                        ("C", "D", "relay")}
@@ -113,6 +119,27 @@ def test_instant_sweep_recovers_the_true_latencies(synth_run):
     assert sw["n_instant_by_wording"] == truth["copied"].sum() and sw["n_stated_latency"] == (~truth["copied"]).sum()
     words = pd.DataFrame({"latency_s": [np.nan, 1.0, 4.0, np.nan], "latency_class": ["instant", "instant", "delayed", None]})
     assert provenance.instant_sweep(words, ks=(1, 5))["share_instant"] == [0.5, 0.75]
+    assert provenance.instant_sweep(words, ks=(1, 5), k_cfg=2)["ks"] == [1, 2, 5]   # the configured k is added
+
+
+def test_instant_sweep_names_what_stays_fixed():
+    """An LLM extractor's classes come without a number: "delayed" in words stays delayed.  "instantly at +6s" is
+    instant by its wording but not by its number at k = 2 s, so the sweep there differs from the instant column."""
+    from swarmprov.report import _instant_block
+    llm = pd.DataFrame({"latency_s": [None] * 4, "latency_class": ["delayed", "delayed", "instant", None]})
+    sw = provenance.instant_sweep(llm, k_cfg=2.0)
+    assert (sw["n_instant_by_wording"], sw["n_delayed_by_wording"], sw["n_class_differs_at_configured"]) == (1, 2, 0)
+    text = _instant_block(sw, {"A1": {}})[0]
+    assert ("1 called instant in words with no number stay instant at every k, 2 called delayed in words with no "
+            "number stay delayed, and the rest state no latency.") in text and "goes by the number" not in text
+    rules = pd.DataFrame({"latency_s": [6.0, 1.0, 9.0], "latency_class": ["instant", "instant", "delayed"]})
+    sw = provenance.instant_sweep(rules, k_cfg=2.0)
+    assert sw["n_class_differs_at_configured"] == 1 and sw["share_instant"][sw["ks"].index(2)] == pytest.approx(1 / 3)
+    summary = {"A1": {}}
+    lines = _instant_block(sw, summary)
+    assert "delayed in words" not in lines[0]
+    assert "k = 2 s the sweep goes by the number and A1's *instant* column by the class, and 1 answer has" in lines[0]
+    assert summary["A1"]["instant_sweep"]["k_configured"] == 2.0 and "| k = 2 s (configured) |" in lines[1]
 
 
 def test_report_shows_the_sweeps(synth_run):
