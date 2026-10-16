@@ -18,6 +18,8 @@ with a wiki timestamp.
 * ``D_cons``    the *consensus* value was public before the report.  This is the
   causal treatment: unlike D it does not depend on the agent's own answer, so
   "wrong answer => nothing matching was public" cannot manufacture an effect.
+  ``t_cons`` is that first public consensus copy and ``gap_cons_s`` its head start
+  over the report (NaN when D_cons = 0), the dose A2's exploratory block reads.
 * ``y_consensus``  the answer matches the consensus value (the value most distinct
   agents carried); ``y_winner`` scores it the same way against A4's winner (the
   later majority), only on slots A4 calls overturned (``winners``), NaN elsewhere.
@@ -47,7 +49,7 @@ latest), ``src_visible_event_id`` (the first copy still visible) and ``self_even
 posted in the same second are taken in event_id order, so the chosen post does not depend on row order.
 
 Under a sequence clock (``wall_clock=False``: times are message positions) ``gap_s``,
-``D_w10m``, ``D_w60m`` and ``D_cons_w60m`` are NA, since positions are not seconds.
+``D_w10m``, ``D_w60m``, ``D_cons_w60m`` and ``gap_cons_s`` are NA, since positions are not seconds.
 """
 
 from __future__ import annotations
@@ -152,6 +154,7 @@ def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: s
             "self_prepared": int(t_self is not None),
             "D_cons": int(t_cons is not None),
             "D_cons_w60m": int(t_cons is not None and gap_c >= 3600),
+            "t_cons": t_cons, "gap_cons_s": gap_c,
             "y_instant": int(r.latency_class == "instant"),
             "latency_known": int(r.latency_class is not None),
             "y_consensus": _score(r, cv), "y_winner": _score(r, win) if win is not None else np.nan,
@@ -169,5 +172,5 @@ def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: s
     if len(out):
         out["item_fe"] = out["family"] + "|" + out["item"]
         if not wall_clock:
-            out[["gap_s", "D_w10m", "D_w60m", "D_cons_w60m"]] = np.nan
+            out[["gap_s", "D_w10m", "D_w60m", "D_cons_w60m", "gap_cons_s"]] = np.nan
     return out

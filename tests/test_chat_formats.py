@@ -159,6 +159,8 @@ def test_sequence_clock_keeps_a4_status_and_a3_counts_without_hours(runs):
     assert "On a message-order run only the consensus outcome under `D_cons` is estimated: the ≥1 h treatment needs a " \
            "wall clock, and the latency outcome (an instant answer, as the post states it) is left out with it" in text
     assert "latency outcome (an instant answer) and the ≥1 h treatment need a wall clock" not in text
+    assert "The exploratory dose-response estimates (how long the consensus had been public, in hours) need a wall " \
+           "clock" in text and "A2_dose" not in summary and "a2_dose.png" not in text
 
 
 def test_trace_counts_messages_under_a_sequence_clock(runs, capsys):

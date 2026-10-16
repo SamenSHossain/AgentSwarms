@@ -18,6 +18,7 @@
     swarmprov export   runs/wiki -o out/ [--tables exposures,adoptions] [--format csv|parquet] [--mapping strict]
     swarmprov synth    -o data/synth.jsonl            # synthetic swarm with known provenance
     swarmprov synth    -o data/ag/autogen.jsonl --format autogen   # the same as an AutoGen stream with tool calls
+    swarmprov synth    -o data/ramp/transcript.jsonl --copy-ramp-h 4   # copying grows with the answer's head start
 """
 
 from __future__ import annotations
@@ -171,6 +172,9 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--copy-from", choices=["latest", "first", "random"], default="latest",
                    help="which earlier post a copying agent takes its value from")
     s.add_argument("--seed", type=int, default=0)
+    s.add_argument("--copy-ramp-h", type=float, default=None, metavar="H",
+                   help="copy probability grows linearly with the hours the answer has been public, reaching "
+                        "--copy-rate at H hours (default: constant)")
     s.add_argument("--format", choices=["chat", "autogen"], default="chat",
                    help="autogen: an untimed AutoGen message stream with each computed answer's own tool call")
 
@@ -216,7 +220,8 @@ def main(argv: list[str] | None = None) -> int:
         return export.export(a.run, a.out, a.tables or export.DEFAULT, a.format, a.mapping, a.all_columns)
     elif a.cmd == "synth":
         from . import synth
-        synth.write(a.out, n_agents=a.agents, copy_rate=a.copy_rate, seed=a.seed, copy_from=a.copy_from, fmt=a.format)
+        synth.write(a.out, n_agents=a.agents, copy_rate=a.copy_rate, seed=a.seed, copy_from=a.copy_from, fmt=a.format,
+                    copy_ramp_h=a.copy_ramp_h)
     return 0
 
 

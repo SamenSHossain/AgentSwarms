@@ -3,9 +3,13 @@
 Agents (one per cohort date) work timed question sequences.  When a question
 arrives and its answer is already on the shared board, the agent copies it
 with probability ``copy_rate`` (answering in 1 s); otherwise it computes the
-answer itself (5-40 s, 10% wrong).  Every agent reports each round on the
-board in the templated style real swarms use.  Ground truth (who copied, from
-whom, whether the answer was public at arrival) is written next to the transcript.
+answer itself (5-40 s, 10% wrong).  With ``copy_ramp_h`` (``synth --copy-ramp-h``)
+the copy probability grows with how long the answer has been on the board,
+``copy_rate * min(1, head_h / copy_ramp_h)`` with ``head_h`` the hours since its
+first post by another agent: the dose response A2's exploratory block looks for.
+Every agent reports each round on the board in the templated style real swarms
+use.  Ground truth (who copied, from whom, whether the answer was public at
+arrival) is written next to the transcript.
 
 ``fmt="autogen"`` (``synth --format autogen``) writes the same swarm as an AutoGen message stream with no
 timestamps (so it runs on message order): a ``user`` task message first, and
@@ -46,7 +50,7 @@ TASK = "Work through the questions you are given in order and post each answer o
 
 def simulate(n_agents: int = 60, copy_rate: float = 0.7, seed: int = 0, span_h: float = 24.0,
              tiers_min: tuple[float, ...] = (8, 20, 45, 90), wrong_rate: float = 0.1, copy_from: str = "latest",
-             trace: bool = False):
+             trace: bool = False, copy_ramp_h: float | None = None):
     """Each agent draws ``ROUNDS`` questions from its family's pool and works them
     ``cooldown`` minutes apart (a per-agent tier).  Because sequences differ, the same
     agent meets some questions nobody has posted yet and others already on the board -
@@ -60,6 +64,8 @@ def simulate(n_agents: int = 60, copy_rate: float = 0.7, seed: int = 0, span_h: 
     before each computed answer.  They draw on their own random stream, so the board posts stay the same."""
     if copy_from not in COPY_FROM:
         raise ValueError(f"copy_from must be one of {COPY_FROM}")
+    if copy_ramp_h is not None and not copy_ramp_h > 0:
+        raise ValueError("copy_ramp_h must be a positive number of hours")
     rng = random.Random(seed)
     pick_rng = random.Random(seed + 1000)   # own stream, so 'latest' keeps the transcript of earlier versions
     tool_rng = random.Random(seed + 2000)   # and so does trace mode
@@ -92,7 +98,10 @@ def simulate(n_agents: int = 60, copy_rate: float = 0.7, seed: int = 0, span_h: 
             board.append(p[1])
         pending = [p for p in pending if p[0] > t_arr]
         public = [p for p in board if p["_family"] == a["family"] and p["_item"] == item and p["author"] != a["name"]]
-        copied = bool(public) and rng.random() < copy_rate
+        p_copy = copy_rate
+        if public and copy_ramp_h is not None:   # the same single draw, so no new random stream is needed
+            p_copy *= min(1.0, (t_arr - min(p["_t"] for p in public)).total_seconds() / 3600 / copy_ramp_h)
+        copied = bool(public) and rng.random() < p_copy
         src = None
         if copied:
             k = pick_rng.randrange(len(public)) if copy_from == "random" else (0 if copy_from == "first" else -1)
@@ -117,7 +126,7 @@ def simulate(n_agents: int = 60, copy_rate: float = 0.7, seed: int = 0, span_h: 
         text = (f"{a['cohort']} R{r} CONFIRMED: {item} arrived {t_arr:%H:%M:%S}, 14s timer; "
                 f"answered {value:.2f} {speed}. R{r + 1} due in ~{int(a['cooldown'])}m. -- {a['name']}")
         post = {"ts": t_post.isoformat(), "author": a["name"], "channel": f"{a['family'].split('-')[0]}-board",
-                "text": text, "_family": a["family"], "_item": item, "_value": value}
+                "text": text, "_family": a["family"], "_item": item, "_value": value, "_t": t_post}
         pending.append((t_post, post))
         truth.append({"agent": a["name"], "cohort": a["cohort"], "family": a["family"], "round": r,
                       "item": item, "t_arrival": t_arr, "t_report": t_post, "public_at_arrival": bool(public),
@@ -144,13 +153,13 @@ CONFIG = {
 
 
 def write(out: str | Path, n_agents: int = 60, copy_rate: float = 0.7, seed: int = 0, copy_from: str = "latest",
-          fmt: str = "chat") -> Path:
+          fmt: str = "chat", copy_ramp_h: float | None = None) -> Path:
     if fmt not in FORMATS:
         raise ValueError(f"format must be one of {FORMATS}")
     out = Path(out)
     out.parent.mkdir(parents=True, exist_ok=True)
     posts, truth = simulate(n_agents=n_agents, copy_rate=copy_rate, seed=seed, copy_from=copy_from,
-                            trace=fmt == "autogen")
+                            trace=fmt == "autogen", copy_ramp_h=copy_ramp_h)
     with open(out, "w") as fh:
         for p in posts:
             fh.write(json.dumps(_autogen(p) if fmt == "autogen" else p) + "\n")

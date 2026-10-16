@@ -189,6 +189,30 @@ def test_a2_draws_every_row_and_says_which_are_not_identified(drawn):
     assert f"under {causal.MIN_SWITCHERS} switchers" in ax.get_title("left")
 
 
+def test_a2_dose_draws_each_bin_against_the_reference(drawn):
+    def row(outcome, term, beta=np.nan, spanning=30, note=np.nan, n=50):
+        return {"outcome": outcome, "term": term, "beta": beta, "ci_lo": beta - 0.1, "ci_hi": beta + 0.1,
+                "n_term": n, "agents_spanning": spanning, "note": note}
+    dose = pd.DataFrame([
+        row("y_instant|known", causal.SLOPE, 0.12), row("y_instant|known", "<1h", n=20, spanning=25),
+        row("y_instant|known", "1-6h", 0.3), row("y_instant|known", "6-24h", 0.4, spanning=12),
+        row("y_instant|known", ">24h", spanning=6, note="not identified: only 6 agents have a round here and in another bin"),
+        *[row("y_instant", t, note="not identified: only 8 agents have rounds in two or more head-start bins")
+          for t in [causal.SLOPE, *causal.HEAD_BINS]]])
+    causal.dose_figure(dose, "a2_dose.png")
+    fig = drawn[0]
+    known, inst = fig.axes
+    bars = {round(c.lines[0].get_ydata()[0], 3): c.lines[0].get_color() for c in known.containers}
+    assert bars == {0.3: plotting.SERIES[0], 0.4: plotting.NEUTRAL}          # 12 spanning agents (under 20) is grey
+    hollow = [ln for ln in known.lines if ln.get_markerfacecolor() == plotting.SURFACE]
+    assert len(hollow) == 1 and hollow[0].get_xdata()[0] == 0 and hollow[0].get_ydata()[0] == 0   # the reference
+    assert [t.get_text() for t in known.texts if "identified" in t.get_text()] == ["not\nidentified"]
+    assert "slope +0.120 per log1p(h), 95% CI +0.020 to +0.220" in known.get_title("left")
+    assert [t.get_text() for t in known.get_xticklabels()][-1] == ">24h\n50 rounds\n6 agents"
+    assert not inst.containers and sum("identified" in t.get_text() for t in inst.texts) == 4   # the reference too
+    assert "slope not identified" in inst.get_title("left") and "(biased: " in inst.get_title("left")
+
+
 def test_a5_lorenz_marks_where_the_top_sources_begin(drawn):
     outdeg = pd.Series([40, 30, 20, 10] + [2] * 8 + [1] * 8, index=[f"s{i}" for i in range(20)])
     share = outdeg.head(10).sum() / outdeg.sum()

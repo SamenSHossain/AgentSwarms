@@ -474,6 +474,8 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
                 L.append(md_table(est_alt[[c for c in ["outcome", "treatment", "beta", "se", "p", "n",
                                                        "agents_with_D_variation", "note"] if c in est_alt]],
                                   index=False, floatfmt="{:.3f}"))
+        L += ["\n" + _needs_clock("The exploratory dose-response estimates (how long the consensus had been public, in hours)")
+              + "\n"] if seq else _dose_block(run, ex, ex_alt, est, summary)
     else:
         L += _skipped("A2", f"needs more than 20 {'timed ' if untimed else ''}agent-rounds; this run has {len(ex):,}"
                       + (f" ({untimed:,} {'have' if untimed > 1 else 'has'} no timestamp)" if untimed else ""))
@@ -831,6 +833,65 @@ def _contagion_note(con: dict) -> str:
     if small:
         out += f"Fewer than {diffusion.MIN_ADOPTERS} adopters, too few to read: {', '.join(small)}."
     return out.rstrip() + "\n"
+
+
+def _dose_block(run: RunDir, ex: pd.DataFrame, ex_alt: pd.DataFrame, est: pd.DataFrame, summary: dict) -> list[str]:
+    """A2's exploratory dose response among exposed rounds (``causal.estimate_dose``), its figure and
+    ``summary['A2_dose']``; kept apart from the table above, which stays A2's reading."""
+    dose = causal.estimate_dose(ex)
+    fig = run.figure("a2_dose.png")
+    causal.dose_figure(dose, fig)
+    lat = causal.stated_latency_slope(ex)
+    alt = causal.estimate_dose(ex_alt) if len(ex_alt) > 20 else pd.DataFrame()
+    summary["A2_dose"] = {"label": "exploratory: dose response among exposed rounds", "ref": causal.DOSE_REF,
+                          "min_within_sd": causal.MIN_DOSE_SD, "min_bin_agents": causal.MIN_BIN_AGENTS,
+                          "rows": dose.to_dict("records"), "stated_latency_slope": lat,
+                          "other_mapping": alt.to_dict("records")}
+    first = next(iter(causal.DOSE_OUTCOMES))
+    sw = est.set_index(["outcome", "treatment"])["agents_with_D_variation"].get((first, "D_cons"))
+    per = dose.drop_duplicates("outcome").set_index("outcome")
+    vary = int(dose.loc[(dose["outcome"] == first) & (dose["term"] == causal.SLOPE), "agents_spanning"].iloc[0])
+    bias = "".join(
+        f" `{k}` is shown but {c}, so how often agents state a latency at all enters its slope"
+        + (f"; here, within an agent, the share of rounds stating one changes by {lat['beta']:+.3f} per unit of "
+           f"log1p(hours) (SE {lat['se']:.3f}), which pushes its slope {'down' if lat['beta'] < 0 else 'up'}." if lat else
+           "; here every exposed round states one, so the two rows agree." if per.loc[k, "n"] == per.loc[first, "n"]
+           else ".") for k, c in causal.DOSE_OUTCOMES.items() if c)
+    m, k2 = causal.MIN_BIN_AGENTS, 2 * causal.MIN_BIN_AGENTS
+    L = ["**Exploratory: dose response among exposed rounds.** A narrower question than the table above, asked of the "
+         "exposed rounds only (`D_cons` = 1): given the consensus value was public, does instant reuse grow with how "
+         "long it had been public? The dose is the consensus value's head start over the report, as `log1p(hours)` "
+         f"(the slope) and in bins against a head start under 1 h, with agent + item FE and SEs clustered by agent. "
+         f"Within an agent it varies across items where exposure barely does: on `{first}`, {vary:,} agents' head "
+         "starts vary" + (f", against {int(sw):,} agents whose exposure status switches" if sw is not None else "")
+         + ". So it identifies only this intensive margin; whether exposure itself matters stays as identified as the "
+         "table above says. Identifying assumption: within an agent, how long before its report others had posted the "
+         "consensus value is unrelated to its item-specific propensity to answer instantly.\n",
+         f"The head start runs to the report, an upper bound on arrival, so a late report gets a longer one; read "
+         f"`{first}`." + bias + " An outcome is identified when the within-agent SD of log1p(head start in hours) is "
+         f"at least {causal.MIN_DOSE_SD} (a spread of about {np.expm1(causal.MIN_DOSE_SD):.0%} in 1 + hours) and at "
+         f"least {m} agents have rounds in two or more bins; a bin needs {m} agents with a round in it and in another "
+         f"bin, and so does the {causal.DOSE_REF} reference, else its row reads *not identified*. A bin's interval rests "
+         f"on those agents and runs narrow when they are few (under {k2}, grey in the figure): read such bins as the "
+         "shape and the slope as the test. *beta* is the change in the share answering instantly per unit of "
+         "log1p(hours) (a 2.7-fold longer 1 + hours) for the slope, or against the reference for a bin; *mean y* is "
+         "the raw share; *agents spanning* counts the agents whose head start varies (slope) or that have a round in "
+         "the bin and in another.\n",
+         f"![dose response](figures/{fig.name})\n"]
+    tbl = dose.rename(columns={"n_term": "rounds", "mean_y": "mean y", "agents_spanning": "agents spanning"})
+    tbl["term"] = tbl["term"].replace({causal.DOSE_REF: f"{causal.DOSE_REF} (reference)"})
+    L.append(md_table(tbl[["outcome", "term", "beta", "se", "p", "rounds", "mean y", "agents spanning", "note"]],
+                      index=False, floatfmt="{:.3f}"))
+    L.append("Samples: " + "; ".join(
+        f"`{r.outcome}` {r.n:,} exposed rounds from {r.agents:,} agents on {r.items:,} items, within-agent SD "
+        f"{r.within_sd:.2f}, {r.bin_agents:,} agents in two or more bins" for r in per.reset_index().itertuples())
+             + ".\n")
+    if len(alt):
+        sl = alt[alt["term"] == causal.SLOPE]
+        L.append("_Sensitivity (other identity mapping)_: the slope is " + " and ".join(
+            (f"{r.beta:+.3f} on `{r.outcome}` (SE {r.se:.3f}, p = {r.p:.2f}, {r.n:,} rounds)" if r.beta == r.beta
+             else f"not identified on `{r.outcome}`") for r in sl.itertuples()) + ".\n")
+    return L
 
 
 def _threshold_block(run: RunDir, ex: pd.DataFrame, visible: bool, summary: dict) -> list[str]:
