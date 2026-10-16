@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 from swarmprov import pipeline
-from swarmprov.adapters.chat import SEQUENCE_EPOCH, ChatAdapter, _to_ts
+from swarmprov.adapters.chat import SEQUENCE_EPOCH, ChatAdapter, to_ts
 from swarmprov.schema import RunDir
 
 ROUNDS = [("Poland", "0.2"), ("Hungary", "-0.9"), ("Chile", "0.2")]
@@ -61,15 +61,15 @@ def _profile(run) -> dict:
 
 
 def test_epoch_strings_parse_by_magnitude_and_short_digit_runs_do_not():
-    assert _to_ts("1777885200.000100") == pd.Timestamp("2026-05-04 09:00:00.000100", tz="UTC")
-    assert _to_ts("1777885200000") == pd.Timestamp("2026-05-04 09:00:00", tz="UTC")       # milliseconds
-    assert pd.isna(_to_ts("12345678")) and pd.isna(_to_ts("12"))                          # ids, not times
-    assert _to_ts("2026-05-04T10:00:00Z") == pd.Timestamp("2026-05-04 10:00", tz="UTC")
+    assert to_ts("1777885200.000100") == pd.Timestamp("2026-05-04 09:00:00.000100", tz="UTC")
+    assert to_ts("1777885200000") == pd.Timestamp("2026-05-04 09:00:00", tz="UTC")       # milliseconds
+    assert pd.isna(to_ts("12345678")) and pd.isna(to_ts("12"))                          # ids, not times
+    assert to_ts("2026-05-04T10:00:00Z") == pd.Timestamp("2026-05-04 10:00", tz="UTC")
     # mis-scaled or placeholder values are no time: 11-digit seconds (5138), 13-digit ms past 2100 (2286), 1973, 1970
     for v in ("99999999999", "9999999999999", "100000000", 99999999999, 9999999999999, 1e20, "1970-01-01T00:00:00Z"):
-        assert pd.isna(_to_ts(v)), v
-    assert _to_ts("631152000") == pd.Timestamp("1990-01-01", tz="UTC")                     # the window's ends
-    assert _to_ts("4102444799999") == pd.Timestamp("2099-12-31 23:59:59.999", tz="UTC")
+        assert pd.isna(to_ts(v)), v
+    assert to_ts("631152000") == pd.Timestamp("1990-01-01", tz="UTC")                     # the window's ends
+    assert to_ts("4102444799999") == pd.Timestamp("2099-12-31 23:59:59.999", tz="UTC")
 
 
 def test_slack_epoch_strings_give_a_wall_clock_and_ids_stay_ids(tmp_path):

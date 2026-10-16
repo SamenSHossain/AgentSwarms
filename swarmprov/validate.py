@@ -19,6 +19,7 @@ from pathlib import Path
 import pandas as pd
 
 from .claims import value_key
+from .fmt import dumps
 from .schema import RunDir
 
 FIELDS = ("item", "value", "episode", "latency_class")
@@ -138,5 +139,5 @@ def score(run: RunDir, gold_path: str | Path, out_name: str = "validation.json")
     res["split"] = rows[0].get("split")
     res["labels_file"] = str(gold_path)
     res["coverage"] = {"labelled": n_labelled, "in_run": len(rows), "share": len(rows) / n_labelled}
-    (run.path / out_name).write_text(json.dumps(res, indent=2))
+    (run.path / out_name).write_text(dumps(res, indent=2))
     return res

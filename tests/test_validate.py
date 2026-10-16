@@ -10,7 +10,6 @@ import pytest
 from swarmprov import cli, pipeline, validate
 from swarmprov.schema import RunDir, conform
 
-RAW = Path(__file__).resolve().parents[1] / "data" / "raw"
 LABELS = Path(__file__).resolve().parents[1] / "validation"
 
 
@@ -92,12 +91,9 @@ def test_run_gold_refuses_a_missing_or_non_label_file_before_any_stage(synth_nul
     assert "not a label file" in capsys.readouterr().err
 
 
-@pytest.mark.skipif(not (RAW / "events.jsonl").exists(), reason="full wiki dump not present")
-def test_wiki_labels_hold(tmp_path):
-    """The extractor on the wiki still meets its labelled accuracy (ingest and extract, about 25 s)."""
-    run = RunDir(tmp_path / "wiki")
-    pipeline.ingest(RAW, run)
-    pipeline.extract(run)
+def test_wiki_labels_hold(wiki_run):
+    """The extractor on the wiki still meets its labelled accuracy."""
+    run = wiki_run
     pipeline.score_gold(run, [LABELS])
     res = {s: json.loads((run.path / f"validation_{s}.json").read_text()) for s in ("dev", "heldout", "test")}
     assert all(r["coverage"]["share"] == 1.0 for r in res.values())

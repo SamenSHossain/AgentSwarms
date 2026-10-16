@@ -84,7 +84,7 @@ SLACK_SYSTEM = {"channel_join", "channel_leave", "channel_topic", "channel_purpo
                 "channel_unarchive", "bot_add", "bot_remove", "pinned_item", "unpinned_item"}   # not anyone's post
 
 
-def _is_tabular(path: Path) -> bool:
+def is_tabular(path: Path) -> bool:
     name = path.name[:-3] if path.suffix == ".gz" else path.name
     return name.endswith(TABULAR)
 
@@ -102,9 +102,9 @@ def _sep(path: Path) -> str:
     return max(order, key=head.count)
 
 
-def _read_any(path: Path, expected: str = f"the chat adapter reads {FORMATS}"):
+def read_any(path: Path, expected: str = f"the chat adapter reads {FORMATS}"):
     try:
-        if _is_tabular(path):   # a spreadsheet export; everything read as text
+        if is_tabular(path):   # a spreadsheet export; everything read as text
             return pd.read_csv(path, sep=_sep(path), dtype=str, keep_default_na=False,
                                encoding="utf-8-sig").to_dict("records")
         return _read_json(path)
@@ -187,7 +187,7 @@ def _value(v):
     return None if v is None or v == "" else v
 
 
-def _resolve(m: dict, field: str, mapping: dict) -> tuple[str | None, object]:
+def resolve_field(m: dict, field: str, mapping: dict) -> tuple[str | None, object]:
     """(source key, value) of a canonical field: the mapped key, else the first alias that holds a value.  The
     author falls back to ``SPEAKER`` only when ``author_alt`` (an agent id) is empty too."""
     if field in mapping:
@@ -196,18 +196,18 @@ def _resolve(m: dict, field: str, mapping: dict) -> tuple[str | None, object]:
         v = _value(_get(m, k))
         if v is not None:
             return k, v
-    if field == "author" and _pick(m, "author_alt", mapping) is None:
+    if field == "author" and pick_field(m, "author_alt", mapping) is None:
         v = _value(m.get(SPEAKER))
         if v is not None and not URLISH.search(str(v)):
             return SPEAKER, v
     return None, None
 
 
-def _pick(m: dict, field: str, mapping: dict) -> object:
-    return _resolve(m, field, mapping)[1]
+def pick_field(m: dict, field: str, mapping: dict) -> object:
+    return resolve_field(m, field, mapping)[1]
 
 
-def _to_ts(v) -> pd.Timestamp:
+def to_ts(v) -> pd.Timestamp:
     """ISO text, an epoch number or an epoch string (seconds, or milliseconds above 1e11).  A result outside
     ``EPOCH_RANGE`` (a mis-scaled number, a 1970 placeholder) is NaT."""
     try:
@@ -229,7 +229,7 @@ def _fits(field: str, values: list) -> bool:
     if len(vals) < len(values) / 2:
         return False
     if field == "ts":
-        return sum(pd.notna(_to_ts(v)) for v in vals) >= len(vals) / 2
+        return sum(pd.notna(to_ts(v)) for v in vals) >= len(vals) / 2
     if field == "author":
         return all(isinstance(v, str) and len(v) <= 100 and not URLISH.search(v) for v in vals)
     return all(isinstance(v, (str, list)) for v in vals)
@@ -254,9 +254,9 @@ def _site(path: Path) -> str:
     return name
 
 
-def _text(v) -> str:
+def text_of(v) -> str:
     if isinstance(v, list):  # content blocks; a tool result's block keeps its text under "content"
-        return "\n".join(_text(b.get("text", b.get("content"))) if isinstance(b, dict) else str(b) for b in v)
+        return "\n".join(text_of(b.get("text", b.get("content"))) if isinstance(b, dict) else str(b) for b in v)
     return "" if v is None else str(v)
 
 
@@ -286,10 +286,10 @@ def _slack(path: Path) -> list[tuple[dict, str, str, str]]:
     ``users.json`` names, and a message's id is its ``ts``, so a reply's ``thread_ts`` names its thread's first
     message.  Joins, topic changes and other system messages are no one's post and are skipped."""
     users = {u["id"]: u.get("real_name") or u.get("name") or u["id"]
-             for u in _read_any(path / "users.json") if isinstance(u, dict) and u.get("id")}
+             for u in read_any(path / "users.json") if isinstance(u, dict) and u.get("id")}
     out = []
     for f in sorted(path.glob("*/*.json")):
-        for j, (m, _) in enumerate(_flatten(_read_any(f))):
+        for j, (m, _) in enumerate(_flatten(read_any(f))):
             if m.get("subtype") in SLACK_SYSTEM:
                 continue
             uid, ts, thread = m.get("user") or m.get("bot_id") or "", m.get("ts"), m.get("thread_ts")
@@ -314,12 +314,12 @@ def read_messages(path: Path) -> tuple[list[tuple[dict, str, str, str]], bool]:
     if path.is_dir():
         out = []
         for f in _dir_files(path):
-            doc = _read_any(f)
+            doc = read_any(f)
             several = _n_lists(doc) > 1
             out += [(m, ch, f"{f.name}:{j}", f"{_site(f)}/{ch}" if several else ch)
                     for j, (m, ch) in enumerate(_flatten(doc, _site(f)))]
         return out, False
-    doc = _read_any(path)
+    doc = read_any(path)
     return [(m, ch, f"{path.name}:{i}", ch) for i, (m, ch) in enumerate(_flatten(doc))], _n_lists(doc) == 1
 
 
@@ -383,14 +383,14 @@ class ChatAdapter(Adapter):
         if _is_slack(path):
             return True
         if path.is_dir():   # any file of messages: load joins them all and skips records without text
-            return any(self._messages(_flatten(_read_any(f))) for f in _dir_files(path))
-        if path.is_file() and (path.name.endswith((".json", ".jsonl", ".gz")) or _is_tabular(path)):
-            return self._messages(_flatten(_read_any(path)))
+            return any(self._messages(_flatten(read_any(f))) for f in _dir_files(path))
+        if path.is_file() and (path.name.endswith((".json", ".jsonl", ".gz")) or is_tabular(path)):
+            return self._messages(_flatten(read_any(path)))
         return False
 
     def _messages(self, msgs: list) -> bool:
         """Every sampled message has text, or is a framework turn that only calls tools (OpenAI's `content: null`)."""
-        texts = [_pick(m, "text", self.mapping) is not None for m, _ in msgs[:5]]
+        texts = [pick_field(m, "text", self.mapping) is not None for m, _ in msgs[:5]]
         return any(texts) and all(t or framework.call_ids(m) for t, (m, _) in zip(texts, msgs))
 
     def load(self, path: Path) -> Bundle:
@@ -399,8 +399,8 @@ class ChatAdapter(Adapter):
         rows, pos, lists, n_no_author, n_ts_values, bad_ts = [], [], [], 0, 0, None
         calls, n_unmatched, n_inner = framework.Calls(), 0, 0
         for i, (m, container, ref, lst) in enumerate(msgs):
-            alt = str(_pick(m, "author_alt", self.mapping) or "")
-            author = _pick(m, "author", self.mapping) or alt
+            alt = str(pick_field(m, "author_alt", self.mapping) or "")
+            author = pick_field(m, "author", self.mapping) or alt
             kind = framework.role(m, author)
             # before the text check: a call-only turn has no text but opens calls
             if kind == "agent" or kind == "inner" and framework.call_ids(m):
@@ -412,21 +412,21 @@ class ChatAdapter(Adapter):
             if kind == "inner":   # no other agent receives it
                 n_inner += 1
                 continue
-            text = _text(_pick(m, "text", self.mapping) or (framework.result_text(m) if kind == "tool" else None))
+            text = text_of(pick_field(m, "text", self.mapping) or (framework.result_text(m) if kind == "tool" else None))
             if not text.strip():
                 continue
             n_unmatched += kind == "tool" and author == "tool"
-            mid = _pick(m, "id", self.mapping)
+            mid = pick_field(m, "id", self.mapping)
             n_no_author += not author
-            raw_ts, parent = _pick(m, "ts", self.mapping), _pick(m, "parent", self.mapping)
-            ts, gone = _to_ts(raw_ts), _to_ts(_pick(m, "visible_until", self.mapping))
+            raw_ts, parent = pick_field(m, "ts", self.mapping), pick_field(m, "parent", self.mapping)
+            ts, gone = to_ts(raw_ts), to_ts(pick_field(m, "visible_until", self.mapping))
             n_ts_values += raw_ts is not None
             if bad_ts is None and raw_ts is not None and pd.isna(ts):
                 bad_ts = raw_ts
             rows.append({
                 "event_id": str(stable_id(path, i) if mid is None else mid),
                 "ts": ts,
-                "channel": str(_pick(m, "channel", self.mapping) or container or "main"),
+                "channel": str(pick_field(m, "channel", self.mapping) or container or "main"),
                 "author_raw": str(author or "unknown"),  # an id beats "unknown"
                 "author_alt": alt,
                 "text": text,

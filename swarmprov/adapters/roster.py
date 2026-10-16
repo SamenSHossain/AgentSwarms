@@ -13,12 +13,12 @@ from pathlib import Path
 from .. import roster as roster_mod
 from ..schema import empty
 from .base import Adapter, Bundle, Capabilities
-from .chat import TABLES, _is_tabular, _read_any
+from .chat import TABLES, is_tabular, read_any
 
 
 def read_rows(path: Path) -> list[dict]:
     """Dict rows of a JSON, JSONL or CSV/TSV table (the chat adapter's reader)."""
-    obj = _read_any(Path(path), TABLES)
+    obj = read_any(Path(path), TABLES)
     if isinstance(obj, dict):  # {"goals": [...]} / {"data": [...]}
         lists = [v for v in obj.values() if isinstance(v, list)]
         obj = lists[0] if lists else []
@@ -30,7 +30,7 @@ class RosterAdapter(Adapter):
 
     def sniff(self, path: Path) -> bool:
         path = Path(path)
-        if not path.is_file() or not (path.name.endswith((".json", ".jsonl", ".gz")) or _is_tabular(path)):
+        if not path.is_file() or not (path.name.endswith((".json", ".jsonl", ".gz")) or is_tabular(path)):
             return False
         return roster_mod.looks_like_roster(read_rows(path)[:50])
 

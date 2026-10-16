@@ -13,19 +13,18 @@ import math
 import re
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 from .analysis.agents import AGENT_COLS, match_agents
 from .claims import PRIVATE_KINDS, public, value_key
 from .exposure import match_key
-from .graph import CLOCK_RES_S, KINDS
+from .fmt import dumps
+from .graph import CLOCK_RES_S, KINDS, RELAY_KINDS
 from .rules import norm_value
 from .schema import RunDir, empty
 
 MAPPING_NOTE = {"merged": "one agent per cohort date and task family; --mapping strict for one per author string",
                 "strict": "one agent per case-folded author string; --mapping merged joins a cohort's handles"}
-RELAY_KINDS = ("relay", "relay_xchannel")
 KIND_NOTE = {"relay_xchannel": "; cross-page hops: source unknown, attributed to the originator"}
 EXCERPT = 160
 
@@ -566,21 +565,6 @@ def timeline(fact: dict, path, highlight: str | None = None, seq: bool = False) 
     return plotting.save(fig, path)
 
 
-def to_json(obj):
-    """Timestamps as ISO text, NaN/NaT as null, numpy scalars as Python ones."""
-    if isinstance(obj, dict):
-        return {k: to_json(v) for k, v in obj.items()}
-    if isinstance(obj, (list, tuple)):
-        return [to_json(v) for v in obj]
-    if isinstance(obj, pd.Timestamp):
-        return None if pd.isna(obj) else obj.isoformat()
-    if obj is None or obj is pd.NaT or (isinstance(obj, float) and math.isnan(obj)):
-        return None
-    if isinstance(obj, np.generic):
-        return to_json(obj.item())
-    return obj
-
-
 def _open(run_path: str, mapping: str, need: tuple[str, ...]) -> tuple[RunDir | None, bool]:
     """The run, once it has every table in ``need`` (else None, with what is missing printed), and whether it has a
     sequence clock; prints the mapping (and clock) lines both commands open with."""
@@ -649,9 +633,8 @@ def trace(run_path: str, agent=None, item=None, family=None, answer=None, fact=N
         return 1
     print("\n".join(lines))
     if json_path:
-        with open(json_path, "w") as fh:
-            json.dump(to_json({"mapping": mapping, "clock": "sequence" if seq else "wall", "mode": mode, "result": res}),
-                      fh, indent=1, default=str)
+        Path(json_path).write_text(dumps({"mapping": mapping, "clock": "sequence" if seq else "wall", "mode": mode,
+                                          "result": res}, indent=1))
     if png_path:
         facts, highlight = (res if mode == "fact" else []), None
         if mode == "answer" and len(res) == 1 and res[0]["matched_value"] is not None:
@@ -674,7 +657,6 @@ def agent(run_path: str, name: str, mapping: str = "merged", json_path=None) -> 
     v = agent_view(run, label, mapping)
     print("\n".join(text_agent(v, seq)))
     if json_path:
-        with open(json_path, "w") as fh:
-            json.dump(to_json({"mapping": mapping, "clock": "sequence" if seq else "wall", "mode": "agent", "result": v}),
-                      fh, indent=1, default=str)
+        Path(json_path).write_text(dumps({"mapping": mapping, "clock": "sequence" if seq else "wall", "mode": "agent",
+                                          "result": v}, indent=1))
     return 0

@@ -31,45 +31,38 @@ import pandas as pd
 
 from .analysis.agents import AGENT_COLS
 from .claims import PRIVATE_KINDS, value_key
+from .fmt import dumps
+from .graph import RELAY_KINDS
 from .schema import RunDir, suffix
 
 COLS = ["check", "table", "n_violations", "severity", "example_ids"]
-SEVERITY = {"exposure_matches_mentions": "error", "flag_nesting": "error", "relay_hops_per_chain": "error",
-            "chain_carriers": "error", "exposure_edges": "error", "edge_posts_resolve": "error",
-            "exposure_posts_resolve": "error", "strict_refines_merged": "error", "strict_handles_kept_apart": "warning",
-            "self_prepared_before_public": "warning", "summary_matches_tables": "warning"}
-# what a check's violations are, for the report and ``swarmprov check``
-MEANING = {"exposure_matches_mentions": "rounds whose exposure columns (named in brackets) do not follow from the "
-                                        "mentions",
-           "flag_nesting": "rounds with a stricter exposure flag set and a looser one not",
-           "relay_hops_per_chain": "facts without one relay hop per carrier after the first",
-           "chain_carriers": "facts whose chain does not count their distinct timed carriers",
-           "exposure_edges": "rounds without exactly one exposure edge from their first public source",
-           "edge_posts_resolve": "edges naming a post the run does not hold",
-           "exposure_posts_resolve": "rounds whose report post or first public copy is not among the run's posts and "
-                                     "mentions",
-           "strict_refines_merged": "author handles split between merged agents with no conflicting cohort or "
-                                    "roster id behind it",
-           "strict_handles_kept_apart": "author handles whose case variants carry conflicting cohorts or roster ids, "
-                                        "kept apart in the merged mapping as designed; agent_aliases.csv lists them",
-           "self_prepared_before_public": "exposed rounds whose agent had posted the value itself before the first "
-                                          "public copy",
-           "summary_matches_tables": "summary.json numbers that differ from the tables (a stage rerun after the "
-                                     "report?)"}
-# what each check compares, in the order the report's integrity line names them (a shared phrase is named once)
-SCOPE = {"exposure_matches_mentions": "exposure re-derived from the mentions", "flag_nesting": "flag nesting",
-         "exposure_posts_resolve": "the posts behind edges and exposures",
-         "edge_posts_resolve": "the posts behind edges and exposures",
-         "relay_hops_per_chain": "relay hops and chain carriers against the mentions",
-         "chain_carriers": "relay hops and chain carriers against the mentions",
-         "exposure_edges": "exposure edges against the rounds",
-         "strict_refines_merged": "the strict mapping inside the merged one",
-         "strict_handles_kept_apart": "the strict mapping inside the merged one",
-         "self_prepared_before_public": "rounds held before the first public copy",
-         "summary_matches_tables": "summary.json against the tables"}   # the report names its own summary file
+# name -> (severity, what its violations are, what it compares), in the order the report's integrity line names what
+# they compare (a shared phrase is named once; the report names its own summary file)
+CHECKS = {
+    "exposure_matches_mentions": ("error", "rounds whose exposure columns (named in brackets) do not follow from the "
+                                           "mentions", "exposure re-derived from the mentions"),
+    "flag_nesting": ("error", "rounds with a stricter exposure flag set and a looser one not", "flag nesting"),
+    "exposure_posts_resolve": ("error", "rounds whose report post or first public copy is not among the run's posts "
+                                        "and mentions", "the posts behind edges and exposures"),
+    "edge_posts_resolve": ("error", "edges naming a post the run does not hold", "the posts behind edges and exposures"),
+    "relay_hops_per_chain": ("error", "facts without one relay hop per carrier after the first",
+                             "relay hops and chain carriers against the mentions"),
+    "chain_carriers": ("error", "facts whose chain does not count their distinct timed carriers",
+                       "relay hops and chain carriers against the mentions"),
+    "exposure_edges": ("error", "rounds without exactly one exposure edge from their first public source",
+                       "exposure edges against the rounds"),
+    "strict_refines_merged": ("error", "author handles split between merged agents with no conflicting cohort or "
+                                       "roster id behind it", "the strict mapping inside the merged one"),
+    "strict_handles_kept_apart": ("warning", "author handles whose case variants carry conflicting cohorts or roster "
+                                             "ids, kept apart in the merged mapping as designed; agent_aliases.csv "
+                                             "lists them", "the strict mapping inside the merged one"),
+    "self_prepared_before_public": ("warning", "exposed rounds whose agent had posted the value itself before the "
+                                               "first public copy", "rounds held before the first public copy"),
+    "summary_matches_tables": ("warning", "summary.json numbers that differ from the tables (a stage rerun after the "
+                                          "report?)", "summary.json against the tables"),
+}
 N_EXAMPLES = 5
 REL_TOL = 1e-6
-RELAY = ("relay", "relay_xchannel")
 
 
 def _given(v) -> bool:
@@ -148,7 +141,7 @@ def _nesting(ex: pd.DataFrame) -> list:
 
 
 def _relay(edges: pd.DataFrame, chains: pd.DataFrame) -> list:
-    hops = edges[edges["kind"].isin(RELAY)].groupby(["family", "item", "value_norm"]).size()
+    hops = edges[edges["kind"].isin(RELAY_KINDS)].groupby(["family", "item", "value_norm"]).size()
     c = chains.set_index(["family", "item", "value_key"])["n_agents"] - 1
     both = pd.concat([c.rename("want"), hops.rename("got").rename_axis(c.index.names)], axis=1).fillna(0)
     return ["|".join(map(str, k)) for k in both.index[both["want"] != both["got"]]]
@@ -237,7 +230,7 @@ def _summary(summary: dict, run: RunDir) -> list | None:
 
 
 def _row(check: str, table: str, bad: list) -> dict:
-    return {"check": check, "table": table, "n_violations": len(bad), "severity": SEVERITY[check],
+    return {"check": check, "table": table, "n_violations": len(bad), "severity": CHECKS[check][0],
             "example_ids": [str(b) for b in bad[:N_EXAMPLES]]}
 
 
@@ -246,7 +239,6 @@ def check_run(run: RunDir, summary: dict | None = None, mapping: str | None = No
     summary).  ``summary`` is the report's (the report passes the one it is writing); by default the ``mapping``
     report's ``summary.json`` (merged) or ``summary_strict.json`` when the run has one, else that check is left out."""
     from . import village
-    from .pipeline import _lists
     prof = json.loads((run.path / "profile.json").read_text())
     wall = prof.get("clock") != "sequence"
     mapping = mapping or (summary or {}).get("mapping", "merged")
@@ -263,7 +255,7 @@ def check_run(run: RunDir, summary: dict | None = None, mapping: str | None = No
         for name, col in AGENT_COLS.items():
             ex = run.read(f"exposures_{name}") if run.has(f"exposures_{name}") else pd.DataFrame()
             if len(ex):
-                aud = village.audience(_lists(run.read("channels")), run.read("agents"), col,
+                aud = village.audience(village.channel_lists(run.read("channels")), run.read("agents"), col,
                                        run.read("directory") if run.has("directory") else None) \
                     if run.has("channels") else {}
                 t = f"exposures_{name}"
@@ -284,7 +276,7 @@ def check_run(run: RunDir, summary: dict | None = None, mapping: str | None = No
         rows.append(_row("summary_matches_tables", f"summary{sfx}.json", bad))
     out = pd.DataFrame(rows, columns=COLS)
     fail = out[out["n_violations"] > 0]
-    (run.path / f"checks{sfx}.json").write_text(json.dumps({
+    (run.path / f"checks{sfx}.json").write_text(dumps({
         "n_checks": len(out), "n_pass": int((out["n_violations"] == 0).sum()),
         "n_errors": int((fail["severity"] == "error").sum()), "n_warnings": int((fail["severity"] == "warning").sum()),
         "checks": out.to_dict("records")}, indent=2))
@@ -307,7 +299,7 @@ def main(run: RunDir, mapping: str = "merged") -> int:
     for r in out.itertuples(index=False):
         status = "ok" if not r.n_violations else ("ERROR" if r.severity == "error" else "warn")
         print(f"  {status:<5} {r.check:<28} {r.table}" + (
-            f": {r.n_violations:,} {MEANING[r.check]} (e.g. {', '.join(r.example_ids)})" if r.n_violations else ""))
+            f": {r.n_violations:,} {CHECKS[r.check][1]} (e.g. {', '.join(r.example_ids)})" if r.n_violations else ""))
     fail = out[out["n_violations"] > 0]
     n_err = int((fail["severity"] == "error").sum())
     print(f"{len(out) - len(fail)} of {len(out)} checks pass: {n_err} error{'s' * (n_err != 1)}, "

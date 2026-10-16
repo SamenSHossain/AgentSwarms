@@ -22,8 +22,9 @@ import pandas as pd
 
 from . import query
 from .claims import value_key
-from .graph import CLOCK_RES_S, KINDS
-from .report import _pct, a2_identified, top10_range
+from .fmt import dumps, json_safe, pct
+from .graph import CLOCK_RES_S, KINDS, RELAY_KINDS
+from .report import a2_identified, top10_range
 from .schema import RunDir, suffix
 
 MAX_FACTS = 200     # task facts carried by two or more agents, most carriers first
@@ -168,7 +169,7 @@ def explorer_data(run: RunDir, mapping: str = "merged", summary: dict | None = N
     # fact_lineage reads only its fact's rows, so the tables shrink to the facts traced here
     keep = pd.concat([picked, on_slots]).drop_duplicates(["family", "item", "value_key"])
     tables |= {"chains": keep, "mentions": _only(tables["mentions"], keep, "value_key"),
-               "edges": _only(edges[edges["kind"].isin(query.RELAY_KINDS)], keep, "value_norm")}
+               "edges": _only(edges[edges["kind"].isin(RELAY_KINDS)], keep, "value_norm")}
     agents, chans, posts, facts, index = {}, {}, {}, [], {}
 
     def a(label) -> int:
@@ -218,7 +219,7 @@ def explorer_data(run: RunDir, mapping: str = "merged", summary: dict | None = N
                       "winner": r.get("winner"), "outcome": r.get("outcome"), "variants": variants})
     people = _people(run, mapping, edges, a, set(agents))
     prof = json.loads((run.path / "profile.json").read_text()) if (run.path / "profile.json").exists() else {}
-    return query.to_json({"clock": prof.get("clock") or "wall", "res": CLOCK_RES_S, "mapping": mapping,
+    return json_safe({"clock": prof.get("clock") or "wall", "res": CLOCK_RES_S, "mapping": mapping,
                           "agents": list(agents), "channels": list(chans),
                           "posts": [[e, x, c] for (e, _), (_, x, c) in posts.items()],
                           "facts": facts, "slots": slots, "people": people})
@@ -258,8 +259,7 @@ def _people(run: RunDir, mapping: str, edges: pd.DataFrame, a, named: set) -> di
 
 def _script_json(obj) -> str:
     """JSON safe inside a script element: no ``</`` can close it and no ``<!--`` can open an escaped state."""
-    return json.dumps(obj, ensure_ascii=False, separators=(",", ":"), allow_nan=False, default=str) \
-        .replace("</", "<\\/").replace("<!--", "<\\u0021--")
+    return dumps(obj, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/").replace("<!--", "<\\u0021--")
 
 
 def tiles(summary: dict) -> list[tuple[str, str, str]]:
@@ -267,7 +267,7 @@ def tiles(summary: dict) -> list[tuple[str, str, str]]:
     out = []
     if a1 := summary.get("A1"):
         out += [(f"{a1['n_answers']:,}", "answers", f"by {a1['n_agents']:,} agents"),
-                (_pct(a1["share_exposed"]), "already public before the report", "a floor: only captured posts are searched"),
+                (pct(a1["share_exposed"]), "already public before the report", "a floor: only captured posts are searched"),
                 (f"≤ {a1['n_independent']:,}", "independent lookups", "nothing carrying the answer was public")]
     if rng := top10_range(summary.get("A5") or {}):
         out.append((rng[0], "top-10 source share", f"of {rng[1]:,} exposed answers, across attribution rules"))

@@ -31,7 +31,7 @@
 from __future__ import annotations
 
 import argparse
-import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -39,6 +39,7 @@ from pathlib import Path
 from . import pipeline
 from .adapters import ADAPTERS
 from .adapters.base import FIELD_NAMES, check_fields
+from .fmt import dumps
 from .schema import RunDir
 
 
@@ -54,24 +55,22 @@ def _count(v: str) -> int:
     return int(v)
 
 
-def _hours(v: str) -> float:
-    try:
-        h = float(v)
-    except ValueError:
-        h = float("nan")
-    if not 0 < h < float("inf"):
-        raise argparse.ArgumentTypeError(f"expected a positive, finite number of hours, got {v!r}")
-    return h
+def _ranged(ok, expected: str):
+    """An argparse type: a number for which ``ok`` holds, else "expected ``expected``"."""
+    def parse(v: str) -> float:
+        try:
+            x = float(v)
+        except ValueError:
+            x = math.nan   # in no range
+        if not ok(x):
+            raise argparse.ArgumentTypeError(f"expected {expected}, got {v!r}")
+        return x
+    return parse
 
 
-def _share(v: str) -> float:
-    try:
-        x = float(v)
-    except ValueError:
-        x = float("nan")
-    if not 0 <= x <= 1:
-        raise argparse.ArgumentTypeError(f"expected a share from 0 to 1, got {v!r}")
-    return x
+_hours = _ranged(lambda h: 0 < h < math.inf, "a positive, finite number of hours")
+_share = _ranged(lambda x: 0 <= x <= 1, "a share from 0 to 1")
+_tolerance = _ranged(lambda t: 0 <= t < 1, "a relative tolerance from 0 up to (not including) 1")
 
 
 def _token(v: str) -> str:
@@ -94,16 +93,6 @@ def _fields(v: str) -> dict[str, str]:
         raise argparse.ArgumentTypeError(str(e)) from None
 
 
-def _tolerance(v: str) -> float:
-    try:
-        t = float(v)
-    except ValueError:
-        t = float("nan")
-    if not 0 <= t < 1:
-        raise argparse.ArgumentTypeError(f"expected a relative tolerance from 0 up to (not including) 1, got {v!r}")
-    return t
-
-
 def _tables(v: str) -> list[str]:
     from .export import EXPORTS
     names = [t.strip() for t in v.split(",") if t.strip()]
@@ -120,7 +109,7 @@ def _add_fields(s: argparse.ArgumentParser) -> None:
                         "author.name reaches into nested objects); repeatable, overrides the config's fields")
 
 
-def main(argv: list[str] | None = None) -> int:
+def _parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="swarmprov", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -271,13 +260,16 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--confound", type=_share, default=0.0, metavar="P",
                    help="share of agents, the latest to start, that never copy and answer half their questions "
                         "instantly, whatever is on the board (a null with outcome variance)")
+    return p
 
-    a = p.parse_args(argv)
-    fields = {k: v for d in getattr(a, "field", []) for k, v in d.items()}
-    if a.cmd == "trace" and ((a.item is not None and a.agent is None)
-                             or (a.family is not None and a.agent is None and not a.list)):
-        p.error("trace: --item goes with --agent, --family with --agent or --list")
-    if a.cmd == "run" and a.gold:   # before the stages, not after them
+
+def _field_map(a) -> dict[str, str]:
+    """Every ``--field`` given, as one mapping."""
+    return {k: v for d in a.field for k, v in d.items()}
+
+
+def _run(a, p) -> None:
+    if a.gold:   # before the stages, not after them
         from . import validate
         for g in map(Path, a.gold):
             if not g.exists():
@@ -285,73 +277,123 @@ def main(argv: list[str] | None = None) -> int:
             if g.is_file() and validate.read_labels(g) is None:
                 p.error(f"--gold: {g} is not a label file (each row needs an event_id and a gold block; "
                         "`swarmprov sample-gold` writes one to fill in)")
-    if a.cmd == "run":
-        pipeline.run_all(a.input, a.out, a.adapter, a.llm, a.config, a.roster, fields, gold=a.gold)
-    elif a.cmd == "ingest":
-        pipeline.ingest(a.input, RunDir(a.out), a.adapter, a.config, a.roster, fields)
-    elif a.cmd == "inspect":
-        from . import inspect
-        return inspect.inspect(a.input, a.config, fields)
-    elif a.cmd == "extract":
-        pipeline.extract(RunDir(a.run), llm=a.llm)
-    elif a.cmd == "expose":
-        pipeline.expose(RunDir(a.run))
-    elif a.cmd == "graph":
-        pipeline.build_graph(RunDir(a.run))
-    elif a.cmd == "report":
-        from . import report
-        report.build(RunDir(a.run), mapping=a.mapping, boot=a.boot)
-    elif a.cmd == "html":
-        from . import html
-        return html.main(a.run, a.mapping)
-    elif a.cmd == "sample-gold":
-        from . import validate
-        validate.sample(RunDir(a.run), a.n, a.seed, a.exclude, a.name)
-    elif a.cmd == "validate":
-        from . import validate
-        try:
-            res = validate.score(RunDir(a.run), a.gold, a.out_name)
-        except (OSError, ValueError) as e:
-            print(e, file=sys.stderr)
-            return 1
-        if res is None:
-            print(f"none of the labelled posts in {a.gold} is in {a.run}: nothing to score", file=sys.stderr)
-            return 1
-        print(json.dumps(res, indent=2))
-    elif a.cmd == "check":
-        from . import checks
-        return checks.main(RunDir(a.run), a.mapping)
-    elif a.cmd == "truth-score":
-        from . import truthscore
-        return truthscore.main(RunDir(a.run), a.truth, a.mapping)
-    elif a.cmd == "crosssite":
-        from .crosssite_pipeline import run_crosssite
-        run_crosssite(a.wiki_run, a.corpus, a.out)
-    elif a.cmd == "compare":
-        from . import compare
-        return compare.main(a.run_a, a.run_b, a.mapping_a, a.mapping_b, a.out, a.limit, a.tol)
-    elif a.cmd == "suggest":
-        from . import suggest
-        return suggest.main(a.run, a.out)
-    elif a.cmd == "trace":
-        from . import query
-        return query.trace(a.run, agent=a.agent, item=a.item, family=a.family, answer=a.answer, fact=a.fact,
-                           event=a.event, mapping=a.mapping, json_path=a.json, png_path=a.png, limit=a.limit)
-    elif a.cmd == "agent":
-        from . import query
-        return query.agent(a.run, a.name, mapping=a.mapping, json_path=a.json)
-    elif a.cmd == "export":
-        from . import export
-        return export.export(a.run, a.out, a.tables or export.DEFAULT, a.format, a.mapping, a.all_columns)
-    elif a.cmd == "synth":
-        from . import synth
-        try:
-            synth.write(a.out, n_agents=a.agents, copy_rate=a.copy_rate, seed=a.seed, copy_from=a.copy_from,
-                        fmt=a.format, copy_ramp_h=a.copy_ramp_h, delete_rate=a.delete_rate, technique=a.technique,
-                        n_boards=a.boards, alias_rate=a.alias_rate, confound=a.confound)
-        except ValueError as e:   # an option the other options rule out (autogen with deletions or boards)
-            p.error(f"synth: {e}")
+    pipeline.run_all(a.input, a.out, a.adapter, a.llm, a.config, a.roster, _field_map(a), gold=a.gold)
+
+
+def _ingest(a, p) -> None:
+    pipeline.ingest(a.input, RunDir(a.out), a.adapter, a.config, a.roster, _field_map(a))
+
+
+def _inspect(a, p) -> int:
+    from . import inspect
+    return inspect.inspect(a.input, a.config, _field_map(a))
+
+
+def _extract(a, p) -> None:
+    pipeline.extract(RunDir(a.run), llm=a.llm)
+
+
+def _expose(a, p) -> None:
+    pipeline.expose(RunDir(a.run))
+
+
+def _graph(a, p) -> None:
+    pipeline.build_graph(RunDir(a.run))
+
+
+def _report(a, p) -> None:
+    from . import report
+    report.build(RunDir(a.run), mapping=a.mapping, boot=a.boot)
+
+
+def _html(a, p) -> int:
+    from . import html
+    return html.main(a.run, a.mapping)
+
+
+def _sample_gold(a, p) -> None:
+    from . import validate
+    validate.sample(RunDir(a.run), a.n, a.seed, a.exclude, a.name)
+
+
+def _validate(a, p) -> int:
+    from . import validate
+    try:
+        res = validate.score(RunDir(a.run), a.gold, a.out_name)
+    except (OSError, ValueError) as e:
+        print(e, file=sys.stderr)
+        return 1
+    if res is None:
+        print(f"none of the labelled posts in {a.gold} is in {a.run}: nothing to score", file=sys.stderr)
+        return 1
+    print(dumps(res, indent=2))
     return 0
+
+
+def _check(a, p) -> int:
+    from . import checks
+    return checks.main(RunDir(a.run), a.mapping)
+
+
+def _truth_score(a, p) -> int:
+    from . import truthscore
+    return truthscore.main(RunDir(a.run), a.truth, a.mapping)
+
+
+def _crosssite(a, p) -> None:
+    from .crosssite_pipeline import run_crosssite
+    run_crosssite(a.wiki_run, a.corpus, a.out)
+
+
+def _compare(a, p) -> int:
+    from . import compare
+    return compare.main(a.run_a, a.run_b, a.mapping_a, a.mapping_b, a.out, a.limit, a.tol)
+
+
+def _suggest(a, p) -> int:
+    from . import suggest
+    return suggest.main(a.run, a.out)
+
+
+def _trace(a, p) -> int:
+    if (a.item is not None and a.agent is None) or (a.family is not None and a.agent is None and not a.list):
+        p.error("trace: --item goes with --agent, --family with --agent or --list")
+    from . import query
+    return query.trace(a.run, agent=a.agent, item=a.item, family=a.family, answer=a.answer, fact=a.fact,
+                       event=a.event, mapping=a.mapping, json_path=a.json, png_path=a.png, limit=a.limit)
+
+
+def _agent(a, p) -> int:
+    from . import query
+    return query.agent(a.run, a.name, mapping=a.mapping, json_path=a.json)
+
+
+def _export(a, p) -> int:
+    from . import export
+    return export.export(a.run, a.out, a.tables or export.DEFAULT, a.format, a.mapping, a.all_columns)
+
+
+def _synth(a, p) -> None:
+    from . import synth
+    try:
+        synth.write(a.out, n_agents=a.agents, copy_rate=a.copy_rate, seed=a.seed, copy_from=a.copy_from,
+                    fmt=a.format, copy_ramp_h=a.copy_ramp_h, delete_rate=a.delete_rate, technique=a.technique,
+                    n_boards=a.boards, alias_rate=a.alias_rate, confound=a.confound)
+    except ValueError as e:   # an option the other options rule out (autogen with deletions or boards)
+        p.error(f"synth: {e}")
+
+
+# command -> handler(args, parser), returning the exit status (None for 0)
+COMMANDS = {"run": _run, "ingest": _ingest, "inspect": _inspect, "extract": _extract, "expose": _expose,
+            "graph": _graph, "report": _report, "html": _html, "sample-gold": _sample_gold, "validate": _validate,
+            "check": _check, "truth-score": _truth_score, "crosssite": _crosssite, "compare": _compare,
+            "suggest": _suggest, "trace": _trace, "agent": _agent, "export": _export, "synth": _synth}
+
+
+def main(argv: list[str] | None = None) -> int:
+    p = _parser()
+    a = p.parse_args(argv)
+    return COMMANDS[a.cmd](a, p) or 0
 
 
 if __name__ == "__main__":

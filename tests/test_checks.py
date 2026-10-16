@@ -4,6 +4,7 @@ copy with one table corrupted fails exactly the checks that table feeds."""
 import json
 import shutil
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -32,7 +33,7 @@ def _copy(clean, tmp_path) -> RunDir:
 
 def test_every_check_passes_on_the_synthetic_run(synth_run, clean):
     out = checks.check_run(RunDir(clean))
-    assert list(out.columns) == checks.COLS and set(out["check"]) == set(checks.SEVERITY) - {"summary_matches_tables"}
+    assert list(out.columns) == checks.COLS and set(out["check"]) == set(checks.CHECKS) - {"summary_matches_tables"}
     assert out["n_violations"].sum() == 0 and set(out["table"]) >= {"agents", "exposures_merged", "edges_strict"}
     saved = json.loads((clean / "checks.json").read_text())
     assert saved["n_checks"] == saved["n_pass"] == len(out) and saved["n_errors"] == 0
@@ -40,6 +41,22 @@ def test_every_check_passes_on_the_synthetic_run(synth_run, clean):
     text = (synth_run[0].path / "report.md").read_text()
     assert "**Integrity: 19/19 checks pass**" in text and "None fails." in text and "Not run" not in text
     assert json.loads((synth_run[0].path / "summary.json").read_text())["integrity"]["n_pass"] == 19
+
+
+def test_exposure_agrees_with_the_check_under_a_room_audience_and_untimed_mentions(synth_run):
+    """exposure.build on the seed-2 mentions with one board readable by half the agents and a fifth of the mentions
+    untimed: the check's own loop over the mentions finds every column as built, and the audience changes D."""
+    from swarmprov import claims, exposure
+    run = synth_run[0]
+    cl, mn = run.read("claims"), run.read("mentions")
+    rng = np.random.default_rng(0)
+    mn.loc[rng.random(len(mn)) < 0.2, "ts"] = pd.NaT
+    rounds, cons = claims.agent_rounds(cl, "agent_strict"), claims.consensus(cl, mn)
+    agents = sorted(set(mn["agent_strict"]))
+    aud = {"alpha-board": set(rng.choice(agents, size=len(agents) // 2, replace=False))}
+    ex = exposure.build(rounds, mn, cons, "agent_strict", audience=aud)
+    assert checks._exposure(ex, checks._facts(mn, "agent_strict"), aud, True) == []
+    assert (ex["D"] != exposure.build(rounds, mn, cons, "agent_strict")["D"]).sum() > 20
 
 
 def test_a_flipped_exposure_flag_fails_the_exposure_checks(clean, tmp_path):

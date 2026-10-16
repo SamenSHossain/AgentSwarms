@@ -192,15 +192,6 @@ def extract(run: RunDir, llm: str | None = None) -> None:
     _log(f"  {len(agents)} authors -> {agents['agent_merged'].nunique()} merged agents; claims: {counts}")
 
 
-def _lists(channels: pd.DataFrame) -> pd.DataFrame:
-    """Parquet stores the allow/deny lists as text; turn them back into lists."""
-    import ast
-    ch = channels.copy()
-    for c in ("allow", "deny"):
-        ch[c] = ch[c].map(lambda v: ast.literal_eval(v) if isinstance(v, str) and v.startswith("[") else (v if isinstance(v, list) else []))
-    return ch
-
-
 def _matcher(learned: dict) -> rules.ItemMatcher:
     im = rules.ItemMatcher()
     for f, items in learned.items():
@@ -208,7 +199,14 @@ def _matcher(learned: dict) -> rules.ItemMatcher:
     return im
 
 
+def _relabel(df: pd.DataFrame, labels: dict, cols: tuple[str, ...]) -> pd.DataFrame:
+    """``df`` with the agent labels in ``cols`` mapped through ``labels`` (a value it lacks is kept)."""
+    return df.assign(**{c: df[c].map(lambda v: labels.get(v, v)) for c in cols if c in df})
+
+
 def expose(run: RunDir) -> None:
+    """Mentions, then one exposure table per identity mapping; when the two mappings group the authors identically
+    (``identity.one_to_one``) the strict table is the merged one relabelled."""
     if not run.has("claims"):
         return
     ev, agents, cl = run.read("events"), run.read("agents"), run.read("claims")
@@ -228,13 +226,19 @@ def expose(run: RunDir) -> None:
     channels = run.read("channels") if run.has("channels") else None
     directory = run.read("directory") if run.has("directory") else None
     wall = json.loads((run.path / "profile.json").read_text()).get("clock") != "sequence"
+    same = identity.one_to_one(agents)
     for name, col in AGENT_COLS.items():
+        if name == "strict" and same is not None:
+            _log("  [strict] the same agents as merged under their strict labels")
+            ex = _relabel(ex, same, ("agent", "src_agent", "src_latest"))
+            run.write("exposures_strict", ex if len(ex) else empty("exposures"))
+            continue
         rounds = claims_mod.agent_rounds(cl, col) if len(cl) else pd.DataFrame()
-        aud = village.audience(_lists(channels), agents, col, directory) if channels is not None else None
+        aud = village.audience(village.channel_lists(channels), agents, col, directory) if channels is not None else None
         if aud:
             _log(f"  [{name}] {len(aud)} restricted channels limit who could read a mention")
         # A4's overturned value slots, the ones y_winner scores (the report finds the same slots from the same mentions)
-        slots = errors.value_slots(claims_mod.public(mn), col, **({} if wall else {"bin_h": None})) if len(rounds) else []
+        slots = errors.value_slots(claims_mod.public(mn), col, **errors.slot_rule(not wall)) if len(rounds) else []
         winners = {(s["family"], s["item"]): s["winner"] for s in slots if s["status"] == "overturned"}
         ex = exposure.build(rounds, mn, cons, col, audience=aud, wall_clock=wall, winners=winners) \
             if len(rounds) else pd.DataFrame()
@@ -247,7 +251,8 @@ def expose(run: RunDir) -> None:
 
 def build_graph(run: RunDir) -> None:
     """Edges and fact chains, the agent profiles, and the graph as GraphML and node-link JSON, per mapping.  Reply
-    edges only when the source has threading: elsewhere ``parent_id`` is a revision or summary id."""
+    edges only when the source has threading: elsewhere ``parent_id`` is a revision or summary id.  When the two
+    mappings group the authors identically, the strict relay edges and chains are the merged ones relabelled."""
     if not run.has("mentions"):
         return
     import networkx as nx
@@ -260,9 +265,13 @@ def build_graph(run: RunDir) -> None:
     res = None if seq else graph.CLOCK_RES_S
     pub = claims_mod.public(mn)   # a tool result or task message relays nothing: no other agent saw it
     posters = agents[agents["author_raw"].isin(claims_mod.public(events)["author_raw"])]   # citable; never `task`
+    same = identity.one_to_one(agents)
     for name, col in AGENT_COLS.items():
         ex = run.read(f"exposures_{name}")
-        rel, chains = graph.relay_edges(pub, col, res) if len(pub) else (pd.DataFrame(), pd.DataFrame())
+        if name == "strict" and same is not None:   # the merged relay trees under the strict labels
+            rel, chains = _relabel(rel, same, ("src", "dst")), _relabel(chains, same, ("originator",))
+        else:
+            rel, chains = graph.relay_edges(pub, col, res) if len(pub) else (pd.DataFrame(), pd.DataFrame())
         parts = [rel, graph.exposure_edges(ex) if len(ex) else pd.DataFrame(),
                  graph.citation_edges(tags, posters, col, cfg.cohort_regex)]
         note = ""

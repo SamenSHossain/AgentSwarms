@@ -135,6 +135,11 @@ def suffix(mapping: str) -> str:
     return "" if mapping == "merged" else f"_{mapping}"
 
 
+def other_mapping(mapping: str) -> str:
+    """The identity mapping a report under ``mapping`` gives its sensitivity lines from."""
+    return "strict" if mapping == "merged" else "merged"
+
+
 def empty(table: str) -> pd.DataFrame:
     return pd.DataFrame({c: pd.Series(dtype="object") for c in TABLES[table]})
 

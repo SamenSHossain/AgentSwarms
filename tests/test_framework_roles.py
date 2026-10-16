@@ -10,7 +10,7 @@ import pytest
 
 from swarmprov import adapters, cli, pipeline, query, synth
 from swarmprov.adapters import framework
-from swarmprov.adapters.chat import ChatAdapter, _pick
+from swarmprov.adapters.chat import ChatAdapter, pick_field
 
 PHANTOMS = {"unknown", "task", "tool", "user", "lookup"}
 ROUNDS = [("Poland", "0.2"), ("Hungary", "-0.9"), ("Chile", "0.2")]
@@ -68,7 +68,7 @@ def autogen(tmp_path_factory):
 
 
 def _role(m: dict):
-    return framework.role(m, _pick(m, "author", {}))
+    return framework.role(m, pick_field(m, "author", {}))
 
 
 def test_roles_of_openai_langchain_autogen_and_anthropic_messages():

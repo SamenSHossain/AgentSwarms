@@ -115,7 +115,8 @@ def test_dose_is_flat_without_a_ramp_and_stays_out_of_the_a2_headline(synth_run)
     d = summary["A2_dose"]
     assert d["label"].startswith("exploratory") and d["min_bin_agents"] == causal.MIN_BIN_AGENTS
     assert d["min_informative"] == causal.MIN_INFORMATIVE and d["rows"][0]["loo_lo"] is not None
-    assert len(d["rows"]) == len(causal.DOSE_OUTCOMES) * (1 + len(causal.HEAD_BINS)) and d["other_mapping"]
+    assert len(d["rows"]) == len(causal.DOSE_OUTCOMES) * (1 + len(causal.HEAD_BINS))
+    assert "other_mapping" not in d   # both mappings group the seed-2 authors alike (test_identity)
     assert {r["outcome"] for r in summary["A2"]} >= {"y_instant", "y_consensus"}    # the A2 table is unchanged
 
 

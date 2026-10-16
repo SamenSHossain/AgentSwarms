@@ -1,3 +1,4 @@
+import base64
 import shutil
 import sys
 from pathlib import Path
@@ -6,6 +7,35 @@ import pandas as pd
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from swarmprov import plotting  # noqa: E402
+
+RAW = Path(__file__).resolve().parents[1] / "data" / "raw"
+# a valid 1x1 PNG, written in place of every figure outside the tests marked `figures`
+ONE_PIXEL_PNG = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==")
+SAVE = plotting.save
+
+
+def _one_pixel(fig, path) -> str:
+    plotting.plt.close(fig)
+    Path(path).write_bytes(ONE_PIXEL_PNG)
+    return str(path)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _figures_not_rasterised():
+    """Figures are drawn but not rasterised (the tight-bbox pass is most of a figure's cost): plotting.save writes a
+    1-pixel PNG, which the report links and html inlines like any other.  Session-wide, so the shared runs are built
+    this way too."""
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(plotting, "save", _one_pixel)
+        yield
+
+
+@pytest.fixture(autouse=True)
+def _figures_rasterised(request, monkeypatch):
+    """A test marked ``figures`` looks at the images it draws: plotting.save writes them."""
+    if request.node.get_closest_marker("figures"):
+        monkeypatch.setattr(plotting, "save", SAVE)
 
 
 @pytest.fixture(scope="session")
@@ -47,15 +77,15 @@ def synth_strict(synth_run, tmp_path_factory):
 
 @pytest.fixture(scope="session")
 def synth_null(tmp_path_factory):
-    """A 20-agent swarm that never copies (copy_rate 0: no answer is instant, so A2's latency outcome has no
-    variance), run through ``swarmprov run --gold`` on a label directory: ``toy_labels.jsonl``, four of whose eight
-    labelled posts are in the run, ``heldout_labels.jsonl``, all of whose four are, and ``notes.jsonl``, which is no
-    label file.  Returns (RunDir, truth dir)."""
+    """The 60-agent seed-2 swarm with copy_rate 0: answers are often public already, but nobody copies, so no answer
+    is instant and A2's latency outcome has no variance.  Run through ``swarmprov run --gold`` on a label directory:
+    ``toy_labels.jsonl``, four of whose eight labelled posts are in the run, ``heldout_labels.jsonl``, all of whose
+    four are, and ``notes.jsonl``, which is no label file.  Returns (RunDir, truth dir)."""
     import json
     from swarmprov import cli, synth
     from swarmprov.schema import RunDir
     d = tmp_path_factory.mktemp("synth_null")
-    path = synth.write(d / "transcript.jsonl", n_agents=20, seed=2, copy_rate=0.0)
+    path = synth.write(d / "transcript.jsonl", n_agents=60, seed=2, copy_rate=0.0)
     posts = [json.loads(line) for line in open(path)]
     path.write_text("".join(json.dumps(p | {"id": f"m{i}"}) + "\n" for i, p in enumerate(posts)))   # ids to label
     cfg = json.loads((d / "config.json").read_text()) | {"bootstrap_reps": 0}
@@ -70,3 +100,16 @@ def synth_null(tmp_path_factory):
     assert cli.main(["run", str(path), "-o", str(d / "run"), "--adapter", "chat", "--config", str(d / "cfg.json"),
                      "--gold", str(labels)]) == 0
     return RunDir(d / "run"), d
+
+
+@pytest.fixture(scope="session")
+def wiki_run(tmp_path_factory):
+    """The full wiki dump ingested and extracted once (about 25 s), for the tests on the real data."""
+    if not (RAW / "events.jsonl").exists():
+        pytest.skip("full wiki dump not present")
+    from swarmprov import pipeline
+    from swarmprov.schema import RunDir
+    run = RunDir(tmp_path_factory.mktemp("wiki") / "run")
+    pipeline.ingest(RAW, run)
+    pipeline.extract(run)
+    return run

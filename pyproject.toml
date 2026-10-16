@@ -27,3 +27,6 @@ swarmprov = "swarmprov.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["swarmprov*"]
+
+[tool.pytest.ini_options]
+markers = ["figures: draws real PNG files (elsewhere the test session's plotting.save writes a 1-pixel stand-in)"]

@@ -8,6 +8,7 @@ import pytest
 from swarmprov import plotting
 from swarmprov.analysis import causal, diffusion, errors, provenance, structure
 
+pytestmark = pytest.mark.figures
 T0 = pd.Timestamp("2026-06-20", tz="UTC")
 
 

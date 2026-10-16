@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import math
-from datetime import datetime
+from dataclasses import dataclass, field
 from fractions import Fraction
 from pathlib import Path
 
@@ -16,7 +16,8 @@ from .adapters.base import read_capabilities
 from .adapters.chat import no_author_warning
 from .analysis import agents as agents_mod, causal, diffusion, errors, origins, provenance, structure, uncertainty
 from .claims import agent_rounds, consensus, public, value_key
-from .schema import TABLES, RunDir, suffix
+from .fmt import dumps, json_safe, pct
+from .schema import TABLES, RunDir, other_mapping, suffix
 
 
 # capability -> (consequence when the source has it, consequence when it does not)
@@ -69,10 +70,6 @@ def md_table(df: pd.DataFrame, floatfmt: str = "{:.2f}", pct: tuple[str, ...] = 
     return "\n".join(lines) + "\n"
 
 
-def _pct(x) -> str:
-    return "n/a" if x is None or (isinstance(x, float) and math.isnan(x)) else f"{x:.0%}"
-
-
 def _span(lo, hi, hours: bool = False, fmt: str = "{:.0%}") -> str:
     """An interval's bounds: "88–96%", "9.0–16.5 h", or with ``fmt`` a number format ("{:.2f}")."""
     if hours:
@@ -117,28 +114,8 @@ def _roster_block(run: RunDir, prof: dict, summary: dict) -> list[str]:
 
 def _cell(v):
     """A summary.json cell: missing values as null, timestamps in ISO format, anything else not JSON as text."""
-    v = _json_safe(v)
+    v = json_safe(v)
     return v if v is None or isinstance(v, (int, float, str, bool)) else str(v)
-
-
-def _json_safe(obj):
-    """``summary.json`` as strict JSON: NaN, infinities and NaT become null, timestamps ISO text, numpy scalars
-    Python numbers."""
-    if isinstance(obj, dict):
-        return {k: _json_safe(v) for k, v in obj.items()}
-    if isinstance(obj, (list, tuple)):
-        return [_json_safe(v) for v in obj]
-    if obj is None or obj is pd.NaT:
-        return None
-    if isinstance(obj, datetime):
-        return obj.isoformat()
-    if isinstance(obj, (bool, np.bool_)):
-        return bool(obj)
-    if isinstance(obj, (int, np.integer)):
-        return int(obj)
-    if isinstance(obj, (float, np.floating)):
-        return float(obj) if math.isfinite(obj) else None
-    return obj
 
 
 def _jsonable(obj):
@@ -156,9 +133,8 @@ def _jsonable(obj):
 
 
 def _village_block(run: RunDir, prof: dict, summary: dict) -> list[str]:
-    from .pipeline import _lists
     directory = run.read("directory") if run.has("directory") else None
-    channels = _lists(run.read("channels")) if run.has("channels") else None
+    channels = village_mod.channel_lists(run.read("channels")) if run.has("channels") else None
     ev = run.read("events") if prof["n_events"] else None
     activity = run.read("activity") if run.has("activity") else None
     roster = run.read("roster") if run.has("roster") else None
@@ -261,500 +237,617 @@ def _write(run: RunDir, L: list[str], summary: dict, mapping: str) -> str:
     ``report_strict.html`` beside them."""
     text, sfx = "\n".join(L), suffix(mapping)
     (run.path / f"report{sfx}.md").write_text(text)
-    (run.path / f"summary{sfx}.json").write_text(json.dumps(_json_safe(summary), indent=2, default=str, allow_nan=False))
+    (run.path / f"summary{sfx}.json").write_text(dumps(summary, indent=2))
     print(f"[swarmprov] wrote {run.path / f'report{sfx}.md'}")
     from .html import build_html
     build_html(run, mapping)
     return text
 
 
+@dataclass
+class _Ctx:
+    """What one report's sections read: the run, its settings and tables, and the summary they fill in order.  The
+    A4 value slots and the graph statistics are found once (``_slots``, ``_a5``) and read by later sections."""
+    run: RunDir
+    mapping: str
+    cfg: object
+    boot: int
+    prof: dict
+    caps: dict
+    notes: dict
+    summary: dict
+    seq: bool
+    agent_col: str
+    alt: str
+    events: pd.DataFrame
+    posts: pd.DataFrame
+    pseudo: list
+    agents: pd.DataFrame
+    claims: pd.DataFrame
+    tags: pd.DataFrame
+    mentions: pd.DataFrame
+    rounds: pd.DataFrame
+    ex: pd.DataFrame
+    ex_alt: pd.DataFrame
+    edges: pd.DataFrame
+    chains: pd.DataFrame
+    roster: bool
+    catch_all: str | None
+    untimed: int
+    same: bool   # both mappings group the author strings identically: no sensitivity under the other one
+    # A4's value slots (``_slots``): A2 warns where the consensus it scores against is not A4's winner
+    rule: dict = field(default_factory=dict)
+    n_untimed_mn: int = 0
+    timed_mn: bool = False
+    vs: list = field(default_factory=list)
+    cons: dict = field(default_factory=dict)
+    prov: dict = field(default_factory=dict)
+    split: list = field(default_factory=list)
+    n_split_rounds: int = 0
+    n_split_zero: int = 0
+    # the graph statistics (``_a5``), read by the Agents section and A6
+    r5: dict | None = None
+    r6: dict = field(default_factory=dict)
+    ws: pd.DataFrame | None = None
+    profiles: pd.DataFrame | None = None
+
+
 def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
     """``boot``: bootstrap resamples behind the intervals (default: the config's ``bootstrap_reps``; 0 = none).  A
     strict report writes its files with a ``_strict`` suffix (``schema.suffix``), beside the merged one."""
     prof = json.loads((run.path / "profile.json").read_text())
-    from .pipeline import load_config, mined_techniques
+    from .pipeline import load_config
     cfg = load_config(run, stage="report")
     boot = cfg.bootstrap_reps if boot is None else boot
     if isinstance(boot, bool) or not isinstance(boot, (int, np.integer)) or boot < 0:
         raise SystemExit(f"bootstrap_reps (the config setting, or report --boot) must be a whole number, 0 or more "
                          f"(0 leaves the intervals out); got {boot!r}")
-    caps = read_capabilities(prof)
     if not prof["n_events"]:
-        summary = {"profile": {k: prof[k] for k in ("adapter", "source", "n_events")},
-                   "funnel": _funnel_counts(*[pd.DataFrame()] * 4)}
-        notes = prof.get("notes") or {}
-        if notes.get("swarmtraces"):
-            L = _swarmtraces_block(prof, notes["swarmtraces"], summary)
-            return _write(run, L, summary, mapping)
-        becomes = (f"The roster below becomes task families and cohorts when attached to a transcript: "
-                   f"`swarmprov run TRANSCRIPT --roster {prof['source']}`." if prof["adapter"] == "roster" else
-                   "The tables below become task families, cohorts, channel lifecycle and audiences once a message "
-                   "table sits next to them (or is attached with `--roster`).")
-        L = ["# Context report (no posts)\n",
-             f"Source: `{prof['source']}` (adapter `{prof['adapter']}`) holds no posts, so there is no provenance to "
-             f"analyse. {becomes}\n"] + _warnings(prof, summary)
-        L += _village_block(run, prof, summary)
-        if run.has("roster"):
-            L += _roster_block(run, prof, summary)
-        return _write(run, L, summary, mapping)
-    agent_col = "agent_merged" if mapping == "merged" else "agent_strict"
-    ex = run.read(f"exposures_{mapping}")
-    alt = "strict" if mapping == "merged" else "merged"
+        return _no_posts(run, prof, mapping)
+    c = _context(run, mapping, cfg, boot, prof)
+    L = _header(c) + _funnel(c.events, c.tags, c.claims, c.rounds, mapping, c.catch_all, c.summary)
+    L += _village_block(run, prof, c.summary)
+    if run.has("roster"):
+        L += _roster_block(run, prof, c.summary)
+    L += _lifecycle_blocks(c)
+    L += _a1(c)
+    _slots(c)
+    for section in (_a2, _a3, _a4, _a5):
+        L += section(c)
+    L += _agents_block(c.profiles, mapping, c.summary)
+    L += _a6(c) + _validation(c) + _limitations(c)
+    L[2:2] = _headline(run, c.summary, mapping)
+    return _write(run, L, c.summary, mapping)
+
+
+def _no_posts(run: RunDir, prof: dict, mapping: str) -> str:
+    """A source with no posts: the swarm traces reconstruction report, or the context tables (Village, roster)."""
+    summary = {"profile": {k: prof[k] for k in ("adapter", "source", "n_events")},
+               "funnel": _funnel_counts(*[pd.DataFrame()] * 4)}
+    notes = prof.get("notes") or {}
+    if notes.get("swarmtraces"):
+        return _write(run, _swarmtraces_block(prof, notes["swarmtraces"], summary), summary, mapping)
+    becomes = (f"The roster below becomes task families and cohorts when attached to a transcript: "
+               f"`swarmprov run TRANSCRIPT --roster {prof['source']}`." if prof["adapter"] == "roster" else
+               "The tables below become task families, cohorts, channel lifecycle and audiences once a message "
+               "table sits next to them (or is attached with `--roster`).")
+    L = ["# Context report (no posts)\n",
+         f"Source: `{prof['source']}` (adapter `{prof['adapter']}`) holds no posts, so there is no provenance to "
+         f"analyse. {becomes}\n"] + _warnings(prof, summary)
+    L += _village_block(run, prof, summary)
+    if run.has("roster"):
+        L += _roster_block(run, prof, summary)
+    return _write(run, L, summary, mapping)
+
+
+def _context(run: RunDir, mapping: str, cfg, boot: int, prof: dict) -> _Ctx:
+    ex, alt = run.read(f"exposures_{mapping}"), other_mapping(mapping)
     ex_alt = run.read(f"exposures_{alt}")
     missing = [c for c in TABLES["exposures"] if c not in ex.columns or c not in ex_alt.columns]
     if missing and len(ex.columns):   # a 0x0 table from a run with no agent-rounds has nothing to miss
         raise SystemExit(f"{run.path}: the exposure tables predate this version (no {', '.join(missing)}); "
                          f"rerun `swarmprov expose {run.path}`, then `graph` and `report`")
-    claims, tags, mentions = run.read("claims"), run.read("tags"), public(run.read("mentions"))
-    edges, chains = run.read(f"edges_{mapping}"), run.read(f"chains_{mapping}")
-    events = run.read("events")
-    notes = prof.get("notes") or {}
+    events, claims, agent_col = run.read("events"), run.read("claims"), agents_mod.AGENT_COLS[mapping]
     seq = prof.get("clock") == "sequence"   # posts ordered by message position: nothing measured in hours
-    figs, summary = {}, {"mapping": mapping, "profile": {
+    summary = {"mapping": mapping, "profile": {
         k: pd.Timestamp(prof[k]).isoformat() if k.endswith("_ts") and prof.get(k) else prof.get(k)
         for k in ("adapter", "n_events", "n_authors", "first_ts", "last_ts", "clock")}}
     # the framework pseudo-authors, when they wrote no agent's post: the task and unattributed tool output
     posts = public(events)
     pseudo = [a for a in ("task", "tool") if a in set(events["author_raw"]) - set(posts["author_raw"])]
-    L: list[str] = []
-    L.append(f"# Copied or computed? — provenance report\n")
-    L.append(f"Source: `{prof['source']}` (adapter `{prof['adapter']}`), {prof['n_events']:,} posts from "
-             f"{prof['n_authors'] - len(pseudo):,} author strings" + (f" plus {' and '.join(f'`{a}`' for a in pseudo)}"
-                                                                    if pseudo else "") + ", " + _when(prof, notes)
-             + f"Agent identity mapping: **{mapping}** (sensitivity under the other mapping below).\n")
-    L.append("## Data capabilities\n")
-    L.append("| capability | available | consequence |\n|---|---|---|")
+    rounds = agent_rounds(claims, agent_col) if len(claims) else pd.DataFrame()
+    roster = run.has("roster") or run.has("eras")
+    catch_all = identity.catch_all_family(cfg, roster)
+    return _Ctx(run=run, mapping=mapping, cfg=cfg, boot=boot, prof=prof, caps=read_capabilities(prof),
+                notes=prof.get("notes") or {}, summary=summary, seq=seq, agent_col=agent_col, alt=alt,
+                events=events, posts=posts, pseudo=pseudo, agents=run.read("agents"), claims=claims,
+                tags=run.read("tags"), mentions=public(run.read("mentions")), rounds=rounds, ex=ex, ex_alt=ex_alt,
+                edges=run.read(f"edges_{mapping}"), chains=run.read(f"chains_{mapping}"), roster=roster,
+                catch_all=catch_all if catch_all and (events["family"] == catch_all).any() else None,
+                untimed=int(rounds["t_report"].isna().sum()) if len(rounds) else 0,
+                same=identity.one_to_one(run.read("agents")) is not None)
+
+
+def _header(c: _Ctx) -> list[str]:
+    """Title, source, the data capabilities, identity merges, ingest's warnings and the clock notes."""
+    prof, notes = c.prof, c.notes
+    L = ["# Copied or computed? — provenance report\n",
+         f"Source: `{prof['source']}` (adapter `{prof['adapter']}`), {prof['n_events']:,} posts from "
+         f"{prof['n_authors'] - len(c.pseudo):,} author strings" + (f" plus {' and '.join(f'`{a}`' for a in c.pseudo)}"
+                                                                      if c.pseudo else "") + ", " + _when(prof, notes)
+         + f"Agent identity mapping: **{c.mapping}** (sensitivity under the other mapping below).\n",
+         "## Data capabilities\n", "| capability | available | consequence |\n|---|---|---|"]
     n_untimed = prof.get("n_untimed") or 0
-    for k, v in caps.items():
+    for k, v in c.caps.items():
         yes, no = CONSEQUENCES.get(k, ("", ""))
         if k == "has_wall_clock" and prof.get("first_ts") and n_untimed:   # too few timestamps for a clock, but real ones
             no = (f"only the {prof['n_events'] - n_untimed:,} of {prof['n_events']:,} posts with a timestamp are ordered "
                   "by real time")
         L.append(f"| {k} | {'yes' if v else 'no'} | {yes if v else no} |")
     L.append("")
-    explicit = bool(caps.get("has_explicit_author"))
-    ag = run.read("agents")
-    L.append(_identity_merges(ag[~ag["author_raw"].isin(pseudo)], explicit) + "\n")
-    L += _warnings(prof, summary)
+    L.append(_identity_merges(c.agents[~c.agents["author_raw"].isin(c.pseudo)], bool(c.caps.get("has_explicit_author")))
+             + "\n")
+    L += _warnings(prof, c.summary)
     if notes.get("clock_grades"):
-        L.append((_needs_clock("Clock quality notes") if seq else _clock_note(notes, ex, events)) + "\n")
-    rounds = agent_rounds(claims, agent_col) if len(claims) else pd.DataFrame()
-    roster = run.has("roster") or run.has("eras")
-    catch_all = identity.catch_all_family(cfg, roster)
-    catch_all = catch_all if catch_all and (events["family"] == catch_all).any() else None
-    L += _funnel(events, tags, claims, rounds, mapping, catch_all, summary)
-    L += _village_block(run, prof, summary)
-    if run.has("roster"):
-        L += _roster_block(run, prof, summary)
-    if run.has("lifecycle"):
-        lc = run.read("lifecycle")
+        L.append((_needs_clock("Clock quality notes") if c.seq else _clock_note(notes, c.ex, c.events)) + "\n")
+    return L
+
+
+def _lifecycle_blocks(c: _Ctx) -> list[str]:
+    """Page deletions and recreations (``summary['deletions']``) and the request-log probes (``summary['probes']``)."""
+    L = []
+    if c.run.has("lifecycle"):
+        lc = c.run.read("lifecycle")
         dels = lc[lc["action"] == "delete"] if len(lc) else lc
         # page-level deletions (the wiki dump records each with an event id); room deletions are covered in the Village block
-        if len(dels) and "event_id" in dels and dels["event_id"].notna().any() and seq:
+        if len(dels) and "event_id" in dels and dels["event_id"].notna().any() and c.seq:
             L.append(_needs_clock("Deletions and recreations (deletion times are real times)") + "\n")
         elif len(dels) and "event_id" in dels and dels["event_id"].notna().any():
-            ds = lifecycle_mod.deletion_summary(lc, events, notes.get("recreation_check"))
-            summary["deletions"] = _jsonable({k: v for k, v in ds.items() if k != "check"}
-                                             | {"check": {k: v for k, v in (ds.get("check") or {}).items() if k != "restored_event_ids"}})
-            L += lifecycle_mod.deletion_section(ds, _pct)
-    if run.has("probes"):
-        ps = lifecycle_mod.probe_summary(run.read("probes"))
-        summary["probes"] = _jsonable(ps)
+            ds = lifecycle_mod.deletion_summary(lc, c.events, c.notes.get("recreation_check"))
+            c.summary["deletions"] = _jsonable({k: v for k, v in ds.items() if k != "check"}
+                                               | {"check": {k: v for k, v in (ds.get("check") or {}).items()
+                                                            if k != "restored_event_ids"}})
+            L += lifecycle_mod.deletion_section(ds, pct)
+    if c.run.has("probes"):
+        ps = lifecycle_mod.probe_summary(c.run.read("probes"))
+        c.summary["probes"] = _jsonable(ps)
         L += lifecycle_mod.probe_section(ps)
+    return L
 
-    # A1
-    untimed = int(rounds["t_report"].isna().sum()) if len(rounds) else 0
-    if len(ex):
-        r1 = provenance.summarize(ex, wall_clock=not seq, boot=boot)
-        figs["provenance"] = provenance.figure(ex, r1, run.figure("a1_provenance.png", mapping), wall_clock=not seq)
-        summary["A1"] = {k: v for k, v in r1.items() if not isinstance(v, pd.DataFrame)} | (
-            {"n_rounds_untimed": untimed} if untimed else {})
-        if boot:
-            summary["A1"]["bootstrap"] = {"reps": boot, "cluster": provenance.CLUSTER, "level": uncertainty.LEVEL,
-                                          "seed": 0, "min_clusters": uncertainty.MIN_CLUSTERS}
 
-        def ci(k: str, first: bool = False, hours: bool = False) -> str:
-            lo_hi = r1.get(f"{k}_ci")
-            if not lo_hi:
-                return ""
-            return f" ({'95% CI ' if first else ''}{_span(*lo_hi, hours=hours)})"
-        L.append(f"## {SECTIONS['A1']}\n")
-        L.append(f"**{r1['n_answers']:,} answers given by {r1['n_agents']:,} agents; "
-                 f"{r1['n_independent']:,} independent lookups** (nothing carrying that answer was public when the agent reported it). "
-                 f"{_pct(r1['share_exposed'])}{ci('share_exposed', first=True)} of answers were already public before the report"
-                 + (". " if seq else
-                    f", {_pct(r1['share_exposed_60m'])}{ci('share_exposed_60m')} at least an hour before (robust to the "
-                    "unknown lag between a question's arrival and its report). "
-                    + (f"Median head start: {r1['median_gap_h']:.1f} h{ci('median_gap_h', hours=True)}. "
-                       if r1["median_gap_h"] == r1["median_gap_h"] else ""))
-                 + f"In {_pct(r1['share_self_prepared'])}{ci('share_self_prepared')} of rounds the agent itself had posted "
-                   "the answer in advance.\n")
-        if ci("share_exposed"):
-            L.append(f"Intervals are 95% percentile intervals from {boot:,} resamples of whole **items**: answers to one "
-                     "item are not independent (one first poster supplies most of its exposures), so they are drawn "
-                     "together. The intervals cover sampling noise across items only, not "
-                     "identity-mapping or extraction error. The family and round rows below resample their own items "
-                     f"and get no interval from fewer than {uncertainty.MIN_CLUSTERS}.\n")
-        kinds = set(events["source_kind"].dropna())
-        if kinds & {"tool_result", "task"}:
-            fw = provenance.framework_split(ex, tools="tool_result" in kinds, task="task" in kinds)
-            summary["A1"].update(fw)
-            L.append(_framework_a1(fw, r1["n_independent"], r1["n_answers"]) + "\n")
-        if seq:
-            L.append(_needs_clock("The ≥10 min and ≥1 h shares, the head start in hours and exposure by required head "
-                                  "start") + "\n")
-        if untimed:
-            L.append(f"{untimed:,} agent-round{'s have' if untimed > 1 else ' has'} no timestamp and "
-                     f"{'are' if untimed > 1 else 'is'} left out: nothing can be ordered against "
-                     f"{'them' if untimed > 1 else 'it'}.\n")
-        if "D_visible" in ex and caps.get("has_lifecycle") and seq:
-            L.append(_needs_clock("Deletion-aware shares (D_visible)") + "\n")
-        elif "D_visible" in ex and caps.get("has_lifecycle"):
-            L.append(_visibility_note(ex) + "\n")
-            summary["A1"].update(_visibility_counts(ex))
-        L.append(f"![provenance](figures/{run.figure('a1_provenance.png', mapping).name})\n")
-        L.append(md_table(_with_ci(r1["by_family"], ("exposed", "exposed_60m")),
-                          pct=("exposed", "exposed_60m", "self_prepared", "instant")))
-        every = r1["by_family_all"]
-        run.write(f"a1_by_family_{mapping}", every.reset_index())
-        small = every[~every.index.isin(r1["by_family"].index)]
-        if len(small):
-            L.append(f"{len(small):,} smaller famil{'y' if len(small) == 1 else 'ies'} (fewer than "
-                     f"{provenance.FAMILY_MIN_N} answers, {int(small['n'].sum()):,} answers in all) "
-                     f"{'is' if len(small) == 1 else 'are'} not shown; `a1_by_family_{mapping}.parquet` lists all "
-                     f"{len(every):,}.\n")
-        L.append("\nBy round:\n")
-        L.append(md_table(_with_ci(r1["by_episode"], ("exposed", "exposed_60m")), pct=("exposed", "exposed_60m", "instant")))
-        if len(ex_alt):
-            L.append(f"\n_Sensitivity_: under the other identity mapping, {len(ex_alt):,} agent-rounds, "
-                     f"{_pct(ex_alt['D'].mean())} exposed" + ("" if seq else f", {_pct(ex_alt['D_w60m'].mean())} exposed ≥1 h") + ".\n")
-        if not seq:
-            L += _threshold_block(run.figure("a1_threshold.png", mapping), ex, bool(caps.get("has_lifecycle")), summary)
-        lat = ex.assign(latency_s=ex["claim_id"].map(rounds.set_index("claim_id")["latency_s"]))
-        L += _instant_block(provenance.instant_sweep(lat, k_cfg=cfg.instant_threshold_s), summary)
-    else:
-        L += _skipped("A1", "needs agent-rounds (an agent's answer to an item in a task family); "
-                      + _a1_gap(claims, rounds, _family_hint(cfg, roster)), summary)
+def _ci_text(a: dict, key: str, hours: bool = False, first: bool = False) -> str:
+    """An A1 statistic's interval, " (95% CI 88–96%)" (the level named at the ``first`` one only), from a summary
+    holding ``<key>_ci`` and its ``bootstrap``; "" without one."""
+    lo_hi = a.get(f"{key}_ci")
+    if not lo_hi:
+        return ""
+    level = f"{a['bootstrap']['level']:.0%} CI " if first and a.get("bootstrap") else ""
+    return f" ({level}{_span(*lo_hi, hours=hours)})"
 
-    # A4's value slots come first: A2 warns where the consensus it scores against is not A4's winner
-    n_untimed_mn = int(mentions["ts"].isna().sum()) if len(mentions) else 0
-    timed_mn = len(mentions) > n_untimed_mn
-    rule = {"bin_h": None} if seq else {}   # no hours: the whole run is one majority bin
-    vs = errors.value_slots(mentions, agent_col, **rule) if timed_mn else []
-    cons = consensus(claims, mentions) if vs and len(claims) else {}
-    prov = {s["slot"]: errors.variant_provenance(s, ex, cons.get((s["family"], s["item"]))) for s in vs} if len(ex) else {}
-    split = [s for s in vs if errors.consensus_disagrees(s, cons.get((s["family"], s["item"])))]
-    # the answer rounds on those slots that state the winner, and how many of them y_consensus scores 0
+
+def _a1(c: _Ctx) -> list[str]:
+    ex, seq, run, mapping, summary = c.ex, c.seq, c.run, c.mapping, c.summary
+    if not len(ex):
+        return _skipped("A1", "needs agent-rounds (an agent's answer to an item in a task family); "
+                        + _a1_gap(c.claims, c.rounds, _family_hint(c.cfg, c.roster)), summary)
+    r1 = provenance.summarize(ex, wall_clock=not seq, boot=c.boot)
+    provenance.figure(ex, r1, run.figure("a1_provenance.png", mapping), wall_clock=not seq)
+    a = summary["A1"] = {k: v for k, v in r1.items() if not isinstance(v, pd.DataFrame)} | (
+        {"n_rounds_untimed": c.untimed} if c.untimed else {})
+    if c.boot:
+        a["bootstrap"] = {"reps": c.boot, "cluster": provenance.CLUSTER, "level": uncertainty.LEVEL,
+                          "seed": 0, "min_clusters": uncertainty.MIN_CLUSTERS}
+    L = [f"## {SECTIONS['A1']}\n",
+         f"**{r1['n_answers']:,} answers given by {r1['n_agents']:,} agents; "
+         f"{r1['n_independent']:,} independent lookups** (nothing carrying that answer was public when the agent reported it). "
+         f"{pct(r1['share_exposed'])}{_ci_text(a, 'share_exposed', first=True)} of answers were already public before the report"
+         + (". " if seq else
+            f", {pct(r1['share_exposed_60m'])}{_ci_text(a, 'share_exposed_60m')} at least an hour before (robust to the "
+            "unknown lag between a question's arrival and its report). "
+            + (f"Median head start: {r1['median_gap_h']:.1f} h{_ci_text(a, 'median_gap_h', hours=True)}. "
+               if r1["median_gap_h"] == r1["median_gap_h"] else ""))
+         + f"In {pct(r1['share_self_prepared'])}{_ci_text(a, 'share_self_prepared')} of rounds the agent itself had posted "
+           "the answer in advance.\n"]
+    if _ci_text(a, "share_exposed"):
+        L.append(f"Intervals are 95% percentile intervals from {c.boot:,} resamples of whole **items**: answers to one "
+                 "item are not independent (one first poster supplies most of its exposures), so they are drawn "
+                 "together. The intervals cover sampling noise across items only, not "
+                 "identity-mapping or extraction error. The family and round rows below resample their own items "
+                 f"and get no interval from fewer than {uncertainty.MIN_CLUSTERS}.\n")
+    kinds = set(c.events["source_kind"].dropna())
+    if kinds & {"tool_result", "task"}:
+        fw = provenance.framework_split(ex, tools="tool_result" in kinds, task="task" in kinds)
+        a.update(fw)
+        L.append(_framework_a1(fw, r1["n_independent"], r1["n_answers"]) + "\n")
+    if seq:
+        L.append(_needs_clock("The ≥10 min and ≥1 h shares, the head start in hours and exposure by required head "
+                              "start") + "\n")
+    if c.untimed:
+        n = c.untimed
+        L.append(f"{n:,} agent-round{'s have' if n > 1 else ' has'} no timestamp and {'are' if n > 1 else 'is'} left "
+                 f"out: nothing can be ordered against {'them' if n > 1 else 'it'}.\n")
+    if "D_visible" in ex and c.caps.get("has_lifecycle") and seq:
+        L.append(_needs_clock("Deletion-aware shares (D_visible)") + "\n")
+    elif "D_visible" in ex and c.caps.get("has_lifecycle"):
+        L.append(_visibility_note(ex) + "\n")
+        a.update(_visibility_counts(ex))
+    L.append(f"![provenance](figures/{run.figure('a1_provenance.png', mapping).name})\n")
+    L.append(md_table(_with_ci(r1["by_family"], ("exposed", "exposed_60m")),
+                      pct=("exposed", "exposed_60m", "self_prepared", "instant")))
+    every = r1["by_family_all"]
+    run.write(f"a1_by_family_{mapping}", every.reset_index())
+    small = every[~every.index.isin(r1["by_family"].index)]
+    if len(small):
+        L.append(f"{len(small):,} smaller famil{'y' if len(small) == 1 else 'ies'} (fewer than "
+                 f"{provenance.FAMILY_MIN_N} answers, {int(small['n'].sum()):,} answers in all) "
+                 f"{'is' if len(small) == 1 else 'are'} not shown; `a1_by_family_{mapping}.parquet` lists all "
+                 f"{len(every):,}.\n")
+    L.append("\nBy round:\n")
+    L.append(md_table(_with_ci(r1["by_episode"], ("exposed", "exposed_60m")), pct=("exposed", "exposed_60m", "instant")))
+    if c.same:
+        L.append(f"\n_Sensitivity_: both identity mappings group the author strings identically (each merged agent is "
+                 f"one strict agent), so every number in this report is the same under the {c.alt} mapping and none "
+                 "is repeated for it.\n")
+    elif len(c.ex_alt):
+        L.append(f"\n_Sensitivity_: under the other identity mapping, {len(c.ex_alt):,} agent-rounds, "
+                 f"{pct(c.ex_alt['D'].mean())} exposed" + ("" if seq else f", {pct(c.ex_alt['D_w60m'].mean())} exposed ≥1 h")
+                 + ".\n")
+    if not seq:
+        L += _threshold_block(run.figure("a1_threshold.png", mapping), ex, bool(c.caps.get("has_lifecycle")), summary)
+    lat = ex.assign(latency_s=ex["claim_id"].map(c.rounds.set_index("claim_id")["latency_s"]))
+    return L + _instant_block(provenance.instant_sweep(lat, k_cfg=c.cfg.instant_threshold_s), summary)
+
+
+def _slots(c: _Ctx) -> None:
+    """A4's value slots, their consensus and variant provenance, and the answer rounds on the slots whose consensus
+    is not the winner that state the winner (and how many of them y_consensus scores 0)."""
+    mentions, ex = c.mentions, c.ex
+    c.n_untimed_mn = int(mentions["ts"].isna().sum()) if len(mentions) else 0
+    c.timed_mn = len(mentions) > c.n_untimed_mn
+    c.rule = errors.slot_rule(c.seq)
+    c.vs = errors.value_slots(mentions, c.agent_col, **c.rule) if c.timed_mn else []
+    c.cons = consensus(c.claims, mentions) if c.vs and len(c.claims) else {}
+    c.prov = {s["slot"]: errors.variant_provenance(s, ex, c.cons.get((s["family"], s["item"]))) for s in c.vs} \
+        if len(ex) else {}
+    c.split = [s for s in c.vs if errors.consensus_disagrees(s, c.cons.get((s["family"], s["item"])))]
     key = ex["value_norm"].map(value_key) if len(ex) else None
     on_winner = [ex[(ex["family"] == s["family"]) & (ex["item"] == s["item"]) & (key == s["winner"])]
-                 for s in split] if len(ex) else []
-    n_split_rounds = sum(map(len, on_winner))
-    n_split_zero = sum(int((g["y_consensus"] == 0).sum()) for g in on_winner)
+                 for s in c.split] if len(ex) else []
+    c.n_split_rounds = sum(map(len, on_winner))
+    c.n_split_zero = sum(int((g["y_consensus"] == 0).sum()) for g in on_winner)
 
-    # A2
-    if len(ex) > 20:
-        est = causal.estimate(ex, wall_clock=not seq)
-        figs["causal"] = causal.figure(est, run.figure("a2_causal.png", mapping))
-        summary["A2"] = est.to_dict("records")
-        L.append(f"## {SECTIONS['A2']}\n")
-        L.append("Two-way fixed effects on agent-rounds, `Y ~ D_cons | agent + item`, SEs clustered by agent "
-                 "(agents and items with a single round dropped). Item FE absorb \"same question, same answer\"; "
-                 "agent FE absorb ability. Treatment `D_cons` = the consensus value for the item was public before the agent's report; "
-                 "it is defined without reference to the agent's own answer, so a wrong answer cannot mechanically produce D=0. "
-                 "Identifying assumption: an agent's place in the run order is unrelated to its ability. "
-                 + ("On a message-order run only the consensus outcome under `D_cons` is estimated: the ≥1 h treatment "
-                    "needs a wall clock, and the latency outcome (an instant answer, as the post states it) is left out "
-                    "with it, although A1's *instant* column and A5's *instant only* rows, read from the same text, are "
-                    "shown." if seq else
-                    "Latency would be the discriminating outcome (a common cause explains the same answer, not a 1-second answer on a 14-second timer); "
-                    "check `agents_with_D_variation` before reading it — when few agents switch exposure status the latency estimate is uninformative.")
-                 + "\n")
-        L.append(f"![causal](figures/{run.figure('a2_causal.png', mapping).name})\n")
-        cols = [c for c in ["outcome", "treatment", "beta", "se", "p", "n", "agents", "items",
-                            "agents_with_D_variation", "mean_y_D0", "mean_y_D1", "note"] if c in est]
-        L.append(md_table(est[cols], index=False, floatfmt="{:.3f}"))
-        if "y_winner" in set(est["outcome"]):
-            won, n_over = ex[ex["y_winner"].notna()], sum(s["status"] == "overturned" for s in vs)
-            L.append("`y_winner` is an extra row; the reading above stays on `y_consensus` and `y_instant`. It asks whether "
-                     "an answer states A4's winner (the most common value among a slot's late carriers) instead of the "
-                     f"consensus, on the value slots A4 calls overturned only ({n_over:,} here, "
-                     f"{won['item_fe'].nunique():,} with answer rounds that state a value, {len(won):,} rounds in all); "
-                     "every other round is left out, and so is a report's own correct or wrong flag, which grades the "
-                     "answer against the task, not the winner.\n")
-        if n_split_rounds:
-            L.append(f"**Warning:** on {len(split)} disputed slot{'s' * (len(split) != 1)} the consensus value that "
-                     "`y_consensus` scores against is not A4's winner (the later majority), and "
-                     f"{_zero_clause(n_split_rounds, n_split_zero)} (see A4).\n")
-        if len(ex_alt) > 20:
-            est_alt = causal.estimate(ex_alt, wall_clock=not seq)
-            if len(est_alt):
-                L.append("\n_Sensitivity (other identity mapping)_:\n")
-                L.append(md_table(est_alt[[c for c in ["outcome", "treatment", "beta", "se", "p", "n",
-                                                       "agents_with_D_variation", "note"] if c in est_alt]],
-                                  index=False, floatfmt="{:.3f}"))
-        L += ["\n" + _needs_clock("The exploratory dose-response estimates (how long the consensus had been public, in hours)")
-              + "\n"] if seq else _dose_block(run.figure("a2_dose.png", mapping), ex, ex_alt, est, summary)
-    else:
-        L += _skipped("A2", f"needs more than 20 {'timed ' if untimed else ''}agent-rounds; this run has {len(ex):,}"
-                      + (f" ({untimed:,} {'have' if untimed > 1 else 'has'} no timestamp)" if untimed else ""), summary)
 
-    # A3
-    r3 = diffusion.analyze(tags, cfg.techniques, agent_col) if len(tags) and cfg.techniques else {}
-    if r3:
-        figs["diffusion"] = None if seq else diffusion.figure(r3, run.figure("a3_diffusion.png", mapping),
-                                                              {t.name: t.families for t in cfg.techniques})
-        tbl = pd.DataFrame([{k: v for k, v in r.items() if k not in ("km", "adoptions")} | {"technique": n}
-                            for n, r in r3.items()])
-        tbl = tbl[[c for c in ["technique", "first_seen", "originator", "n_posts", "at_risk", "adopters", "adoption_share",
-                               "median_hours_to_adopt", "median_hours_to_adopt_lo", "median_hours_to_adopt_hi",
-                               "median_hours_among_adopters"]
-                   if not seq or not (c == "first_seen" or "hours" in c)]]
-        # the contagion test compares pages, so it needs more than one
-        con = diffusion.contagion(tags, events, cfg.techniques, agent_col) if posts["channel"].nunique() > 1 else {}
-        mined = {t.name for t in mined_techniques(run)} & set(r3)   # found by auto_techniques, not configured
-        summary["A3"] = [r | ({"contagion": {k: v for k, v in con[r["technique"]].items() if k != "agents"}}
-                              if r["technique"] in con else {}) | ({"mined": True} if r["technique"] in mined else {})
-                         for r in tbl.to_dict("records")]
-        ad = pd.concat([r["adoptions"] for r in r3.values()], ignore_index=True)
-        if con:
-            per = [c["agents"] for c in con.values() if "agents" in c]
-            if per:
-                ad = ad.merge(pd.concat(per, ignore_index=True), on=["technique", "agent"], how="left").astype(
-                    {"adopted_on_carrying_page": "boolean", "n_eligible_posts": "Int64"})
-            tbl = tbl.assign(**_contagion_cells(tbl["technique"], con))
-        if seq:   # positions are not hours
-            ad[["hours_from_first_seen", "censored_at_h"]] = np.nan
-        run.write(f"adoptions_{mapping}", ad)
+def _a2(c: _Ctx) -> list[str]:
+    ex, seq = c.ex, c.seq
+    if len(ex) <= 20:
+        return _skipped("A2", f"needs more than 20 {'timed ' if c.untimed else ''}agent-rounds; this run has {len(ex):,}"
+                        + (f" ({c.untimed:,} {'have' if c.untimed > 1 else 'has'} no timestamp)" if c.untimed else ""),
+                        c.summary)
+    est = causal.estimate(ex, wall_clock=not seq)
+    causal.figure(est, c.run.figure("a2_causal.png", c.mapping))
+    c.summary["A2"] = est.to_dict("records")
+    L = [f"## {SECTIONS['A2']}\n",
+         "Two-way fixed effects on agent-rounds, `Y ~ D_cons | agent + item`, SEs clustered by agent "
+         "(agents and items with a single round dropped). Item FE absorb \"same question, same answer\"; "
+         "agent FE absorb ability. Treatment `D_cons` = the consensus value for the item was public before the agent's report; "
+         "it is defined without reference to the agent's own answer, so a wrong answer cannot mechanically produce D=0. "
+         "Identifying assumption: an agent's place in the run order is unrelated to its ability. "
+         + ("On a message-order run only the consensus outcome under `D_cons` is estimated: the ≥1 h treatment "
+            "needs a wall clock, and the latency outcome (an instant answer, as the post states it) is left out "
+            "with it, although A1's *instant* column and A5's *instant only* rows, read from the same text, are "
+            "shown." if seq else
+            "Latency would be the discriminating outcome (a common cause explains the same answer, not a 1-second answer on a 14-second timer); "
+            "check `agents_with_D_variation` before reading it — when few agents switch exposure status the latency estimate is uninformative.")
+         + "\n",
+         f"![causal](figures/{c.run.figure('a2_causal.png', c.mapping).name})\n"]
+    cols = [k for k in ["outcome", "treatment", "beta", "se", "p", "n", "agents", "items",
+                        "agents_with_D_variation", "mean_y_D0", "mean_y_D1", "note"] if k in est]
+    L.append(md_table(est[cols], index=False, floatfmt="{:.3f}"))
+    if "y_winner" in set(est["outcome"]):
+        won, n_over = ex[ex["y_winner"].notna()], sum(s["status"] == "overturned" for s in c.vs)
+        L.append("`y_winner` is an extra row; the reading above stays on `y_consensus` and `y_instant`. It asks whether "
+                 "an answer states A4's winner (the most common value among a slot's late carriers) instead of the "
+                 f"consensus, on the value slots A4 calls overturned only ({n_over:,} here, "
+                 f"{won['item_fe'].nunique():,} with answer rounds that state a value, {len(won):,} rounds in all); "
+                 "every other round is left out, and so is a report's own correct or wrong flag, which grades the "
+                 "answer against the task, not the winner.\n")
+    if c.n_split_rounds:
+        L.append(f"**Warning:** on {len(c.split)} disputed slot{'s' * (len(c.split) != 1)} the consensus value that "
+                 "`y_consensus` scores against is not A4's winner (the later majority), and "
+                 f"{_zero_clause(c.n_split_rounds, c.n_split_zero)} (see A4).\n")
+    if len(c.ex_alt) > 20 and not c.same:
+        est_alt = causal.estimate(c.ex_alt, wall_clock=not seq)
+        if len(est_alt):
+            L.append("\n_Sensitivity (other identity mapping)_:\n")
+            L.append(md_table(est_alt[[k for k in ["outcome", "treatment", "beta", "se", "p", "n",
+                                                   "agents_with_D_variation", "note"] if k in est_alt]],
+                              index=False, floatfmt="{:.3f}"))
+    if seq:
+        return L + ["\n" + _needs_clock("The exploratory dose-response estimates (how long the consensus had been "
+                                        "public, in hours)") + "\n"]
+    return L + _dose_block(c.run.figure("a2_dose.png", c.mapping), ex, None if c.same else c.ex_alt, est, c.summary)
+
+
+def _a3(c: _Ctx) -> list[str]:
+    from .pipeline import mined_techniques
+    cfg, seq, run, mapping, tags = c.cfg, c.seq, c.run, c.mapping, c.tags
+    r3 = diffusion.analyze(tags, cfg.techniques, c.agent_col) if len(tags) and cfg.techniques else {}
+    if not r3:
+        return _skipped("A3", (f"`auto_techniques` mined no URL technique (no domain that {suggest.MIN_AGENTS} or more agents "
+                               f"posted has URLs that wrap another URL in {suggest.MIN_WRAP:.0%} of cases; `swarmprov suggest "
+                               "RUN` shows the evidence), and none is configured (config `techniques`: a name and a regex each)"
+                               if cfg.auto_techniques else
+                               "needs configured techniques (config `techniques`: a name and a regex each; `swarmprov suggest "
+                               "RUN` proposes URL ones from the posts, and `auto_techniques` mines them at extract)")
+                        if not cfg.techniques else
+                        f"none of the {len(cfg.techniques)} "
+                        + ("mined" if {t.name for t in cfg.techniques} == {t.name for t in mined_techniques(run)} else "configured")
+                        + " techniques appears in a post with a timestamp", c.summary)
+    fig = None if seq else diffusion.figure(r3, run.figure("a3_diffusion.png", mapping),
+                                            {t.name: t.families for t in cfg.techniques})
+    tbl = pd.DataFrame([{k: v for k, v in r.items() if k not in ("km", "adoptions")} | {"technique": n}
+                        for n, r in r3.items()])
+    tbl = tbl[[k for k in ["technique", "first_seen", "originator", "n_posts", "at_risk", "adopters", "adoption_share",
+                           "median_hours_to_adopt", "median_hours_to_adopt_lo", "median_hours_to_adopt_hi",
+                           "median_hours_among_adopters"]
+               if not seq or not (k == "first_seen" or "hours" in k)]]
+    # the contagion test compares pages, so it needs more than one
+    con = diffusion.contagion(tags, c.events, cfg.techniques, c.agent_col) if c.posts["channel"].nunique() > 1 else {}
+    mined = {t.name for t in mined_techniques(run)} & set(r3)   # found by auto_techniques, not configured
+    c.summary["A3"] = [r | ({"contagion": {k: v for k, v in con[r["technique"]].items() if k != "agents"}}
+                            if r["technique"] in con else {}) | ({"mined": True} if r["technique"] in mined else {})
+                       for r in tbl.to_dict("records")]
+    ad = pd.concat([r["adoptions"] for r in r3.values()], ignore_index=True)
+    if con:
+        per = [x["agents"] for x in con.values() if "agents" in x]
+        if per:
+            ad = ad.merge(pd.concat(per, ignore_index=True), on=["technique", "agent"], how="left").astype(
+                {"adopted_on_carrying_page": "boolean", "n_eligible_posts": "Int64"})
+        tbl = tbl.assign(**_contagion_cells(tbl["technique"], con))
+    if seq:   # positions are not hours
+        ad[["hours_from_first_seen", "censored_at_h"]] = np.nan
+    run.write(f"adoptions_{mapping}", ad)
+    if not seq:
+        tbl["median_hours_to_adopt"] = [_median_cell(*v) for v in zip(
+            *(tbl[f"median_hours_to_adopt{x}"] for x in ("", "_lo", "_hi")))]
+        tbl = tbl.drop(columns=["median_hours_to_adopt_lo", "median_hours_to_adopt_hi"]).rename(
+            columns={"median_hours_to_adopt": "median_hours_to_adopt (95% CI)"})
+    L = [f"## {SECTIONS['A3']}\n",
+         ("At-risk set: every agent active after the technique's first post, because no post has a task family "
+          "(a larger set than one task's agents, so adoption shares are lower)" if diffusion.familyless(tags) else
+          "At-risk set: agents active in the technique's task families after its first post"
+          + (f" (every post is in the catch-all family `{c.catch_all}`, so for a technique without families of its "
+             "own that is every agent active after its first post, which lowers adoption shares)" if c.catch_all else ""))
+         + "; adoption = first post mentioning or using it"
+         + ("." if seq else "; non-adopters censored at their last post (Kaplan–Meier). The median time to "
+            "adopt is given where the Kaplan–Meier curve falls to one half (non-adopters leave the risk set "
+            "when censored, so this can happen with fewer than half adopting), with Greenwood's 95% interval "
+            "(log-log); an upper bound reads *not reached* where the band's upper edge never falls to half.") + "\n"]
+    if seq:
+        L.append(_needs_clock("Times to adoption (hours, the Kaplan–Meier median) and the first-seen time") + "\n")
+    if fig:
+        L.append(f"![diffusion](figures/{run.figure('a3_diffusion.png', mapping).name})\n")
+    if mined:
+        tbl["technique"] = [f"{n} (mined)" if n in mined else n for n in tbl["technique"]]
+        L.append("Rows marked *(mined)* were not configured: `auto_techniques` found them in the posts, as URL "
+                 f"domains that at least {suggest.MIN_AGENTS} agents posted and whose distinct URLs wrap another URL "
+                 f"in at least {suggest.MIN_WRAP:.0%} of cases (fetch proxies and readers). `swarmprov suggest RUN` "
+                 "prints the evidence; read these rows as a first pass.\n")
+    L.append(md_table(tbl, index=False, pct=("adoption_share", "baseline"), floatfmt="{:.1f}"))
+    L.append(_contagion_note(con) if con else
+             "The contagion test compares the pages agents adopted on, and every post here is on one page or channel, "
+             "so it does not run.\n")
+    L.append(f"`adoptions_{mapping}.parquet` lists every at-risk agent and every user of each technique: first use, "
+             + ("as a message position (2000-01-01 + *i* s; the hour columns are empty, since positions are not hours)"
+                if seq else "hours from the first appearance or the hour of censoring")
+             + (", and for each adopter the page, whether it carried the technique, its baseline and its first earlier "
+                "post on a carrying page (`t_exposed`)" if con else "") + ".\n")
+    return L
+
+
+def _a4_rows(slots: list[dict], refs: dict, cons: dict, prov: dict, seq: bool) -> list[dict]:
+    """A4's table, one row per slot shown."""
+    rows = []
+    for s in slots:
+        r = {"slot": s["slot"], "kind": s["kind"],
+             "variants (agents)": ", ".join(f"{k} ({v})" for k, v in s["agents_per_variant"].items()),
+             "agents carrying both": s["overlap_agents"], "first variant": s["first_variant"],
+             "winner": s["winner"], "status": s["status"],
+             "late carriers (winner/total)": f"{max(s['tail_counts'].values())}/{s['n_tail']}"
+                                             + (" tie" if s["tie"] else "")}
         if not seq:
-            tbl["median_hours_to_adopt"] = [_median_cell(*v) for v in zip(
-                *(tbl[f"median_hours_to_adopt{x}"] for x in ("", "_lo", "_hi")))]
-            tbl = tbl.drop(columns=["median_hours_to_adopt_lo", "median_hours_to_adopt_hi"]).rename(
-                columns={"median_hours_to_adopt": "median_hours_to_adopt (95% CI)"})
-        L.append(f"## {SECTIONS['A3']}\n")
-        L.append(("At-risk set: every agent active after the technique's first post, because no post has a task family "
-                  "(a larger set than one task's agents, so adoption shares are lower)" if diffusion.familyless(tags) else
-                  "At-risk set: agents active in the technique's task families after its first post"
-                  + (f" (every post is in the catch-all family `{catch_all}`, so for a technique without families of its "
-                     "own that is every agent active after its first post, which lowers adoption shares)" if catch_all else ""))
-                 + "; adoption = first post mentioning or using it"
-                 + ("." if seq else "; non-adopters censored at their last post (Kaplan–Meier). The median time to "
-                    "adopt is given where the Kaplan–Meier curve falls to one half (non-adopters leave the risk set "
-                    "when censored, so this can happen with fewer than half adopting), with Greenwood's 95% interval "
-                    "(log-log); an upper bound reads *not reached* where the band's upper edge never falls to half.") + "\n")
-        if seq:
-            L.append(_needs_clock("Times to adoption (hours, the Kaplan–Meier median) and the first-seen time") + "\n")
-        if figs["diffusion"]:
-            L.append(f"![diffusion](figures/{run.figure('a3_diffusion.png', mapping).name})\n")
-        if mined:
-            tbl["technique"] = [f"{n} (mined)" if n in mined else n for n in tbl["technique"]]
-            L.append("Rows marked *(mined)* were not configured: `auto_techniques` found them in the posts, as URL "
-                     f"domains that at least {suggest.MIN_AGENTS} agents posted and whose distinct URLs wrap another URL "
-                     f"in at least {suggest.MIN_WRAP:.0%} of cases (fetch proxies and readers). `swarmprov suggest RUN` "
-                     "prints the evidence; read these rows as a first pass.\n")
-        L.append(md_table(tbl, index=False, pct=("adoption_share", "baseline"), floatfmt="{:.1f}"))
-        L.append(_contagion_note(con) if con else
-                 "The contagion test compares the pages agents adopted on, and every post here is on one page or channel, "
-                 "so it does not run.\n")
-        L.append(f"`adoptions_{mapping}.parquet` lists every at-risk agent and every user of each technique: first use, "
-                 + ("as a message position (2000-01-01 + *i* s; the hour columns are empty, since positions are not hours)"
-                    if seq else "hours from the first appearance or the hour of censoring")
-                 + (", and for each adopter the page, whether it carried the technique, its baseline and its first earlier "
-                    "post on a carrying page (`t_exposed`)" if con else "") + ".\n")
-    else:
-        L += _skipped("A3", (f"`auto_techniques` mined no URL technique (no domain that {suggest.MIN_AGENTS} or more agents "
-                             f"posted has URLs that wrap another URL in {suggest.MIN_WRAP:.0%} of cases; `swarmprov suggest "
-                             "RUN` shows the evidence), and none is configured (config `techniques`: a name and a regex each)"
-                             if cfg.auto_techniques else
-                             "needs configured techniques (config `techniques`: a name and a regex each; `swarmprov suggest "
-                             "RUN` proposes URL ones from the posts, and `auto_techniques` mines them at extract)")
-                      if not cfg.techniques else
-                      f"none of the {len(cfg.techniques)} "
-                      + ("mined" if {t.name for t in cfg.techniques} == {t.name for t in mined_techniques(run)} else "configured")
-                      + " techniques appears in a post with a timestamp", summary)
+            r |= {"winner first seen": s["t_winner_first"], "winner majority from": s["t_winner_majority"],
+                  "hours to overtake": s["hours_to_overtake"]}
+        if refs:
+            ref = refs.get((s["family"], s["item"]))
+            named = None if ref is None else errors.match_reference(s["variants"], ref) or ref
+            r |= {"reference (analyst input)": named, "outcome": errors.outcome(s, ref) if ref is not None else None}
+        if s["kind"] == "value":
+            con = cons.get((s["family"], s["item"]))
+            r |= {"independent / after-public rounds": _rounds_cell(s, prov.get(s["slot"])),
+                  "consensus ≠ winner": None if s["winner"] is None or con is None else
+                  f"yes ({con})" if errors.consensus_disagrees(s, con) else "no",
+                  "precision variants": "yes" if errors.precision_variants(s["variants"]) else "no"}
+        rows.append(r)
+    return rows
 
-    # A4
-    if timed_mn:
-        ss = errors.sequence_slots(claims, agent_col, **rule) if len(claims) else []
-        ds = errors.regex_slots(posts, ag, cfg.disputes, agent_col, **rule) if cfg.disputes else []
-        feat = errors.pick_featured(vs, ss, cfg.featured_disputes, declared=ds)
-        figs["errors"] = None if seq else errors.figure(feat, run.figure("a4_errors.png", mapping))
-        refs = errors.reference_keys(cfg.reference_values)
-        slots = feat + [s for s in vs[:12] + ss[:6] if s not in feat]
-        rows = []
-        for s in slots:
-            r = {"slot": s["slot"], "kind": s["kind"],
-                 "variants (agents)": ", ".join(f"{k} ({v})" for k, v in s["agents_per_variant"].items()),
-                 "agents carrying both": s["overlap_agents"], "first variant": s["first_variant"],
-                 "winner": s["winner"], "status": s["status"],
-                 "late carriers (winner/total)": f"{max(s['tail_counts'].values())}/{s['n_tail']}"
-                                                 + (" tie" if s["tie"] else "")}
-            if not seq:
-                r |= {"winner first seen": s["t_winner_first"], "winner majority from": s["t_winner_majority"],
-                      "hours to overtake": s["hours_to_overtake"]}
-            if refs:
-                ref = refs.get((s["family"], s["item"]))
-                named = None if ref is None else errors.match_reference(s["variants"], ref) or ref
-                r |= {"reference (analyst input)": named, "outcome": errors.outcome(s, ref) if ref is not None else None}
-            if s["kind"] == "value":
-                c = cons.get((s["family"], s["item"]))
-                r |= {"independent / after-public rounds": _rounds_cell(s, prov.get(s["slot"])),
-                      "consensus ≠ winner": None if s["winner"] is None or c is None else
-                      f"yes ({c})" if errors.consensus_disagrees(s, c) else "no",
-                      "precision variants": "yes" if errors.precision_variants(s["variants"]) else "no"}
-            rows.append(r)
-        unknown, outside = errors.unused_references(refs, set(zip(mentions["family"], mentions["item"])),
-                                                    *({(s["family"], s["item"]) for s in g} for g in (vs + ss + ds, slots)))
-        run.write(f"disputes_{mapping}", errors.dispute_rows(ds + vs + ss))
-        summary["A4"] = {"n_value_slots_disputed": len(vs), "n_sequence_slots_disputed": len(ss),
-                         "rule": {"bin_hours": None if seq else errors.BIN_H, "tail_share": errors.TAIL_SHARE,
-                                  "min_tail": errors.MIN_TAIL},
-                         "consensus_disagrees": {"slots": [s["slot"] for s in split], "n_value_slots": len(vs),
-                                                 "answer_rounds_stating_winner": n_split_rounds,
-                                                 "of_them_y_consensus_0": n_split_zero},
-                         "rows": [{k: _cell(v) for k, v in r.items()}
-                                  | {"featured": s in feat, "tail counts": s["tail_counts"], "tie": s["tie"],
-                                     "first seen tie": s["first_tie"],
-                                     "corrected": s["status"] == "overturned"}   # deprecated alias of status
-                                  | ({"consensus": cons.get((s["family"], s["item"])),
-                                      "precision_variants": errors.precision_variants(s["variants"]),
-                                      "variant_provenance": prov.get(s["slot"])} if s["kind"] == "value" else {})
-                                  for r, s in zip(rows, slots)]}
-        if refs:
-            summary["A4"] |= {"references_unknown": unknown, "references_outside_table": outside}
-        if n_untimed_mn:
-            summary["A4"]["n_mentions_untimed"] = n_untimed_mn
-        tail = f"{Fraction(errors.TAIL_SHARE).limit_denominator(10)}"
-        keep, never, kept = (("holds the majority of all the slot's carriers", "does not hold that majority", "holds that majority")
-                             if seq else ("kept that majority", "never kept the majority", "kept the majority"))
-        L.append(f"## {SECTIONS['A4']}\n")
-        L.append(f"{len(vs)} (family, item) slots carried two or more values, each repeated by ≥3 agents; "
-                 f"{len(ss)} round slots had competing *items* discussed by ≥2 agents who carried both (e.g. a cracked-seed forecast vs the observed question; "
-                 "slots whose variants have disjoint carriers are different task versions and are excluded). "
-                 f"Winner = the most common variant among the last {tail} of carriers, none if the top two tie; "
-                 "\"late carriers\" = the winner's count among them. "
-                 + ("" if seq else
-                    f"\"Majority from\" = start of the first {errors.BIN_H:g}-hour bin after which the winner never lost the majority of new carriers; "
-                    "\"hours to overtake\" runs from a later winner's first appearance to that point. ")
-                 + "Status: **held** = the first variant is still the winner; "
-                 f"**overturned** = a later variant won and {keep}, with at least {errors.MIN_TAIL} late carriers in all; "
-                 f"**contested** = the late carriers tie, a later winner {never}, or two variants were first seen "
-                 "at the same moment (first variant blank); "
-                 f"**contested (small n)** = a later winner {kept}, with fewer than {errors.MIN_TAIL} late carriers in all. "
-                 + (f"The last-{tail} rule is a convention, not a measurement.\n" if seq else
-                    f"The {errors.BIN_H:g}-hour bin and the last-{tail} rule are conventions, not measurements.\n"))
-        if seq:
-            L.append(_needs_clock(f"The {errors.BIN_H:g}-hour majority bins, the time a winner took the majority and the hours "
-                                  "to overtake") + "\n")
-        if n_untimed_mn:
-            L.append(f"{n_untimed_mn:,} of {len(mentions):,} item–value and URL mentions have no timestamp and are left out: "
-                     "a carrier counts from its first timed post.\n")
-        if refs:
-            L.append("Reference values are **analyst input** (config `reference_values`), not measured. They never change the "
-                     "status; they only fill the outcome column. A held or overturned slot is judged on the variant left standing "
-                     "(the winner if overturned, else the first variant): truth held, error corrected, error persisted or truth "
-                     "displaced by error. A contested slot reads *unresolved*, with whether the first variant was the reference. "
-                     "Where one value is the other rounded (9.9 and 9.91), the outcome reads *precision variant* instead, and a "
-                     "reference that matches no variant says so.\n")
-        if ds:
-            L.append("Analyst-declared disputes (config `disputes`: a context pattern plus one pattern per variant) are listed first.\n")
-        if vs:
-            L.append(_variant_note(vs, split, n_split_rounds, n_split_zero, prov, mapping))
-        if figs["errors"]:
-            L.append(f"![errors](figures/{run.figure('a4_errors.png', mapping).name})\n")
-        L.append(md_table(pd.DataFrame(rows), index=False, floatfmt="{:.1f}"))
-        if unknown:
-            L.append("Reference values that name no item or disputed slot in this run (a mistyped `family|item` key, or an item "
-                     "nobody posted): " + ", ".join(f"`{k}`" for k in unknown) + ".\n")
-        if outside:
-            L.append("Reference values for disputed slots outside this table (no outcome shown): "
-                     + ", ".join(f"`{k}`" for k in outside) + ".\n")
-    elif len(mentions):
+
+def _a4(c: _Ctx) -> list[str]:
+    mentions, seq, cfg, vs, rule = c.mentions, c.seq, c.cfg, c.vs, c.rule
+    if not c.timed_mn:
+        if not len(mentions):
+            return _skipped("A4", "needs item–value pairs or URLs in the posts; none was found", c.summary)
         k = mentions["event_id"].nunique()
-        L += _skipped("A4", f"needs posts with a timestamp; none of the {k:,} post{'s' * (k != 1)} with an item–value pair "
-                      "or URL has one" + (", and the file joins several message lists, so no order is invented for them"
-                                          if notes.get("clock") == "none" else ""), summary)
-    else:
-        L += _skipped("A4", "needs item–value pairs or URLs in the posts; none was found", summary)
+        return _skipped("A4", f"needs posts with a timestamp; none of the {k:,} post{'s' * (k != 1)} with an item–value "
+                        "pair or URL has one" + (", and the file joins several message lists, so no order is invented "
+                                                 "for them" if c.notes.get("clock") == "none" else ""), c.summary)
+    ss = errors.sequence_slots(c.claims, c.agent_col, **rule) if len(c.claims) else []
+    ds = errors.regex_slots(c.posts, c.agents, cfg.disputes, c.agent_col, **rule) if cfg.disputes else []
+    feat = errors.pick_featured(vs, ss, cfg.featured_disputes, declared=ds)
+    fig = None if seq else errors.figure(feat, c.run.figure("a4_errors.png", c.mapping))
+    refs = errors.reference_keys(cfg.reference_values)
+    slots = feat + [s for s in vs[:12] + ss[:6] if s not in feat]
+    rows = _a4_rows(slots, refs, c.cons, c.prov, seq)
+    unknown, outside = errors.unused_references(refs, set(zip(mentions["family"], mentions["item"])),
+                                                *({(s["family"], s["item"]) for s in g} for g in (vs + ss + ds, slots)))
+    c.run.write(f"disputes_{c.mapping}", errors.dispute_rows(ds + vs + ss))
+    a = c.summary["A4"] = {
+        "n_value_slots_disputed": len(vs), "n_sequence_slots_disputed": len(ss),
+        "rule": {"bin_hours": None if seq else errors.BIN_H, "tail_share": errors.TAIL_SHARE, "min_tail": errors.MIN_TAIL},
+        "consensus_disagrees": {"slots": [s["slot"] for s in c.split], "n_value_slots": len(vs),
+                                "answer_rounds_stating_winner": c.n_split_rounds,
+                                "of_them_y_consensus_0": c.n_split_zero},
+        "rows": [{k: _cell(v) for k, v in r.items()}
+                 | {"featured": s in feat, "tail counts": s["tail_counts"], "tie": s["tie"], "first seen tie": s["first_tie"],
+                    "corrected": s["status"] == "overturned"}   # deprecated alias of status
+                 | ({"consensus": c.cons.get((s["family"], s["item"])),
+                     "precision_variants": errors.precision_variants(s["variants"]),
+                     "variant_provenance": c.prov.get(s["slot"])} if s["kind"] == "value" else {})
+                 for r, s in zip(rows, slots)]}
+    if refs:
+        a |= {"references_unknown": unknown, "references_outside_table": outside}
+    if c.n_untimed_mn:
+        a["n_mentions_untimed"] = c.n_untimed_mn
+    tail = f"{Fraction(errors.TAIL_SHARE).limit_denominator(10)}"
+    keep, never, kept = (("holds the majority of all the slot's carriers", "does not hold that majority", "holds that majority")
+                         if seq else ("kept that majority", "never kept the majority", "kept the majority"))
+    L = [f"## {SECTIONS['A4']}\n",
+         f"{len(vs)} (family, item) slots carried two or more values, each repeated by ≥3 agents; "
+         f"{len(ss)} round slots had competing *items* discussed by ≥2 agents who carried both (e.g. a cracked-seed forecast vs the observed question; "
+         "slots whose variants have disjoint carriers are different task versions and are excluded). "
+         f"Winner = the most common variant among the last {tail} of carriers, none if the top two tie; "
+         "\"late carriers\" = the winner's count among them. "
+         + ("" if seq else
+            f"\"Majority from\" = start of the first {errors.BIN_H:g}-hour bin after which the winner never lost the majority of new carriers; "
+            "\"hours to overtake\" runs from a later winner's first appearance to that point. ")
+         + "Status: **held** = the first variant is still the winner; "
+         f"**overturned** = a later variant won and {keep}, with at least {errors.MIN_TAIL} late carriers in all; "
+         f"**contested** = the late carriers tie, a later winner {never}, or two variants were first seen "
+         "at the same moment (first variant blank); "
+         f"**contested (small n)** = a later winner {kept}, with fewer than {errors.MIN_TAIL} late carriers in all. "
+         + (f"The last-{tail} rule is a convention, not a measurement.\n" if seq else
+            f"The {errors.BIN_H:g}-hour bin and the last-{tail} rule are conventions, not measurements.\n")]
+    if seq:
+        L.append(_needs_clock(f"The {errors.BIN_H:g}-hour majority bins, the time a winner took the majority and the hours "
+                              "to overtake") + "\n")
+    if c.n_untimed_mn:
+        L.append(f"{c.n_untimed_mn:,} of {len(mentions):,} item–value and URL mentions have no timestamp and are left out: "
+                 "a carrier counts from its first timed post.\n")
+    if refs:
+        L.append("Reference values are **analyst input** (config `reference_values`), not measured. They never change the "
+                 "status; they only fill the outcome column. A held or overturned slot is judged on the variant left standing "
+                 "(the winner if overturned, else the first variant): truth held, error corrected, error persisted or truth "
+                 "displaced by error. A contested slot reads *unresolved*, with whether the first variant was the reference. "
+                 "Where one value is the other rounded (9.9 and 9.91), the outcome reads *precision variant* instead, and a "
+                 "reference that matches no variant says so.\n")
+    if ds:
+        L.append("Analyst-declared disputes (config `disputes`: a context pattern plus one pattern per variant) are listed first.\n")
+    if vs:
+        L.append(_variant_note(vs, c.split, c.n_split_rounds, c.n_split_zero, c.prov, c.mapping))
+    if fig:
+        L.append(f"![errors](figures/{c.run.figure('a4_errors.png', c.mapping).name})\n")
+    L.append(md_table(pd.DataFrame(rows), index=False, floatfmt="{:.1f}"))
+    if unknown:
+        L.append("Reference values that name no item or disputed slot in this run (a mistyped `family|item` key, or an item "
+                 "nobody posted): " + ", ".join(f"`{k}`" for k in unknown) + ".\n")
+    if outside:
+        L.append("Reference values for disputed slots outside this table (no outcome shown): "
+                 + ", ".join(f"`{k}`" for k in outside) + ".\n")
+    return L
 
-    # A5 / A6
-    r6 = structure.reach(chains, boot=boot, mentions=mentions, agent_col=agent_col)
+
+def _profiles(c: _Ctx) -> pd.DataFrame:
+    """The agent profiles the graph stage wrote; computed here only for a run from before it wrote them."""
+    if c.run.has(f"agent_profiles_{c.mapping}"):
+        return c.run.read(f"agent_profiles_{c.mapping}")
+    return agents_mod.profile(c.agents, c.events, c.tags, c.ex, c.edges, c.chains, c.mapping, wall_clock=not c.seq,
+                              btw=c.r5["betweenness"] if c.r5 else None)
+
+
+def _a5(c: _Ctx) -> list[str]:
+    edges, chains, ex, run, mapping, summary = c.edges, c.chains, c.ex, c.run, c.mapping, c.summary
+    c.r6 = structure.reach(chains, boot=c.boot, mentions=c.mentions, agent_col=c.agent_col)
     # the relay-window sweep is in seconds, so no sequence clock; task values only (see window_sensitivity)
-    ws = structure.window_sensitivity(mentions, agent_col) if r6.get("task values") and not seq else None
-    agents = run.read("agents")
-    r5 = structure.analyze(edges, chains, ex=ex if len(ex) else None, events=events) if len(edges) else None
-    profiles = agents_mod.profile(agents, events, tags, ex, edges, chains, mapping, wall_clock=not seq,
-                                  btw=r5["betweenness"] if r5 else None)
-    threading = bool(caps.get("has_threading"))
-    if r5:
-        figs["structure"] = structure.figure(r5, chains, run.figure("a5_structure.png", mapping))
-        summary["A5"] = {k: v for k, v in r5.items() if not isinstance(v, (pd.Series, pd.DataFrame))}
-        L.append(f"## {SECTIONS['A5']}\n")
-        L.append(f"Graph: {r5['n_nodes']:,} agents, {r5['n_edges']:,} weighted links "
-                 f"({r5['n_relay_edges']:,} same-page relay hops, {r5['n_xchannel_edges']:,} cross-page hops attributed to the originator, "
-                 f"{r5['n_exposure_edges']:,} first-source exposures, "
-                 f"{r5['n_citation_edges']:,} explicit citations"
-                 + (_replies(r5["n_reply_edges"], graph.reply_edges(events, agents, agent_col)[1]) if threading else "")
-                 + "). "
-                 + (_hub_headline(r5) if r5.get("n_exposure_edges") else
-                    "No answer had a first public source here, so there is no exposure concentration to report. ")
-                 + _depth_sentence(r5, r6, edges, ws))
-        if figs["structure"]:
-            L.append(f"![structure](figures/{run.figure('a5_structure.png', mapping).name})\n")
-        top = r5["top_sources"].rename("answers").to_frame()
-        if r5.get("n_exposure_edges"):
-            figs["supply"] = structure.supply_figure(edges, profiles.set_index("label"), r5,
-                                                     run.figure("a7_supply_network.png", mapping))
-            L.append("Who supplied whom under one attribution rule, *first source*, which credits whoever first posted "
-                     "the value before the report: each line joins an agent with an exposed answer (a dot, coloured by "
-                     "task family) to that source (a grey disc sized by the answers it supplied). The rows below give "
-                     "the other rules, and nothing records who read whom.\n")
-            L.append(f"![supply network](figures/{run.figure('a7_supply_network.png', mapping).name})\n")
-            L += _attribution_block(r5, summary)
-            lines, first = _origins_block({m: e for m, e in ((mapping, ex), (alt, ex_alt)) if len(e) and e["D"].any()},
-                                         mapping, summary)
-            L += lines
-            top = top.join(origins.by_source(first, ex)[["items", "origin"]])
-        L.append("Top first-sources (answers they were first public source for"
-                 + (", on how many items, and the origin of those answers" if "origin" in top else "") + "):\n")
-        L.append(md_table(top))
-        L.append(f"\nTop brokers (betweenness on relay + citation{' + reply' if r5['n_reply_edges'] else ''} graph"
-                 + (f", estimated from {r5['betweenness_sampled_sources']} sampled sources" if r5["betweenness_sampled_sources"] else "")
-                 + "):\n")
-        L.append(md_table(r5["top_brokers"].rename("betweenness").to_frame(), floatfmt="{:.3f}"))
-    else:
-        L += _skipped("A5", _a5_gap(mentions, agent_col, ex, untimed, notes.get("clock") == "none", threading), summary)
-    L += _agents_block(profiles, mapping, summary)
-    if r5 and r6:
-        figs["reach"] = structure.reach_figure(chains, run.figure("a6_reach.png", mapping))
-        summary["A6"] = r6 | ({"window_sensitivity": [{k: _cell(v) for k, v in r.items()} for r in ws.to_dict("records")]}
-                              if ws is not None else {})
-        L.append(f"## {SECTIONS['A6']}\n")
-        L.append(md_table(_with_ci(pd.DataFrame(r6).T, ("mean_repeaters",), fmt="{:.2f}"), floatfmt="{:.2f}"))
-        if "url domains" in r6:
-            d = r6["url domains"]
-            top = structure.domain_reach(mentions, agent_col).sort_values("n_agents", ascending=False, kind="stable").head(3)
-            summary["A6"]["url domains"] = d | {"top": [{"domain": k, "agents": int(n)} for k, n in top["n_agents"].items()]}
-            L.append(f"The `url domains` row counts the distinct agents that posted any URL on each domain "
-                     f"({d['facts']:,} domain{'s' * (d['facts'] != 1)}, {d['repeated']:,} posted by two or more agents; "
-                     "most shared: " + ", ".join(f"`{k}` {n:,} agent{'s' * (n != 1)}" for k, n in top["n_agents"].items())
-                     + "), so agents who fetched different pages of one source count together although no exact URL "
-                     "repeats; it has no relay hops" + (", and its interval resamples domains" if "mean_repeaters_lo" in d
-                                                        else "") + ".\n")
-        if any("mean_repeaters_lo" in r for r in r6.values()):
-            L.append(f"The interval on mean_repeaters is the 95% percentile interval from {boot:,} resamples of the "
-                     "facts: sampling noise only.\n")
-        L.append(f"\n![reach](figures/{run.figure('a6_reach.png', mapping).name})\n")
-        if ws is not None:
-            L += _window_block(ws, (r6.get("urls") or {}).get("facts", 0))
-        elif seq:
-            L.append(_needs_clock("Relay-window sweeps (a window W in minutes and hours)") + "\n")
-    else:
-        L += _skipped("A6", "needs facts (an item–value pair or a URL) to follow; none was posted" if r5 else
-                      "needs the provenance graph (see A5)", summary)
+    c.ws = structure.window_sensitivity(c.mentions, c.agent_col) if c.r6.get("task values") and not c.seq else None
+    r5 = c.r5 = structure.analyze(edges, chains, ex=ex if len(ex) else None, events=c.events) if len(edges) else None
+    c.profiles = _profiles(c)
+    threading = bool(c.caps.get("has_threading"))
+    if not r5:
+        return _skipped("A5", _a5_gap(c.mentions, c.agent_col, ex, c.untimed, c.notes.get("clock") == "none", threading),
+                        summary)
+    has_fig = structure.figure(r5, chains, run.figure("a5_structure.png", mapping))
+    summary["A5"] = {k: v for k, v in r5.items() if not isinstance(v, (pd.Series, pd.DataFrame))}
+    L = [f"## {SECTIONS['A5']}\n",
+         f"Graph: {r5['n_nodes']:,} agents, {r5['n_edges']:,} weighted links "
+         f"({r5['n_relay_edges']:,} same-page relay hops, {r5['n_xchannel_edges']:,} cross-page hops attributed to the originator, "
+         f"{r5['n_exposure_edges']:,} first-source exposures, "
+         f"{r5['n_citation_edges']:,} explicit citations"
+         + (_replies(r5["n_reply_edges"], graph.reply_edges(c.events, c.agents, c.agent_col)[1]) if threading else "")
+         + "). "
+         + (_hub_headline(r5) if r5.get("n_exposure_edges") else
+            "No answer had a first public source here, so there is no exposure concentration to report. ")
+         + _depth_sentence(r5, c.r6, edges, c.ws)]
+    if has_fig:
+        L.append(f"![structure](figures/{run.figure('a5_structure.png', mapping).name})\n")
+    top = r5["top_sources"].rename("answers").to_frame()
+    if r5.get("n_exposure_edges"):
+        structure.supply_figure(edges, c.profiles.set_index("label"), r5, run.figure("a7_supply_network.png", mapping))
+        L.append("Who supplied whom under one attribution rule, *first source*, which credits whoever first posted "
+                 "the value before the report: each line joins an agent with an exposed answer (a dot, coloured by "
+                 "task family) to that source (a grey disc sized by the answers it supplied). The rows below give "
+                 "the other rules, and nothing records who read whom.\n")
+        L.append(f"![supply network](figures/{run.figure('a7_supply_network.png', mapping).name})\n")
+        L += _attribution_block(r5, summary)
+        exs = ((mapping, ex),) if c.same else ((mapping, ex), (c.alt, c.ex_alt))
+        lines, first = _origins_block({m: e for m, e in exs if len(e) and e["D"].any()}, mapping, summary)
+        L += lines
+        top = top.join(origins.by_source(first, ex)[["items", "origin"]])
+    L.append("Top first-sources (answers they were first public source for"
+             + (", on how many items, and the origin of those answers" if "origin" in top else "") + "):\n")
+    L.append(md_table(top))
+    L.append(f"\nTop brokers (betweenness on relay + citation{' + reply' if r5['n_reply_edges'] else ''} graph"
+             + (f", estimated from {r5['betweenness_sampled_sources']} sampled sources" if r5["betweenness_sampled_sources"] else "")
+             + "):\n")
+    L.append(md_table(r5["top_brokers"].rename("betweenness").to_frame(), floatfmt="{:.3f}"))
+    return L
 
-    # Validation
-    L.append("## Validation\n")
-    rc = notes.get("recreation_check")
+
+def _a6(c: _Ctx) -> list[str]:
+    r6, ws, run, mapping, summary = c.r6, c.ws, c.run, c.mapping, c.summary
+    if not (c.r5 and r6):
+        return _skipped("A6", "needs facts (an item–value pair or a URL) to follow; none was posted" if c.r5 else
+                        "needs the provenance graph (see A5)", summary)
+    structure.reach_figure(c.chains, run.figure("a6_reach.png", mapping))
+    a = summary["A6"] = r6 | ({"window_sensitivity": [{k: _cell(v) for k, v in r.items()} for r in ws.to_dict("records")]}
+                              if ws is not None else {})
+    L = [f"## {SECTIONS['A6']}\n", md_table(_with_ci(pd.DataFrame(r6).T, ("mean_repeaters",), fmt="{:.2f}"), floatfmt="{:.2f}")]
+    if "url domains" in r6:
+        d = r6["url domains"]
+        top = structure.domain_reach(c.mentions, c.agent_col).sort_values("n_agents", ascending=False, kind="stable").head(3)
+        a["url domains"] = d | {"top": [{"domain": k, "agents": int(n)} for k, n in top["n_agents"].items()]}
+        L.append(f"The `url domains` row counts the distinct agents that posted any URL on each domain "
+                 f"({d['facts']:,} domain{'s' * (d['facts'] != 1)}, {d['repeated']:,} posted by two or more agents; "
+                 "most shared: " + ", ".join(f"`{k}` {n:,} agent{'s' * (n != 1)}" for k, n in top["n_agents"].items())
+                 + "), so agents who fetched different pages of one source count together although no exact URL "
+                 "repeats; it has no relay hops" + (", and its interval resamples domains" if "mean_repeaters_lo" in d
+                                                    else "") + ".\n")
+    if any("mean_repeaters_lo" in r for r in r6.values()):
+        L.append(f"The interval on mean_repeaters is the 95% percentile interval from {c.boot:,} resamples of the "
+                 "facts: sampling noise only.\n")
+    L.append(f"\n![reach](figures/{run.figure('a6_reach.png', mapping).name})\n")
+    if ws is not None:
+        L += _window_block(ws, (r6.get("urls") or {}).get("facts", 0))
+    elif c.seq:
+        L.append(_needs_clock("Relay-window sweeps (a window W in minutes and hours)") + "\n")
+    return L
+
+
+def _validation(c: _Ctx) -> list[str]:
+    """The recreation check, the integrity line (``summary['integrity']``), the gold-label scores
+    (``summary['validation']``) and the synthetic scorecard (``summary['truth_validation']``)."""
+    run, summary = c.run, c.summary
+    L = ["## Validation\n"]
+    rc = c.notes.get("recreation_check")
     if rc:
         L.append(f"**Recreation edges** (source vs pipeline): the source marks {rc['dump_edges']} first recreations after a deletion "
                  f"({rc['dump_edges_with_revision']} with a stored revision); the pipeline's rule finds {rc['pipeline_edges']}, "
@@ -762,7 +855,7 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
                  f"({rc['dump_edges_without_revision']} have no revision to match), {rc['pipeline_only']} extra"
                  + (f" ({rc['pipeline_only_after_cutoff']} after the source's cutoff)" if rc.get("cutoff") else "")
                  + f". {rc['restored_posts']} of {rc['posts_on_recreations']} posts on those revisions restore pre-deletion text.\n")
-    L += _integrity(checks.check_run(run, summary), summary, mapping)
+    L += _integrity(checks.check_run(run, summary), summary, c.mapping)
     vfiles = sorted(run.path.glob("validation*.json"))
     if vfiles:
         summary["validation"] = {}
@@ -782,9 +875,13 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
                  "DIR` scores every label file in DIR before the report.\n")
     if (run.path / "truth_validation.json").exists():
         L += _truth_block(json.loads((run.path / "truth_validation.json").read_text()), summary)
+    return L
 
-    L.append("## Limitations\n")
-    if run.has("roster"):
+
+def _limitations(c: _Ctx) -> list[str]:
+    seq, caps, ex = c.seq, c.caps, c.ex
+    explicit = bool(caps.get("has_explicit_author"))
+    if c.run.has("roster"):
         identity_note = ("- **Identity**: the roster fixes cohort (assignment batch) and family (goal) for matched authors; "
                          f"unmatched authors fall back to {'their author field' if explicit else 'parsed signatures'}.\n")
     elif explicit:
@@ -794,39 +891,38 @@ def build(run: RunDir, mapping: str = "merged", boot: int | None = None) -> str:
     else:
         identity_note = ("- **Identity**: names are parsed from signatures; the merged mapping assumes one agent per "
                          "(cohort date, task family). Both mappings are reported.\n")
-    coverage = cfg.coverage_note or ("Only the posts in this transcript are searched for earlier copies of an answer, so a "
-                                     "copy made anywhere else is invisible: the exposed share is a floor and the "
-                                     "independent count a ceiling.")
-    L.append("- **Exposure is inferred, not observed**: no page-view logs, so D means \"was public\", not \"was read\". "
-             + ("t_report is the report's message position, an upper bound on when the question arrived; the ≥1 h variant "
-                "needs a wall clock.\n" if seq else
-                "t_report is an upper bound on question arrival; the ≥1 h variant guards against report lag.\n")
-             + f"- **Exposure is a lower bound.** {coverage}\n"
-             + identity_note +
-             "- **Extraction**: rule-based on templated posts; unrestated answers (\"answered same second\") inherit the consensus value.\n"
-             "- **Inferred relay edges** link each carrier to the latest earlier carrier; they are plausible paths, not proven ones."
-             + ("" if seq else _relay_tie_note(edges)) + "\n"
-             + ("- **Message order is not time.** With no wall clock, posts are ordered by their position in the file, so every "
-                "\"before\" above means earlier in the file, and is only as good as the order the file was written in.\n" if seq else "")
-             + (f"- **Catch-all family.** No task families are configured, so every post is in one family, `{catch_all}`: answers "
-                "to unrelated questions that name the same item (a country, a state) count as one fact, which can overstate "
-                "exposure. Set `families` to separate the tasks.\n" if catch_all else "")
-             + ("- **Deletion ends visibility, not knowledge.** D_visible treats a copy deleted before the report as never public; "
-                "an agent that read it earlier, or a copy on an uncaptured surface, is not affected, so D stays the headline.\n"
-                if "D_visible" in ex and len(ex) and caps.get("has_lifecycle") and not seq else "")
-             + ("- **The request log is narrow.** Only script-injection probe rows are included, with no page views, so exposure "
-                "remains inferred.\n" if run.has("probes") else "")
-             + ("- **Derived text.** The posts are an LLM's daily digest of what agents did (one line per event, Pacific time), "
-                "not the agents' own messages: who-did-what-when and technique mentions are plausible, the provenance of specific "
-                "values is not, and anything the digest's author chose to omit is invisible.\n" if caps.get("derived_text") else ""))
-    L[2:2] = _headline(run, summary, mapping)
-    return _write(run, L, summary, mapping)
+    coverage = c.cfg.coverage_note or ("Only the posts in this transcript are searched for earlier copies of an answer, so a "
+                                       "copy made anywhere else is invisible: the exposed share is a floor and the "
+                                       "independent count a ceiling.")
+    return ["## Limitations\n",
+            "- **Exposure is inferred, not observed**: no page-view logs, so D means \"was public\", not \"was read\". "
+            + ("t_report is the report's message position, an upper bound on when the question arrived; the ≥1 h variant "
+               "needs a wall clock.\n" if seq else
+               "t_report is an upper bound on question arrival; the ≥1 h variant guards against report lag.\n")
+            + f"- **Exposure is a lower bound.** {coverage}\n"
+            + identity_note +
+            "- **Extraction**: rule-based on templated posts; unrestated answers (\"answered same second\") inherit the consensus value.\n"
+            "- **Inferred relay edges** link each carrier to the latest earlier carrier; they are plausible paths, not proven ones."
+            + ("" if seq else _relay_tie_note(c.edges)) + "\n"
+            + ("- **Message order is not time.** With no wall clock, posts are ordered by their position in the file, so every "
+               "\"before\" above means earlier in the file, and is only as good as the order the file was written in.\n" if seq else "")
+            + (f"- **Catch-all family.** No task families are configured, so every post is in one family, `{c.catch_all}`: answers "
+               "to unrelated questions that name the same item (a country, a state) count as one fact, which can overstate "
+               "exposure. Set `families` to separate the tasks.\n" if c.catch_all else "")
+            + ("- **Deletion ends visibility, not knowledge.** D_visible treats a copy deleted before the report as never public; "
+               "an agent that read it earlier, or a copy on an uncaptured surface, is not affected, so D stays the headline.\n"
+               if "D_visible" in ex and len(ex) and caps.get("has_lifecycle") and not seq else "")
+            + ("- **The request log is narrow.** Only script-injection probe rows are included, with no page views, so exposure "
+               "remains inferred.\n" if c.run.has("probes") else "")
+            + ("- **Derived text.** The posts are an LLM's daily digest of what agents did (one line per event, Pacific time), "
+               "not the agents' own messages: who-did-what-when and technique mentions are plausible, the provenance of specific "
+               "values is not, and anything the digest's author chose to omit is invisible.\n" if caps.get("derived_text") else "")]
 
 
 def _headline(run: RunDir, summary: dict, mapping: str) -> list[str]:
     """The key findings block for the top of the report, also written alone to ``headline.md``
     (``headline_strict.md``) and kept as ``summary['headline']``, one string per bullet."""
-    block = key_findings(_json_safe(summary))
+    block = key_findings(json_safe(summary))
     if block:
         summary["headline"] = [b[2:] for b in block if b.startswith("- ")]
         (run.path / f"headline{suffix(mapping)}.md").write_text("\n".join(block))
@@ -854,17 +950,13 @@ def key_findings(summary: dict) -> list[str]:
 
 
 def _kf_a1(a: dict, s: dict, seq: bool) -> str:
-    def ci(k: str, hours: bool = False, first: bool = False) -> str:
-        lo_hi = a.get(f"{k}_ci")
-        level = f"{a['bootstrap']['level']:.0%} CI " if first and a.get("bootstrap") else ""
-        return f" ({level}{_span(*lo_hi, hours=hours)})" if lo_hi else ""
-    out = (f"{_pct(a['share_exposed'])}{ci('share_exposed', first=True)} of {a['n_answers']:,} answers by "
+    out = (f"{pct(a['share_exposed'])}{_ci_text(a, 'share_exposed', first=True)} of {a['n_answers']:,} answers by "
            f"{a['n_agents']:,} agents were already public before the agent reported them (another agent had posted the "
            "same item and value" + ("; with no wall clock, before means earlier in the file)" if seq else ")"))
     if not seq and a.get("share_exposed_60m") is not None:
-        out += f", {_pct(a['share_exposed_60m'])}{ci('share_exposed_60m')} at least an hour before"
+        out += f", {pct(a['share_exposed_60m'])}{_ci_text(a, 'share_exposed_60m')} at least an hour before"
         if a.get("median_gap_h") is not None:
-            out += f", with a median head start of {a['median_gap_h']:.1f} h{ci('median_gap_h', hours=True)}"
+            out += f", with a median head start of {a['median_gap_h']:.1f} h{_ci_text(a, 'median_gap_h', hours=True)}"
     out += f"; at most {a['n_independent']:,} were independent lookups"
     if a.get("n_independent_visible") is not None:
         out += (f" ({a['n_independent_visible']:,} under `D_visible`, which counts a copy deleted before the report as "
@@ -919,7 +1011,7 @@ def _kf_a3(rows: list[dict], s: dict, seq: bool) -> str:
     at_risk = ("active after its first post" if not fun.get("posts_with_family") or fun.get("catch_all_family") else
                "active in its task families after its first post")
     out = (f"adoption share = the share of the agents at risk ({at_risk}) that went on to use it: " + ", ".join(
-        f"`{r['technique']}`{' (mined)' if r.get('mined') else ''} {_pct(r['adoption_share'])} "
+        f"`{r['technique']}`{' (mined)' if r.get('mined') else ''} {pct(r['adoption_share'])} "
         f"({r['adopters']:,} of {r['at_risk']:,})" for r in top[:5]) + ("; lower for the rest" if len(top) > 5 else ""))
     hits = [r["technique"] for r in rows if _contagion_hit(r.get("contagion"))]
     if hits:
@@ -934,7 +1026,7 @@ def _kf_a4(a: dict, s: dict, seq: bool) -> str:
     if not feat:
         return "no slot carried competing values."
     rule = a["rule"]
-    tail = "third" if abs(rule["tail_share"] - 1 / 3) < 1e-9 else _pct(rule["tail_share"])
+    tail = "third" if abs(rule["tail_share"] - 1 / 3) < 1e-9 else pct(rule["tail_share"])
     keep = "holds the majority of all the slot's carriers" if seq else "kept the majority of new carriers"
 
     def leads(r: dict, but: bool = False) -> str:
@@ -975,13 +1067,13 @@ def _kf_a5(a: dict, s: dict, seq: bool) -> str:
     parts = []
     if (f := rows.get("first source")) is not None:
         loo = a.get("top10_share_exposure_loo")
-        parts.append(f"{_pct(f['top10_share'])} credited to the first agent to post the value (out-degree Gini "
-                     f"{f['gini']:.2f}" + (f"; leaving out any one item moves it between {_pct(loo[0])} and {_pct(loo[1])}"
+        parts.append(f"{pct(f['top10_share'])} credited to the first agent to post the value (out-degree Gini "
+                     f"{f['gini']:.2f}" + (f"; leaving out any one item moves it between {pct(loo[0])} and {pct(loo[1])}"
                                           if loo and loo[0] is not None else "") + ")")
     if (r := rows.get("latest source")) is not None:
-        parts.append(f"{_pct(r['top10_share'])} to the latest earlier carrier")
+        parts.append(f"{pct(r['top10_share'])} to the latest earlier carrier")
     if (r := rows.get("same-page relay parent")) is not None:
-        parts.append(f"{_pct(r['top10_share'])} of the {r['n']:,} with a same-page relay parent")
+        parts.append(f"{pct(r['top10_share'])} of the {r['n']:,} with a same-page relay parent")
     return (f"the top 10 sources supplied {whole} of {n:,} exposed answers, depending on who is credited (nothing "
             "records who read whom, so each rule credits one source per answer): " + ", ".join(parts) + ".")
 
@@ -995,7 +1087,7 @@ def top10_range(a5: dict) -> tuple[str, int] | None:
     n = max(r["n"] for r in rows)
     shares = [r["top10_share"] for r in rows if r["n"] == n]
     lo, hi = min(shares), max(shares)
-    return (_pct(lo) if _pct(lo) == _pct(hi) else _span(lo, hi)), n
+    return (pct(lo) if pct(lo) == pct(hi) else _span(lo, hi)), n
 
 
 def _kf_a6(a: dict, s: dict, seq: bool) -> str | None:
@@ -1017,8 +1109,8 @@ def _integrity(chk: pd.DataFrame, summary: dict, mapping: str) -> list[str]:
     named = []
     for c, g in fail.groupby("check", sort=False):
         where = ", ".join(f"{n:,} in {t}" for t, n in zip(g["table"], g["n_violations"]))
-        named.append(f"`{c}` ({g['severity'].iloc[0]}; {where}: {checks.MEANING[c]})")
-    scope, done = list(dict.fromkeys(checks.SCOPE.values())), {checks.SCOPE[c] for c in chk["check"]}
+        named.append(f"`{c}` ({g['severity'].iloc[0]}; {where}: {checks.CHECKS[c][1]})")
+    scope, done = list(dict.fromkeys(v[2] for v in checks.CHECKS.values())), {checks.CHECKS[c][2] for c in chk["check"]}
 
     def series(vs: list[str]) -> str:
         vs = [v.replace("summary.json", f"summary{sfx}.json") for v in vs]
@@ -1184,17 +1276,18 @@ def _contagion_note(con: dict) -> str:
     return out.rstrip() + "\n"
 
 
-def _dose_block(fig: Path, ex: pd.DataFrame, ex_alt: pd.DataFrame, est: pd.DataFrame, summary: dict) -> list[str]:
+def _dose_block(fig: Path, ex: pd.DataFrame, ex_alt: pd.DataFrame | None, est: pd.DataFrame, summary: dict) -> list[str]:
     """A2's exploratory dose response among exposed rounds (``causal.estimate_dose``), its figure and
-    ``summary['A2_dose']``; kept apart from the table above, which stays A2's reading."""
+    ``summary['A2_dose']``; kept apart from the table above, which stays A2's reading.  ``ex_alt`` None: the other
+    mapping groups the agents the same way, so it has no sensitivity line."""
     dose = causal.estimate_dose(ex)
     causal.dose_figure(dose, fig)
     lat = causal.stated_latency_slope(ex)
-    alt = causal.estimate_dose(ex_alt) if len(ex_alt) > 20 else pd.DataFrame()
+    alt = causal.estimate_dose(ex_alt) if ex_alt is not None and len(ex_alt) > 20 else pd.DataFrame()
     summary["A2_dose"] = {"label": "exploratory: dose response among exposed rounds", "ref": causal.DOSE_REF,
                           "min_within_sd": causal.MIN_DOSE_SD, "min_bin_agents": causal.MIN_BIN_AGENTS,
                           "min_informative": causal.MIN_INFORMATIVE, "rows": dose.to_dict("records"),
-                          "stated_latency_slope": lat, "other_mapping": alt.to_dict("records")}
+                          "stated_latency_slope": lat} | ({} if ex_alt is None else {"other_mapping": alt.to_dict("records")})
     first = next(iter(causal.DOSE_OUTCOMES))
     sw = est.set_index(["outcome", "treatment"])["agents_with_D_variation"].get((first, "D_cons"))
     per = dose.drop_duplicates("outcome").set_index("outcome")
@@ -1282,8 +1375,8 @@ def _threshold_block(path: Path, ex: pd.DataFrame, visible: bool, summary: dict)
             + (f" ({len(fams)})" if fams else " (none here)")
             + (", and *still-visible copies* counts only copies not yet deleted at the report (D_visible)" if visible else "")
             + f". Where the share falls within hours, answers had been public only briefly (a race); where it holds "
-              f"past a day, long before (an archive). Over every answer it falls from {_pct(hour['0'])} at t = 0 to "
-              f"{_pct(hour['24 h'])} at 24 h.\n",
+              f"past a day, long before (an archive). Over every answer it falls from {pct(hour['0'])} at t = 0 to "
+              f"{pct(hour['24 h'])} at 24 h.\n",
             f"![exposure by head start](figures/{path.name})\n",
             md_table(curve, pct=tuple(curve.columns[1:]))]
 
@@ -1293,7 +1386,7 @@ def _instant_block(sw: dict, summary: dict) -> list[str]:
     summary["A1"]["instant_sweep"] = sw
     k_cfg = sw["k_configured"]
     row = pd.DataFrame([[f"{sw['n_stated_latency']:,} of {sw['n_answers']:,}",
-                         *[_pct(v) for v in sw["share_instant"]]]],
+                         *[pct(v) for v in sw["share_instant"]]]],
                        columns=["answers with a stated latency",
                                 *[f"k = {k:g} s" + (" (configured)" if k == k_cfg else "") for k in sw["ks"]]])
     fixed = [f"{sw['n_instant_by_wording']:,} called instant in words with no number stay instant at every k"]
@@ -1371,10 +1464,10 @@ def _framework_a1(fw: dict, n_ind: int, n: int) -> str:
         look, both = fw["n_own_lookup"] + fw["n_exposed_with_own_lookup"], fw["n_exposed_with_own_lookup"]
         out.append(f"Of {n_ind:,} with no earlier public copy, {fw['n_own_lookup']:,} were preceded by the agent's own tool "
                    f"output (*own lookup preceded report*, `own_lookup_evidence`). Over all {n:,} answers: "
-                   f"{fw['n_exposed_no_lookup']:,} ({_pct(fw['n_exposed_no_lookup'] / n)}) had a public copy first and no "
-                   f"own lookup, {look:,} ({_pct(look / n)}) an own lookup first" + (f" ({both:,} of them with an earlier public "
+                   f"{fw['n_exposed_no_lookup']:,} ({pct(fw['n_exposed_no_lookup'] / n)}) had a public copy first and no "
+                   f"own lookup, {look:,} ({pct(look / n)}) an own lookup first" + (f" ({both:,} of them with an earlier public "
                                                                                      "copy too)" if both else "")
-                   + f", {fw['n_neither']:,} ({_pct(fw['n_neither'] / n)}) neither. A lookup is evidence that the agent "
+                   + f", {fw['n_neither']:,} ({pct(fw['n_neither'] / n)}) neither. A lookup is evidence that the agent "
                    "fetched the value, not proof that it computed it: a tool can echo a value the agent passed in.")
     if "n_given_in_task" in fw:
         g, g0 = fw["n_given_in_task"], fw["n_given_in_task_no_public_copy"]
@@ -1545,7 +1638,7 @@ def _hub_headline(r5: dict) -> str:
     inst, n_items, one = share["instant only"], r5["items_exposed"], r5["items_one_source"]
 
     def span(s: pd.Series) -> str:
-        lo, hi = _pct(s.min()), _pct(s.max())
+        lo, hi = pct(s.min()), pct(s.max())
         return lo if lo == hi else f"{lo} to {hi}"
 
     def moves(what: str, lo: str, hi: str) -> tuple[str, str]:
@@ -1553,11 +1646,11 @@ def _hub_headline(r5: dict) -> str:
     whole = span(share["all exposed"])
     n_src = r5["exposure_sources"]
     (s_lo, s_hi), (g_lo, g_hi) = r5["top10_share_exposure_loo"], r5["gini_exposure_outdegree_loo"]
-    v_share, share_loo = moves("share", _pct(s_lo), _pct(s_hi))
+    v_share, share_loo = moves("share", pct(s_lo), pct(s_hi))
     v_gini, gini_loo = moves("Gini", f"{g_lo:.2f}", f"{g_hi:.2f}")
     loo = f"{v_share} {share_loo} and " + (gini_loo if v_gini == v_share else f"{v_gini} {gini_loo}")
     return (f"{n_src} agent{'s were' if n_src != 1 else ' was'} the first public source for someone's answer; "
-            f"the top 10 supplied **{_pct(r5['top10_share_exposure'])}** of all exposed answers "
+            f"the top 10 supplied **{pct(r5['top10_share_exposure'])}** of all exposed answers "
             f"(out-degree Gini {r5['gini_exposure_outdegree']:.2f}; the exposure counts of the {n_items} "
             f"item{'s' * (n_items != 1)} alone have a Gini of {r5['gini_item_exposures']:.2f}, which is what first-source "
             "credit gives if each item has one source of its own). "
@@ -1609,7 +1702,7 @@ def _origins_block(exs: dict[str, pd.DataFrame], mapping: str, summary: dict) ->
     first-source origins under ``mapping`` for the top-sources table."""
     tr = {(rule, m): origins.trace_root(e, col) for rule, col in (("first source", "src_agent"), ("latest source", "src_latest"))
           for m, e in exs.items()}
-    tbl = pd.DataFrame({f"{rule}, {m} ({len(t):,})": [f"{n:,} ({_pct(n / len(t))})" for n in
+    tbl = pd.DataFrame({f"{rule}, {m} ({len(t):,})": [f"{n:,} ({pct(n / len(t))})" for n in
                                                       t["origin"].value_counts().reindex(origins.LABELS, fill_value=0)]
                         for (rule, m), t in tr.items()}, index=pd.Index(origins.LABELS, name="credited source"))
     rules = ("first source", "latest source")
@@ -1626,7 +1719,8 @@ def _origins_block(exs: dict[str, pd.DataFrame], mapping: str, summary: dict) ->
         "mapping": mapping, "roots": roots.to_dict(), "max depth": {r: int(tr[(r, mapping)]["depth"].max()) for r in rules},
         "no answer round observed, top sources": audit.reset_index().to_dict("records")}
     L = ["**Where did copied answers come from?** Each exposed answer's credited source (under the two rules that credit "
-         "every answer, and both identity mappings; answers in brackets), judged by the source's own answer round on the "
+         "every answer" + (", and both identity mappings" if len(exs) > 1 else "") + "; answers in brackets), judged by "
+         "the source's own answer round on the "
          "same item: **computed** = it answered the same value with nothing matching public before its report (D = 0); "
          "**no answer round observed** = no answer round of its own on the item was extracted, which fits an agent that "
          "only published values (an answer list, a sequence scout) but also a missed answer or an identity split, so audit "
@@ -1724,14 +1818,14 @@ def _visibility_note(ex: pd.DataFrame) -> str:
     return (f"Honouring deletions: {len(gone):,} of {len(exposed):,} exposed answers were preceded by a public copy that had been "
             f"deleted before the report (posted a median {age.median():.1f} h before it, deleted a median {since.median():.1f} h before it); "
             f"for {other:,} another copy was still visible, for {len(gone) - other:,} "
-            f"nothing visible carried the value, so the independent count would be {n_ind_vis:,} ({_pct(n_ind_vis / len(ex))}) "
-            f"under D_visible instead of {n_ind:,} ({_pct(n_ind / len(ex))}).")
+            f"nothing visible carried the value, so the independent count would be {n_ind_vis:,} ({pct(n_ind_vis / len(ex))}) "
+            f"under D_visible instead of {n_ind:,} ({pct(n_ind / len(ex))}).")
 
 
 def _relay_tie_note(edges: pd.DataFrame) -> str:
     if not len(edges) or "within_clock_res" not in edges:
         return ""
-    rel = edges[edges["kind"].isin(["relay", "relay_xchannel"])]
+    rel = edges[edges["kind"].isin(graph.RELAY_KINDS)]
     url = rel["family"].astype(str).str.startswith("url")
     tie = rel["within_clock_res"].fillna(False).astype(bool)
     return (f" {int((tie & ~url).sum()):,} of {int((~url).sum()):,} answer relay hops (and {int((tie & url).sum()):,} of "

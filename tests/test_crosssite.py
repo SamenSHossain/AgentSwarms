@@ -97,6 +97,7 @@ def test_surface_groups():
     assert crosssite.short_site("prowiki.org/wiki4d") == "wiki4d"
 
 
+@pytest.mark.figures
 def test_figures_render(tmp_path):
     ev = _events()
     sp = crosssite.technique_spread(ev, TECHS)

@@ -13,7 +13,7 @@ from __future__ import annotations
 import pandas as pd
 
 from ..claims import PRIVATE_KINDS
-from ..graph import to_networkx
+from ..graph import RELAY_KINDS, to_networkx
 from . import origins, structure
 
 AGENT_COLS = {"merged": "agent_merged", "strict": "agent_strict"}
@@ -86,7 +86,7 @@ def profile(agents: pd.DataFrame, events: pd.DataFrame, tags: pd.DataFrame, ex: 
     xe, rel = edges[kind == "exposure"], edges[kind == "relay"]
     task = chains[chains["family"] != "url"] if len(chains) else chains
     # every other carrier of a multi-carrier fact has one relay or cross-page hop into it for that fact
-    hops = edges[kind.isin(["relay", "relay_xchannel"])].merge(
+    hops = edges[kind.isin(RELAY_KINDS)].merge(
         task[["family", "item", "value_key", "originator"]].rename(columns={"value_key": "value_norm"}),
         on=["family", "item", "value_norm"]) if len(task) else pd.DataFrame(columns=["originator", "dst"])
     counts = {"answers_supplied": xe.groupby("src").size(),

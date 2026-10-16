@@ -9,7 +9,6 @@ import pytest
 
 from swarmprov import adapters, exposure, graph, lifecycle, pipeline
 
-RAW = Path(__file__).resolve().parents[1] / "data" / "raw"
 T = lambda s: f"2026-06-16T{s}:00Z"
 
 
@@ -210,10 +209,10 @@ def test_sweeps_cluster_by_gap():
     assert list(lifecycle.sweeps(d, gap_min=60)["n"]) == [4, 1]
 
 
-@pytest.mark.skipif(not (RAW / "events.jsonl").exists(), reason="full wiki dump not present")
-def test_real_dump_counts():
-    b = adapters.get("wiki").load(RAW)
-    lc, p, n = b.lifecycle, b.probes, b.notes
+def test_real_dump_counts(wiki_run):
+    """The lifecycle, probes and notes ingest wrote from the full dump."""
+    lc, p = wiki_run.read("lifecycle"), wiki_run.read("probes")
+    n = json.loads((wiki_run.path / "profile.json").read_text())["notes"]
     assert lc["action"].value_counts().to_dict() == {"delete": 5217, "recreate": 68}
     rec = lc[lc["action"] == "recreate"]
     assert rec["revision_ref"].map(lambda v: isinstance(v, str) and bool(v)).sum() == 64

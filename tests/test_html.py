@@ -43,6 +43,7 @@ def test_headings_sections_and_bullets(tmp_path):
     assert "<ul><li>one <strong>x</strong></li><li>two</li></ul>" in out and out.endswith("</section>")
 
 
+@pytest.mark.figures
 def test_figures_become_data_uris_and_nothing_else_is_read(tmp_path):
     (tmp_path / "figures").mkdir()
     (tmp_path / "figures" / "a1.png").write_bytes(PNG)
@@ -75,6 +76,7 @@ def page(synth_run):
     return run, text, json.loads(DATA.search(text).group(1)), json.loads((run.path / "summary.json").read_text())
 
 
+@pytest.mark.figures
 def test_report_builds_a_self_contained_page(page):
     run, text, _, s = page
     md = (run.path / "report.md").read_text()

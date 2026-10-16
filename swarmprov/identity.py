@@ -81,6 +81,16 @@ def alias_table(agents: pd.DataFrame) -> pd.DataFrame:
             [[c for c in cols if c in a]])
 
 
+def one_to_one(agents: pd.DataFrame) -> dict | None:
+    """Each merged label's strict label when the two mappings group the author strings identically (every merged
+    agent is one strict agent and every strict agent one merged agent), else None.  The strict tables are then the
+    merged ones relabelled, and a report has no sensitivity to show."""
+    pairs = agents[["agent_merged", "agent_strict"]].drop_duplicates()
+    if not len(pairs) or not (pairs["agent_merged"].is_unique and pairs["agent_strict"].is_unique):
+        return None
+    return dict(zip(pairs["agent_merged"], pairs["agent_strict"]))
+
+
 def catch_all_family(cfg: AdapterConfig, roster: bool = False) -> str | None:
     """The config's ``default_family``, if it applies: only with no families configured and no roster (a
     configured swarm's unmatched posts stay family-less rather than pooled into one task)."""

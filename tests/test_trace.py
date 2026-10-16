@@ -137,6 +137,7 @@ def test_agent_names_match_case_insensitively(synth_run):
     assert len(query.match_agents(run, "alpha")) > 10
 
 
+@pytest.mark.figures
 @pytest.mark.parametrize("mapping", ["merged", "strict"])
 def test_trace_cli_modes(synth_run, tmp_path, capsys, mapping):
     run, truth = synth_run

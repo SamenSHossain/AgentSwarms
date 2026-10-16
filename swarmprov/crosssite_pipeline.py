@@ -4,7 +4,6 @@ collectors' coverage bounds.  Written against ``analysis/crosssite.py``."""
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pandas as pd
@@ -12,6 +11,7 @@ import pandas as pd
 from . import adapters, remote
 from .adapters.base import Technique
 from .analysis import crosssite
+from .fmt import dumps
 from .schema import RunDir, conform
 
 EXTRA_TECHNIQUES = [
@@ -95,11 +95,11 @@ def run_crosssite(wiki_run: str | Path, corpus_path: str | Path, out: str | Path
         L.append("\n## Coverage bounds (from the collectors' site inventory)\n")
         L.append(crosssite.coverage_markdown(cov))
     (run.path / "report.md").write_text("\n".join(L))
-    (run.path / "summary.json").write_text(json.dumps({
+    (run.path / "summary.json").write_text(dumps({
         "n_events": int(len(ev)), "n_sites": int(ev["site"].nunique()), "corpus_notes": bundle.notes,
         "technique_site_summary": summary.to_dict("records"),
         "coverage": {k: v for k, v in (cov or {}).items() if not isinstance(v, pd.DataFrame)},
-    }, indent=2, default=str))
+    }, indent=2))
     print(f"[swarmprov] wrote {run.path / 'report.md'}")
     from .html import build_html
     build_html(run)

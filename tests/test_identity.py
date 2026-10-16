@@ -6,8 +6,9 @@ import json
 import pandas as pd
 import pytest
 
-from swarmprov import identity, pipeline, report
+from swarmprov import claims, exposure, graph, identity, pipeline, report
 from swarmprov.adapters import AdapterConfig
+from swarmprov.analysis import errors
 
 AGENTS = ["planner", "coder", "analyst", "critic"]
 
@@ -99,6 +100,7 @@ def test_explicit_authors_with_date_leads_stay_distinct(datelead_runs):
     text = (run.path / "report.md").read_text()
     assert "**12 answers given by 4 agents;" in text
     assert "Identity merges: none; each of the 4 merged ids is a single author string" in text
+    assert "both identity mappings group the author strings identically" in text   # one line, no sensitivity numbers
     al = pd.read_csv(run.path / "agent_aliases.csv")
     assert len(al) == 4 and set(al["n_merged_aliases"]) == {1}
 
@@ -109,6 +111,7 @@ def test_merges_on_an_explicit_author_source_are_flagged(datelead_runs):
     assert "Identity merges: 1 of 1 merged ids joins more than one author string (4 strings in all); largest: `May05|gdp` (4)." in text
     assert ("**Warning:** this source names its authors explicitly. 1 merge joins handles it keeps apart (a shared cohort "
             "date token and task family, or a roster); compare the strict-mapping sensitivity lines.") in text
+    assert "_Sensitivity_: under the other identity mapping, 12 agent-rounds" in text and "identically" not in text
     al = pd.read_csv(run.path / "agent_aliases.csv")
     assert set(al["agent_merged"]) == {"May05|gdp"} and set(al["n_merged_aliases"]) == {4}
 
@@ -140,3 +143,35 @@ def test_case_merges_are_counted_apart_from_cohort_merges():
 def test_identity_merges_none_reads_in_the_singular():
     assert report._identity_merges(_agents(CASE[2:]), explicit=False) == (
         "Identity merges: none; the only merged id is a single author string (`agent_aliases.csv` lists both mappings).")
+
+
+def test_one_to_one_only_where_both_mappings_group_the_authors_alike():
+    assert identity.one_to_one(_agents(CASE)) == {"planner": "planner", "coder": "coder"}   # case folds in both
+    assert identity.one_to_one(_agents(CASE + COHORT)) is None                                 # merged joins two handles
+    assert identity.one_to_one(_agents([("A", "a", "M1"), ("a", "a", "M2")])) is None          # a handle kept apart
+
+
+def test_a_one_to_one_run_relabels_its_strict_tables_and_reports_one_line(synth_run):
+    """The seed-2 swarm's two mappings group its 60 authors alike, so expose and graph write the strict tables by
+    relabelling the merged ones: they hold what computing under the strict labels gives.  The report says so in one
+    line and repeats no estimate under the other mapping."""
+    run, _ = synth_run
+    labels = identity.one_to_one(run.read("agents"))
+    assert len(labels) == 60 and all(k != v for k, v in labels.items())
+    cl, mn = run.read("claims"), run.read("mentions")
+    slots = errors.value_slots(claims.public(mn), "agent_strict")
+    win = {(s["family"], s["item"]): s["winner"] for s in slots if s["status"] == "overturned"}
+    ex = exposure.build(claims.agent_rounds(cl, "agent_strict"), mn, claims.consensus(cl, mn), "agent_strict", winners=win)
+    pd.testing.assert_frame_equal(run.read("exposures_strict"), ex, check_dtype=False)
+    rel, chains = graph.relay_edges(claims.public(mn), "agent_strict")
+    stored = run.read("edges_strict")
+    stored = stored[stored["kind"].isin(graph.RELAY_KINDS)].reset_index(drop=True)
+    pd.testing.assert_frame_equal(stored[rel.columns], rel, check_dtype=False)
+    pd.testing.assert_frame_equal(run.read("chains_strict"), chains, check_dtype=False)
+    text = (run.path / "report.md").read_text()
+    assert ("_Sensitivity_: both identity mappings group the author strings identically (each merged agent is one "
+            "strict agent), so every number in this report is the same under the strict mapping") in text
+    assert "under the other identity mapping" not in text and "Sensitivity (other identity mapping)" not in text
+    assert "credit every answer; answers in brackets" in text   # the origins table has one mapping's columns
+    s = json.loads((run.path / "summary.json").read_text())
+    assert "other_mapping" not in s["A2_dose"] and set(s["A5"]["origins"]["by_mapping"]) == {"merged"}

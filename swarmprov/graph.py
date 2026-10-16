@@ -32,6 +32,7 @@ from .identity import cohort_token
 # two 1 s clocks: a hop shorter than this cannot be ordered reliably
 CLOCK_RES_S = 2.0
 KINDS = ("relay", "relay_xchannel", "exposure", "citation", "reply")
+RELAY_KINDS = ("relay", "relay_xchannel")   # a carrier's hop into a fact, same page or not
 # what an edge's weight counts: a cross-page hop's source is unknown, and a reply is an interaction
 TRANSFER_KINDS = ("relay", "exposure", "citation")
 SHORT = {"relay": "n_relay", "relay_xchannel": "n_xchannel", "exposure": "n_exposure", "citation": "n_citation",

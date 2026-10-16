@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from swarmprov import cli, exposure, pipeline, report, synth
+from swarmprov import cli, exposure, report
 from swarmprov.analysis import origins, structure
 from swarmprov.schema import TABLES, RunDir
 
@@ -35,14 +35,6 @@ def _shares(run):
     a = structure.analyze(run.read("edges_merged"), run.read("chains_merged"), ex=run.read("exposures_merged"),
                           events=run.read("events"))
     return a["attribution"].set_index(["rule", "answers"])
-
-
-@pytest.fixture(scope="module")
-def no_copy(tmp_path_factory):
-    """The seed-2 swarm with copy_rate=0: answers are often public already, but nobody copies."""
-    d = tmp_path_factory.mktemp("synth_nocopy")
-    path = synth.write(d / "transcript.jsonl", n_agents=60, copy_rate=0.0, seed=2)
-    return pipeline.run_all(path, d / "run", adapter="chat", config=str(d / "config.json"))
 
 
 def test_latest_carrier_is_stored_with_its_post():
@@ -200,9 +192,10 @@ def test_first_rule_finds_the_copied_post(synth_first):
     assert true_top - a.loc[("latest source", "instant only"), "top10_share"] > 0.25
 
 
-def test_no_copying_leaves_the_copy_signature_empty(no_copy):
+def test_no_copying_leaves_the_copy_signature_empty(synth_null):
     """Nobody copies, yet first-source credit still finds 'hubs' among the agents who answered first (top-10 share
     0.68-0.80 on seeds 0-7)."""
+    no_copy = synth_null[0]
     a = _shares(no_copy)
     assert (a.xs("instant only", level="answers")["n"] == 0).all()
     assert a.loc[("first source", "all exposed"), "n"] > 100 and a.loc[("first source", "all exposed"), "top10_share"] > 0.5
@@ -233,7 +226,8 @@ def test_report_shows_the_attribution_and_origins(synth_run):
         assert s in a5, s
     s = json.loads((run.path / "summary.json").read_text())["A5"]
     o = s["origins"]
-    assert len(s["attribution"]) == 6 and set(o["by_mapping"]) == {"merged", "strict"} and o["mapping"] == "merged"
+    # one mapping: the strict one groups the seed-2 authors the same way (test_identity)
+    assert len(s["attribution"]) == 6 and set(o["by_mapping"]) == {"merged"} and o["mapping"] == "merged"
     assert o["by_mapping"]["merged"]["first source"]["no answer round observed"] == 0
     assert sum(o["by_mapping"]["merged"]["first source"].values()) == s["n_exposure_edges"]
     assert set(o["roots"]["latest source"]) == set(origins.LABELS[:3]) | {origins.POSTED_FIRST, origins.CUT}

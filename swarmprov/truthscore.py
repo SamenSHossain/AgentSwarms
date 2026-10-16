@@ -30,7 +30,7 @@ from .analysis import causal, diffusion, errors, structure
 from .analysis.agents import AGENT_COLS
 from .analysis.uncertainty import km_greenwood, km_median
 from .claims import public, value_key
-from .report import _json_safe
+from .fmt import dumps, json_safe
 from .rules import norm_value
 from .schema import RunDir, suffix
 
@@ -141,7 +141,7 @@ def _a3(tags: pd.DataFrame, techniques, truth_dir: Path, col: str, wall: bool) -
 def _a4(mentions: pd.DataFrame, truth: pd.DataFrame, refs: dict, col: str, wall: bool) -> dict:
     """The run's value slots and those of A4's rule on the true answers, under the run's rule (one majority bin on a
     sequence clock, as the report has it)."""
-    rule = {} if wall else {"bin_h": None}
+    rule = errors.slot_rule(not wall)
     run_slots = {s["slot"]: s for s in errors.value_slots(public(mentions), col, **rule)}
     tm = truth.rename(columns={"t_report": "ts", "key": "value_key"}).assign(**{col: truth["who"]})
     true_slots = {s["slot"]: s for s in errors.value_slots(tm, col, **rule)}
@@ -204,8 +204,8 @@ def score(run: RunDir, truth_dir: str | Path, mapping: str = "merged") -> dict:
         "A4": _a4(run.read("mentions"), truth, refs, col, wall),
         "identity": _identity(agents, handle),
     }
-    out = _json_safe(out)
-    (run.path / "truth_validation.json").write_text(json.dumps(out, indent=2, allow_nan=False))
+    out = json_safe(out)
+    (run.path / "truth_validation.json").write_text(dumps(out, indent=2))
     return out
 
 

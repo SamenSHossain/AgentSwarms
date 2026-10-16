@@ -35,7 +35,6 @@ from __future__ import annotations
 
 import ast
 import re
-from collections import Counter
 
 import pandas as pd
 
@@ -385,6 +384,14 @@ def lifecycle_from_channels(ch: pd.DataFrame) -> pd.DataFrame:
     rows = [{"channel": c, "ts": t, "action": "create", "actor": ""} for c, t in zip(ch["channel"], ch["created"]) if pd.notna(t)]
     rows += [{"channel": c, "ts": t, "action": "delete", "actor": ""} for c, t in zip(ch["channel"], ch["deleted"]) if pd.notna(t)]
     return pd.DataFrame(rows, columns=["channel", "ts", "action", "actor"]).sort_values("ts").reset_index(drop=True)
+
+
+def channel_lists(channels: pd.DataFrame) -> pd.DataFrame:
+    """The channel table as read back from Parquet, which stores the allow/deny lists as text: lists again."""
+    ch = channels.copy()
+    for c in ("allow", "deny"):
+        ch[c] = ch[c].map(lambda v: ast.literal_eval(v) if isinstance(v, str) and v.startswith("[") else (v if isinstance(v, list) else []))
+    return ch
 
 
 def restricted(ch: pd.DataFrame) -> pd.DataFrame:

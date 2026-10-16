@@ -17,7 +17,7 @@ import pandas as pd
 from . import adapters, remote
 from .adapters import framework
 from .adapters.base import FIELD_NAMES, AdapterConfig, check_fields, config_snippet
-from .adapters.chat import FORMATS, GUESS, SAMPLE, _pick, _resolve, _text, _to_ts, guess_fields, read_messages
+from .adapters.chat import FORMATS, GUESS, SAMPLE, guess_fields, pick_field, read_messages, resolve_field, text_of, to_ts
 from .adapters.village import discover
 
 
@@ -56,19 +56,19 @@ def inspect(path, config: str | None = None, fields: dict | None = None) -> int:
     print(f"\nfields over the first {n:,} of {len(msgs):,} records (canonical <- source key, records holding it):")
     found = {}
     for f in FIELD_NAMES:
-        hits = Counter(k for k, v in (_resolve(m, f, fields) for m in recs) if v is not None)
+        hits = Counter(k for k, v in (resolve_field(m, f, fields) for m in recs) if v is not None)
         found[f] = hits
         how = " [mapped]" if f in fields else ""
         keys = ", ".join(f"{k} ({c:,})" for k, c in hits.most_common(3))
         if not hits and f == "channel" and any(c for _, c, *_ in sample):
             keys = "the container (a {room: [...]} key, an export's channel name, a file name)"
         print(f"  {f:<10} <- {keys or '(none)'}{how}")
-    n_ts = sum(pd.notna(_to_ts(_pick(m, "ts", fields))) for m in recs)
-    who = [_pick(m, "author", fields) or _pick(m, "author_alt", fields) for m in recs]
+    n_ts = sum(pd.notna(to_ts(pick_field(m, "ts", fields))) for m in recs)
+    who = [pick_field(m, "author", fields) or pick_field(m, "author_alt", fields) for m in recs]
     roles = [framework.role(m, w) for m, w in zip(recs, who)]
     n_auth = sum(bool(w) or r in ("task", "tool") for w, r in zip(who, roles))   # ingest names these `task` / the caller
-    n_text = sum(bool(_text(_pick(m, "text", fields)).strip()) for m in recs)
-    channels = {str(_pick(m, "channel", fields) or c or "main") for m, c, *_ in sample}
+    n_text = sum(bool(text_of(pick_field(m, "text", fields)).strip()) for m in recs)
+    channels = {str(pick_field(m, "channel", fields) or c or "main") for m, c, *_ in sample}
     print(f"\ncoverage: timestamps read {n_ts / n:.0%}, authors known (not `unknown`) {n_auth / n:.0%}, "
           f"text non-empty {n_text / n:.0%}, {len(channels):,} channel{'s' if len(channels) > 1 else ''}")
     kinds = Counter(roles)

@@ -62,7 +62,7 @@ def test_relay_window_none_leaves_the_graph_unchanged(synth_run):
         pd.testing.assert_frame_equal(e, e0)
         pd.testing.assert_frame_equal(c, c0)
     stored = run.read("edges_merged")
-    stored = stored[stored["kind"].isin(["relay", "relay_xchannel"])]
+    stored = stored[stored["kind"].isin(graph.RELAY_KINDS)]
     cols = ["src", "dst", "family", "item", "value_norm", "kind", "dt_s", "event_id", "src_event_id"]
     key = ["family", "item", "value_norm", "dst"]
     pd.testing.assert_frame_equal(e0[cols].sort_values(key).reset_index(drop=True),

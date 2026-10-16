@@ -39,6 +39,12 @@ BIN_H, TAIL_SHARE, MIN_TAIL = 3.0, 1 / 3, 5
 SPARSE_BIN = 3   # the figure draws a bin with fewer new carriers than this faint
 
 
+def slot_rule(seq: bool) -> dict:
+    """The slot finders' ``rule`` for a run's clock: on a sequence clock there are no hours, so the whole run is one
+    majority bin."""
+    return {"bin_h": None} if seq else {}
+
+
 def _status(first, winner, t50, n_tail: int, min_tail: int) -> str:
     if winner is None or first is None:
         return "contested"            # the late carriers tie, or no variant came first

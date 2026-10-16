@@ -78,6 +78,28 @@ def _score(r, target) -> float:
     return float(value_key(r.value_norm) == target) if r.value_norm is not None and target is not None else np.nan
 
 
+def _facts(m: pd.DataFrame, agent_col: str, audience: dict) -> dict:
+    """(family, item, value_key) -> its mentions as arrays in (ts, event_id) order: ``t`` (datetime64, searched),
+    ``ts`` (the times themselves), ``agent``, ``event_id``, ``channel``, the ``private`` / ``tool`` / ``task`` kind
+    flags, ``restricted`` (a channel in ``audience``) and ``vu`` / ``vu_ts`` (visible_until), when there is one."""
+    if not len(m):
+        return {}
+    m = m.sort_values(["ts", "event_id"], kind="stable")
+    kind = m["source_kind"] if "source_kind" in m else pd.Series(None, index=m.index, dtype=object)
+    cols = {"t": pd.to_datetime(m["ts"], utc=True).dt.tz_convert(None).to_numpy("datetime64[ns]"),
+            "ts": m["ts"].to_numpy(object), "agent": m[agent_col].to_numpy(object),
+            "event_id": m["event_id"].to_numpy(object), "private": kind.isin(PRIVATE_KINDS).to_numpy(bool),
+            "tool": (kind == "tool_result").to_numpy(bool), "task": (kind == "task").to_numpy(bool)}
+    if "channel" in m:
+        cols["channel"] = m["channel"].to_numpy(object)
+        cols["restricted"] = np.array([c in audience for c in cols["channel"]], dtype=bool)
+    if "visible_until" in m:
+        vu = pd.to_datetime(m["visible_until"], utc=True, errors="coerce")
+        cols |= {"vu": vu.dt.tz_convert(None).to_numpy("datetime64[ns]"), "vu_ts": vu.to_numpy(object)}
+    return {k: {c: v[i] for c, v in cols.items()}
+            for k, i in m.groupby(["family", "item", "value_key"], sort=False).indices.items()}
+
+
 def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: str,
           audience: dict[str, set[str]] | None = None, wall_clock: bool = True,
           winners: dict | None = None) -> pd.DataFrame:
@@ -87,63 +109,63 @@ def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: s
     a mention there counts as public only for those agents (channels absent from
     the map are public to all).  A round whose report has no timestamp is dropped:
     nothing can be ordered against it (the report counts these)."""
-    m = mentions[mentions["family"] != "url"]
-    m = m.assign(_kind=m["source_kind"] if "source_kind" in m else None)
-    groups = {k: g.sort_values(["ts", "event_id"], kind="stable") for k, g in m.groupby(["family", "item", "value_key"])}
     audience = audience or {}
+    m = mentions[mentions["family"] != "url"]
+    facts = _facts(m, agent_col, audience)
 
-    def readable(g: pd.DataFrame, agent) -> pd.DataFrame:
-        if not audience or "channel" not in g or not len(g):
-            return g
-        ok = np.array([c not in audience or agent in audience[c] for c in g["channel"]], dtype=bool)
-        return g.loc[ok]
+    def before(f: dict, agent, t) -> tuple[int, np.ndarray]:
+        """How many of the fact's mentions precede ``t``, and which of those ``agent`` could read."""
+        n = int(np.searchsorted(f["t"], t, side="left"))
+        ok = np.ones(n, dtype=bool)
+        if audience and "channel" in f:
+            for i in np.flatnonzero(f["restricted"][:n]):
+                ok[i] = agent in audience[f["channel"][i]]
+        return n, ok
     rows = []
     rounds = rounds[rounds["t_report"].notna()]
     rounds = rounds.astype(object).where(rounds.notna(), None)
     for r in rounds.itertuples(index=False):
         cv, win = cons.get((r.family, r.item)), (winners or {}).get((r.family, r.item))
         target = match_key(r.value_norm, cv)
+        t = np.datetime64(pd.Timestamp(r.t_report).value, "ns")
         t_pub = src = t_self = src_ev = src_ch = vis_ev = self_ev = t_last = src_last = last_ev = None
-        g = groups.get((r.family, r.item, target)) if target else None
+        f = facts.get((r.family, r.item, target)) if target else None
         t_vis = t_src_del = t_look = look_ev = t_task = task_ev = None
         src_gone = False
-        if g is not None:
-            before = readable(g[g["ts"] < r.t_report], r.agent)
-            look = before[(before["_kind"] == "tool_result") & (before[agent_col] == r.agent)]
-            if len(look):
-                t_look, look_ev = look["ts"].iloc[0], look["event_id"].iloc[0]
-            task = before[before["_kind"] == "task"]
-            if len(task):
-                t_task, task_ev = task["ts"].iloc[0], task["event_id"].iloc[0]
-            before = before[~before["_kind"].isin(PRIVATE_KINDS)]
-            others = before[before[agent_col] != r.agent]
+        if f is not None:
+            n, ok = before(f, r.agent, t)
+            mine = f["agent"][:n] == r.agent
+            if len(look := np.flatnonzero(ok & f["tool"][:n] & mine)):
+                t_look, look_ev = f["ts"][look[0]], f["event_id"][look[0]]
+            if len(task := np.flatnonzero(ok & f["task"][:n])):
+                t_task, task_ev = f["ts"][task[0]], f["event_id"][task[0]]
+            pub = ok & ~f["private"][:n]
+            others = np.flatnonzero(pub & ~mine)
             if len(others):
-                first, last = others.iloc[0], others.iloc[-1]
-                t_pub, src, src_ev = first["ts"], first[agent_col], first["event_id"]
-                t_last, src_last, last_ev = last["ts"], last[agent_col], last["event_id"]
-                src_ch = first["channel"] if "channel" in others else None
-                if "visible_until" in others:
-                    vu = pd.to_datetime(others["visible_until"], utc=True, errors="coerce")
-                    still = others[vu.isna() | (vu > r.t_report)]
+                i, j = others[0], others[-1]
+                t_pub, src, src_ev = f["ts"][i], f["agent"][i], f["event_id"][i]
+                t_last, src_last, last_ev = f["ts"][j], f["agent"][j], f["event_id"][j]
+                src_ch = f["channel"][i] if "channel" in f else None
+                if "vu" in f:
+                    vu = f["vu"][others]
+                    still = others[np.isnat(vu) | (vu > t)]
                     if len(still):
-                        t_vis, vis_ev = still["ts"].iloc[0], still["event_id"].iloc[0]
-                    src_gone = bool(pd.notna(vu.iloc[0]) and vu.iloc[0] <= r.t_report)
-                    t_src_del = vu.iloc[0] if pd.notna(vu.iloc[0]) else None
+                        t_vis, vis_ev = f["ts"][still[0]], f["event_id"][still[0]]
+                    src_gone = bool(not np.isnat(vu[0]) and vu[0] <= t)
+                    t_src_del = None if np.isnat(vu[0]) else f["vu_ts"][i]
                 else:
                     t_vis, vis_ev = t_pub, src_ev
-            own = before[before[agent_col] == r.agent]
-            if len(own):
-                t_self, self_ev = own["ts"].iloc[0], own["event_id"].iloc[0]
+            if len(own := np.flatnonzero(pub & mine)):
+                t_self, self_ev = f["ts"][own[0]], f["event_id"][own[0]]
         gap = (r.t_report - t_pub).total_seconds() if t_pub is not None else np.nan
         # Treatment for the causal model: was the *consensus* value public?  Independent
         # of what this agent answered, so a wrong answer cannot mechanically force D=0.
         t_cons = None
-        gc = groups.get((r.family, r.item, cv)) if cv else None
-        if gc is not None:
-            oc = readable(gc[(gc["ts"] < r.t_report) & (gc[agent_col] != r.agent) & ~gc["_kind"].isin(PRIVATE_KINDS)],
-                          r.agent)
-            if len(oc):
-                t_cons = oc["ts"].iloc[0]
+        c = facts.get((r.family, r.item, cv)) if cv else None
+        if c is not None:
+            n, ok = before(c, r.agent, t)
+            if len(oc := np.flatnonzero(ok & (c["agent"][:n] != r.agent) & ~c["private"][:n])):
+                t_cons = c["ts"][oc[0]]
         gap_c = (r.t_report - t_cons).total_seconds() if t_cons is not None else np.nan
         rows.append({
             "claim_id": r.claim_id, "report_event_id": getattr(r, "report_event_id", None),

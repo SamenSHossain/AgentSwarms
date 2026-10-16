@@ -29,6 +29,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from .analysis.agents import AGENT_COLS
+from .fmt import dumps
 from .schema import RunDir, suffix
 
 TOL = 1e-6
@@ -274,8 +276,7 @@ def _merged_labels(agents: pd.DataFrame) -> dict:
 def _agents(aa: pd.DataFrame, ab: pd.DataFrame, mapping_a: str, mapping_b: str, limit: int) -> dict:
     """Author strings added and dropped; label changes (one mapping only); author strings regrouped, i.e. whose
     agent joins a different set of author strings (any mappings)."""
-    col = {"merged": "agent_merged", "strict": "agent_strict"}
-    la, lb = aa.set_index("author_raw")[col[mapping_a]], ab.set_index("author_raw")[col[mapping_b]]
+    la, lb = aa.set_index("author_raw")[AGENT_COLS[mapping_a]], ab.set_index("author_raw")[AGENT_COLS[mapping_b]]
     out = _keyed(la.rename("label").reset_index(), lb.rename("label").reset_index(), "author_raw",
                  ("label",) if mapping_a == mapping_b else (), limit)
     shared = la.index.intersection(lb.index)
@@ -468,8 +469,7 @@ def main(run_a: str, run_b: str, mapping_a: str = "merged", mapping_b: str = "me
     res = compare(run_a, run_b, mapping_a, mapping_b, tol, limit)
     d = Path(out)
     d.mkdir(parents=True, exist_ok=True)
-    from .report import _json_safe
-    (d / "compare.json").write_text(json.dumps(_json_safe(res), indent=2, default=str, allow_nan=False))
+    (d / "compare.json").write_text(dumps(res, indent=2))
     (d / "compare.md").write_text(to_markdown(res, limit))
     print("\n".join(headline(res)))
     print(f"wrote {d / 'compare.md'} and {d / 'compare.json'}")
