@@ -244,16 +244,27 @@ def _node_env() -> dict | None:
     return env if ok.returncode == 0 else None
 
 
-@pytest.mark.skipif(_node_env() is None, reason="needs node with playwright (headless Chromium)")
+browser = pytest.mark.skipif(_node_env() is None, reason="needs node with playwright (headless Chromium)")
+
+
+def _browse(tmp_path, script: str, *args) -> dict:
+    """Run a Playwright script under node; it prints one JSON object."""
+    js = tmp_path / "check.js"
+    js.write_text("const { chromium } = require('playwright');\n" + script)
+    out = subprocess.run([shutil.which("node"), str(js), *map(str, args)], capture_output=True, text=True, timeout=120,
+                         env=_node_env())
+    assert out.returncode == 0, out.stderr
+    return json.loads(out.stdout)
+
+
+@browser
 def test_page_runs_in_a_browser(page, tmp_path):
     """The page's script runs without errors offline: the explorer draws a row per carrier, a row shows its post,
     a slot draws, the agent search finds an agent and a header click sorts its table."""
     run, _, d, _ = page
     f = d["facts"][0]
     second = d["agents"][min(f["h"], key=lambda h: h[3])[1]]   # the row after the originator's: the earliest hop
-    js = tmp_path / "check.js"
-    js.write_text("""
-const { chromium } = require('playwright');
+    r = _browse(tmp_path, """
 (async () => {
   const b = await chromium.launch(), p = await (await b.newContext({offline: true})).newPage(), errs = [];
   p.on('pageerror', e => errs.push(e.message));
@@ -265,11 +276,63 @@ const { chromium } = require('playwright');
   await p.fill('#ag-q', process.argv[3]); const card = await p.textContent('#ag-card');
   const th = await p.$('#data-capabilities th'); await th.click(); const sort = await th.getAttribute('aria-sort');
   console.log(JSON.stringify({errs, rows, detail, slot, card, sort})); await b.close();
-})();""")
-    out = subprocess.run([shutil.which("node"), str(js), str(run.path / "report.html"), d["agents"][f["h"][0][1]]],
-                         capture_output=True, text=True, timeout=120, env=_node_env())
-    assert out.returncode == 0, out.stderr
-    r = json.loads(out.stdout)
+})();""", run.path / "report.html", d["agents"][f["h"][0][1]])
     assert r["errs"] == [] and r["sort"] == "ascending"
     assert r["rows"] >= f["carriers"] and r["detail"].startswith(second) and "after the parent's post" in r["detail"]
     assert r["slot"].startswith(d["slots"][0]["slot"]) and "Learned from" in r["card"]
+
+
+LONG_URL = "https://allorigins.hexlet.app/raw?url=" + "https%3A%2F%2Fapi.example.org%2Fv2%2Fseries%2F" * 6
+
+
+@pytest.fixture(scope="module")
+def long_chain(tmp_path_factory):
+    """One value relayed down a board by 90 agents, a minute apart (a 90-row timeline, taller than a screen), three
+    of whose posts also cite one long URL with no break in it."""
+    from swarmprov import pipeline
+    d = tmp_path_factory.mktemp("long")
+    posts = [{"ts": f"2026-06-16T{8 + i // 60:02d}:{i % 60:02d}:00Z", "author": f"Scout{i:02d}", "channel": "alpha-board",
+              "text": f"R1 CONFIRMED: Ohio arrived {8 + i // 60:02d}:{i % 60:02d}:00, 14s timer; answered 91.04 at +9s."
+                      + (f" Source: {LONG_URL}" if i % 30 == 0 else "")} for i in range(90)]
+    (d / "t.jsonl").write_text("".join(json.dumps(p) + "\n" for p in posts))
+    (d / "c.json").write_text(json.dumps({"name": "t", "families": {"alpha-task": "alpha"},
+                                          "extra_items": {"alpha-task": ["Ohio"]}, "bootstrap_reps": 0}))
+    return pipeline.run_all(d / "t.jsonl", d / "run", adapter="chat", config=str(d / "c.json"))
+
+
+@browser
+def test_the_detail_stays_in_view_beside_the_active_row(long_chain, tmp_path):
+    """Hovering (desktop) or tapping (phone) the rows at 50% and 95% of a timeline taller than the screen, scrolled to
+    the middle of the viewport: the detail box is inside the viewport and names the carrier under the pointer, whose
+    band holds the pointer; at phone width, where rows have no labels, the band names the carrier too."""
+    r = _browse(tmp_path, """
+(async () => {
+  const b = await chromium.launch(), out = {};
+  for (const [name, opt] of [["desktop", {viewport: {width: 1440, height: 900}}],
+                             ["phone", {viewport: {width: 390, height: 844}, hasTouch: true, isMobile: true}]]) {
+    const p = await (await b.newContext({offline: true, ...opt})).newPage(), errs = [], rows = [];
+    p.on('pageerror', e => errs.push(e.message));
+    await p.goto('file://' + process.argv[2]);
+    for (const f of [0.5, 0.95]) {
+      const [x, y, top] = await p.evaluate(f => { const svg = () => document.querySelector('#fx-chart svg').getBoundingClientRect();
+        window.scrollTo(0, scrollY + svg().top + f * svg().height - innerHeight / 2);
+        const r = svg(); return [r.left + r.width / 2, r.top + f * r.height, r.top]; }, f);
+      if (opt.hasTouch) await p.touchscreen.tap(x, y); else await p.mouse.move(x, y);
+      rows.push(await p.evaluate(([y, top]) => { const box = e => { const r = e.getBoundingClientRect(); return [r.top, r.bottom]; };
+        const d = document.getElementById('fx-detail'), tag = document.querySelector('#fx-chart svg > text[visibility]');
+        return {y, top, vh: innerHeight, detail: box(d), band: box(document.querySelector('#fx-chart svg > rect[visibility]')),
+                who: d.querySelector('button') && d.querySelector('button').textContent,
+                tag: tag && tag.getAttribute('visibility') === 'visible' ? tag.textContent : null}; }, [y, top]));
+    }
+    out[name] = {errs, rows};
+  }
+  console.log(JSON.stringify(out)); await b.close();
+})();""", long_chain.path / "report.html")
+    for name, v in r.items():
+        assert v["errs"] == []
+        for row in v["rows"]:
+            assert row["top"] < 0   # the chart starts above the screen
+            assert 0 <= row["detail"][0] and row["detail"][1] <= row["vh"], (name, row)
+            assert row["band"][0] - 1 <= row["y"] <= row["band"][1] + 1 and re.fullmatch(r"scout\d\d", row["who"])
+            assert row["tag"] == (row["who"] if name == "phone" else None)
+        assert v["rows"][0]["who"] < v["rows"][1]["who"]   # rows in order of first post: scout00, scout01, ...

@@ -355,7 +355,7 @@ rows with the arrow keys, to see the post that carried it, its page and the dela
 <input id="fx-q" type="search" placeholder="item, value or family" autocomplete="off">
 <ul id="fx-list" class="pick" aria-label="Facts"></ul></div>
 <div class="fx-main"><div id="fx-head" class="fx-head"></div><div id="fx-legend" class="legend"></div>
-<div id="fx-detail" class="detail" aria-live="polite"></div><div id="fx-chart" class="chart"></div>
+<div id="fx-chart" class="chart"></div><div id="fx-detail" class="detail" aria-live="polite"></div>
 <details class="tv"><summary>The rows as a table</summary><div id="fx-table" class="tbl"></div></details></div></div>
 <h3>Agents</h3>
 <p>Whom an agent learned from (edges into it) and whom it supplied (edges out of it), by edge kind: same-page
@@ -433,8 +433,9 @@ border:0;border-bottom:1px solid var(--line);padding:7px 10px;cursor:pointer}
 .chart{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .chart svg{display:block;width:100%;touch-action:pan-y}
 .chart svg:focus-visible{outline:2px solid var(--s1);outline-offset:-2px}
-.detail{min-height:4.8em;font-size:13px;margin:10px 0;padding:10px 12px;background:var(--surface);
-border:1px solid var(--line);border-radius:10px}
+.detail{position:sticky;bottom:8px;z-index:1;min-height:4.8em;font-size:13px;margin:10px 0;padding:10px 12px;
+background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.14);
+overflow-wrap:anywhere}
 .detail .q{color:var(--ink-2);font-style:italic;margin-top:4px;overflow-wrap:anywhere}
 .detail button,.card button{font:inherit;color:var(--s1);background:none;border:0;padding:0;cursor:pointer;
 text-decoration:underline}
@@ -453,11 +454,9 @@ text-decoration:underline}
 JS = r"""(() => {
 "use strict";
 const NS = "http://www.w3.org/2000/svg";
-const el = (tag, attrs, text) => { const e = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs || {})) e.setAttribute(k, v);
-  if (text != null) e.textContent = text; return e; };
-const sv = (tag, attrs) => { const e = document.createElementNS(NS, tag);
-  for (const [k, v] of Object.entries(attrs || {})) e.setAttribute(k, v); return e; };
+const attrs = (e, a) => { for (const [k, v] of Object.entries(a || {})) e.setAttribute(k, v); return e; };
+const el = (tag, a, text) => { const e = attrs(document.createElement(tag), a); if (text != null) e.textContent = text; return e; };
+const sv = (tag, a) => attrs(document.createElementNS(NS, tag), a);
 
 // sortable tables: click (or Enter on) a header; numbers by value, ISO dates and text in order, empty cells last
 const num = s => { const m = s.replace(/,/g, "").replace(/−/g, "-").match(/^[-+]?\d*\.?\d+(e[-+]?\d+)?/i);
@@ -501,6 +500,7 @@ const dur = s => { if (s == null || isNaN(s)) return "?"; if (SEQ) { const k = M
 const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const COL = ["--s1", "--s2", "--s3"];
 const pl = (k, w) => `${k} ${w}${k === 1 ? "" : "s"}`;
+const short = s => s.length > 28 ? s.slice(0, 27) + "…" : s;
 
 // the timeline model: rows (a carrier each, in order of first post) and hops between rows
 function model(sel) {
@@ -562,7 +562,7 @@ function draw() {
   svg.append(sv("line", {x1: x0, x2: x1, y1: top + n * rh, y2: top + n * rh, stroke: css("--axis"), "stroke-width": 1}));
   const band = sv("rect", {x: 0, width: W, height: Math.max(rh, 2), fill: css("--wash"), visibility: "hidden"});
   svg.append(band);
-  const dense = rh < 8, r0 = dense ? Math.max(1.6, rh / 2.4) : 4;
+  const dense = rh < 8, r0 = dense ? Math.max(1.6, rh / 2.4) : 4, labelled = LW && rh >= 12;
   M.hops.forEach(h => { if (h.srow == null || h.drow == null) return;
     const ln = sv("line", {x1: X(h.st), y1: Y(h.srow), x2: X(h.t), y2: Y(h.drow), "stroke-linecap": "round",
       stroke: h.relay ? css(h.color) : css("--xch"), "stroke-width": h.relay ? (dense ? 1.2 : 2) : 1, opacity: h.relay ? 0.9 : 0.8});
@@ -575,16 +575,19 @@ function draw() {
     if (r.hop != null && M.hops[r.hop].tie) g.append(sv("circle", {cx, cy, r: r0 + 3, fill: "none", stroke: css("--ink"), "stroke-width": 1}));
     g.append(sv("circle", {cx, cy, r: r.origin ? r0 + 1.5 : r0, fill: r.origin ? css("--ink") : css(r.color),
       stroke: css("--ring"), "stroke-width": dense ? 0.8 : 2}));
-    if (LW && rh >= 12) { const tx = sv("text", {x: LW, y: cy + 3.5, "text-anchor": "end", "font-size": 11, fill: css("--ink-2")});
-      const s = A[r.agent]; tx.textContent = s.length > 28 ? s.slice(0, 27) + "…" : s; g.append(tx); }
+    if (labelled) { const tx = sv("text", {x: LW, y: cy + 3.5, "text-anchor": "end", "font-size": 11, fill: css("--ink-2")});
+      tx.textContent = short(A[r.agent]); g.append(tx); }
   });
-  svg.append(g);
+  // rows without a label (narrow or dense): the active row's carrier is named inside its band
+  const tag = sv("text", {"font-size": 11, fill: css("--ink"), stroke: css("--surface"), "stroke-width": 3,
+    "paint-order": "stroke", visibility: "hidden"});
+  svg.append(g, tag);
   const pick = e => { const b = svg.getBoundingClientRect(), y = (e.clientY - b.top) * H / b.height;
     const k = Math.floor((y - top) / rh); if (k >= 0 && k < n) setActive(k); };
   svg.addEventListener("pointermove", pick); svg.addEventListener("pointerdown", pick);
   svg.addEventListener("keydown", e => { if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault();
     setActive(Math.min(n - 1, Math.max(0, active + (e.key === "ArrowDown" ? 1 : -1)))); } });
-  M.band = band; M.Y = Y; M.rh = rh;
+  Object.assign(M, {band, tag, labelled, X, Y, x0, x1, rh});
   chart.replaceChildren(svg);
   if (active >= 0) setActive(active);
 }
@@ -593,10 +596,13 @@ function agentLink(i) { const b = el("button", {type: "button"}, A[i]); b.addEve
 
 function setActive(k) {
   active = k; const r = M.rows[k]; if (!r) return;
-  M.band.setAttribute("y", M.Y(k) - Math.max(M.rh, 2) / 2); M.band.setAttribute("visibility", "visible");
+  attrs(M.band, {y: M.Y(k) - Math.max(M.rh, 2) / 2, visibility: "visible"});
   M.hops.forEach(h => h.el && h.el.setAttribute("stroke-width", h.relay ? (M.rh < 8 ? 1.2 : 2) : 1));
   const h = r.hop != null ? M.hops[r.hop] : null, p = r.post >= 0 ? P[r.post] : null;
   if (h && h.el) h.el.setAttribute("stroke-width", 3.5);
+  if (!M.labelled) { const right = r.t != null && M.X(r.t) > (M.x0 + M.x1) / 2;   // the name on the side away from the dot
+    attrs(M.tag, {x: right ? M.x0 + 4 : M.x1 - 4, y: M.Y(k) + 3.5, "text-anchor": right ? "start" : "end",
+      visibility: "visible"}).textContent = short(A[r.agent]); }
   const line1 = el("div"); line1.append(agentLink(r.agent));
   const v = r.variant != null ? ` ${r.variant}` : "";
   if (h) { line1.append(h.relay ? ` posted${v} after a same-page post by ` : ` posted${v}; cross-page hop, source unknown, attributed to the originator `);
