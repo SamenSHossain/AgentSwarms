@@ -336,3 +336,80 @@ def test_the_detail_stays_in_view_beside_the_active_row(long_chain, tmp_path):
             assert row["band"][0] - 1 <= row["y"] <= row["band"][1] + 1 and re.fullmatch(r"scout\d\d", row["who"])
             assert row["tag"] == (row["who"] if name == "phone" else None)
         assert v["rows"][0]["who"] < v["rows"][1]["who"]   # rows in order of first post: scout00, scout01, ...
+
+
+@pytest.fixture(scope="module")
+def corpus_run(tmp_path_factory):
+    """The cross-site corpus run (its explorer opens on a URL fact)."""
+    if not (ROOT / "data" / "raw2" / "records.jsonl").exists():
+        pytest.skip("cross-site corpus not present")
+    from swarmprov import pipeline
+    return pipeline.run_all(ROOT / "data" / "raw2", tmp_path_factory.mktemp("corpus") / "run")
+
+
+@browser
+@pytest.mark.parametrize("which", ["long_chain", "corpus_run"])
+def test_no_sideways_scroll_at_phone_width(which, request, tmp_path):
+    """At 390 px the page is as wide as the screen on load and after picking each URL fact, whose heading is one long
+    unbroken string."""
+    run = request.getfixturevalue(which)
+    r = _browse(tmp_path, """
+(async () => {
+  const b = await chromium.launch(), p = await (await b.newContext({offline: true, viewport: {width: 390, height: 844}})).newPage();
+  await p.goto('file://' + process.argv[2]);
+  const width = () => p.evaluate(() => document.documentElement.scrollWidth), widths = [await width()];
+  const urls = () => p.$$('xpath=//ul[@id="fx-list"]//button[small[starts-with(., "URL")]]');
+  for (let i = 0; i < (await urls()).length; i++) { await (await urls())[i].click(); widths.push(await width()); }
+  console.log(JSON.stringify({vw: await p.evaluate(() => innerWidth), widths})); await b.close();
+})();""", run.path / "report.html")
+    assert len(r["widths"]) >= 2 and set(r["widths"]) == {r["vw"]} == {390}
+
+
+@pytest.fixture(scope="module")
+def seq_chain(tmp_path_factory):
+    """A message list with no timestamps (a sequence clock): four agents post one value in turn."""
+    from swarmprov import pipeline
+    d = tmp_path_factory.mktemp("seq")
+    msgs = [{"role": "user", "content": "Find the 2023 value for Ohio."}] + [
+        {"role": "assistant", "name": f"Scout{i}", "content": "R1 CONFIRMED: Ohio arrived; answered 91.04."} for i in range(4)]
+    (d / "t.json").write_text(json.dumps(msgs))
+    return pipeline.run_all(d / "t.json", d / "run")
+
+
+@browser
+def test_a_sequence_clock_axis_counts_whole_messages(seq_chain, tmp_path):
+    """Four positions across a wide chart: ticks at whole message positions (not 1.5), under the label 'message
+    position'."""
+    r = _browse(tmp_path, """
+(async () => {
+  const b = await chromium.launch(), p = await (await b.newContext({offline: true})).newPage();
+  await p.goto('file://' + process.argv[2]);
+  console.log(JSON.stringify({labels: await p.$$eval('#fx-chart svg > text:not([visibility])', ts => ts.map(t => t.textContent))}));
+  await b.close();
+})();""", seq_chain.path / "report.html")
+    *ticks, axis = r["labels"]
+    assert axis == "message position" and ticks == ["1", "2", "3", "4"]
+
+
+def test_a_directory_without_graph_tables_says_why_it_has_no_explorer(synth_run, tmp_path, capsys):
+    """A committed results/ directory keeps the report, summary and figures but no graph tables: the page puts one
+    line where the explorer would be, after the key findings, and the command prints it."""
+    d = tmp_path / "results"
+    d.mkdir()
+    for name in ("report.md", "summary.json", "figures"):
+        (shutil.copytree if name == "figures" else shutil.copy)(synth_run[0].path / name, d / name)
+    assert cli.main(["html", str(d)]) == 0
+    assert f"no fact explorer ({html.NO_TABLES})" in capsys.readouterr().out
+    text = (d / "report.html").read_text()
+    assert f'<h2>Fact explorer</h2><p class="missing">No fact explorer: {html.NO_TABLES}.</p></section>' in text
+    assert re.findall(r"<h2>(.*?)</h2>", text)[:2] == ["Key findings", "Fact explorer"] and 'id="fx-data"' not in text
+
+
+def test_a_run_with_no_shared_fact_says_so(synth_run, tmp_path, monkeypatch):
+    run = RunDir(tmp_path / "run")
+    for name in ("report.md", "summary.json"):
+        shutil.copy(synth_run[0].path / name, run.path / name)
+    monkeypatch.setattr(html, "explorer_data", lambda *a: {"facts": [], "slots": []})
+    text = html.build_html(run).read_text()
+    assert "No fact explorer: no value was posted by two or more agents and A4 features no slot." in text
+    assert 'id="fx-data"' not in text

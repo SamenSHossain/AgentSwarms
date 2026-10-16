@@ -35,6 +35,7 @@ EXCERPT = 120       # characters of a post kept for the explorer (query's excerp
 LINK_KINDS = [k for k in KINDS if k != "reply"]   # a reply is an interaction, not a knowledge transfer
 PEOPLE_COLS = ["family", "n_posts", "n_answers", "n_no_prior_copy", "n_exposed", "answers_supplied", "relay_in",
                "relay_out", "facts_originated", "agents_reached"]
+NO_TABLES = "this directory keeps only the summary; run swarmprov run to build one"
 CAVEAT = ("Inferred paths, not proven ones: each carrier is linked to the latest earlier carrier of the value on the "
           "same page (a solid line from the parent's post), or, with none there, to the value's originator (grey: "
           "the source is unknown). Nothing in the transcript records who read what.")
@@ -307,12 +308,19 @@ def build_html(run: RunDir, mapping: str = "merged") -> Path | None:
     title, _, text = text.partition("\n\n") if text.startswith("# ") else ("# swarmprov report", "", text)
     lede, _, text = ("", "", text) if text.startswith("#") else text.partition("\n\n")
     title, body = title[2:].strip(), md_to_html(text, run.path)
-    data = explorer_data(run, mapping, summary) if summary.get("A1") or summary.get("A5") else None
-    if data and (data["facts"] or data["slots"]):
+    explorer, data = "", None
+    if summary.get("A1") or summary.get("A5"):
+        data = explorer_data(run, mapping, summary)
+        if data and (data["facts"] or data["slots"]):
+            explorer = EXPLORER
+        else:
+            why = NO_TABLES if data is None else "no value was posted by two or more agents and A4 features no slot"
+            print(f"[swarmprov] {run.path}: no fact explorer ({why})")
+            explorer, data = ('<section id="fact-explorer"><h2>Fact explorer</h2>'
+                              f'<p class="missing">No fact explorer: {html.escape(why)}.</p></section>'), None
+    if explorer:   # after the key findings
         at = body.find("</section>") + len("</section>") if body.startswith('<section id="key-findings">') else 0
-        body = body[:at] + EXPLORER + body[at:]
-    else:
-        data = None
+        body = body[:at] + explorer + body[at:]
     toc = "".join(f'<li><a href="#{i}">{t}</a></li>' for i, t in re.findall(r'<section id="([^"]+)">\s*<h2>(.*?)</h2>', body))
     tile_html = "".join(f'<div class="tile"><div class="v{" word" if v[-1].isalpha() else ""}">{html.escape(v)}</div>'
                         f'<div class="l">{html.escape(lab)}</div><div class="n">{html.escape(note)}</div></div>'
@@ -335,7 +343,8 @@ def build_html(run: RunDir, mapping: str = "merged") -> Path | None:
 
 def main(run_path: str, mapping: str = "merged") -> int:
     """The ``html`` command: render a run's report again (after editing it, or for a run from before it was built).
-    A directory holding the report and no ``profile.json`` (a committed ``results/`` one) renders too."""
+    A directory holding the report and no ``profile.json`` (a committed ``results/`` one) renders too, with a line
+    where the fact explorer would be: it needs the graph tables."""
     md = f"report{suffix(mapping)}.md"
     if not (Path(run_path) / md).is_file():
         RunDir.open(run_path)   # no run at all: NotARun
@@ -423,10 +432,10 @@ background:var(--surface);color:var(--ink)}
 border-radius:10px;background:var(--surface)}
 .pick:empty{display:none}
 .pick button{display:block;width:100%;text-align:left;font:inherit;font-size:13px;color:var(--ink);background:none;
-border:0;border-bottom:1px solid var(--line);padding:7px 10px;cursor:pointer}
+border:0;border-bottom:1px solid var(--line);padding:7px 10px;cursor:pointer;overflow-wrap:anywhere}
 .pick button:hover,.pick button[aria-current=true]{background:var(--wash)}
 .pick small{display:block;color:var(--muted);font-size:12px}
-.fx-head{font-weight:600}
+.fx-head{font-weight:600;overflow-wrap:anywhere}
 .fx-head small{display:block;font-weight:400;color:var(--ink-2)}
 .legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--ink-2);margin:8px 0}
 .legend span{display:inline-flex;align-items:center;gap:6px}
@@ -534,7 +543,7 @@ let cur = null, M = null, active = -1;
 
 function ticks(lo, hi, n) {
   if (SEQ) { const raw = (hi - lo) / n, p = Math.pow(10, Math.floor(Math.log10(raw || 1)));
-    const step = [1, 2, 5, 10].map(x => x * p).find(x => x >= raw) || raw; const out = [];
+    const step = Math.max(1, [1, 2, 5, 10].map(x => x * p).find(x => x >= raw) || raw), out = [];   // whole positions
     for (let t = Math.ceil((lo - T0) / step) * step; t <= hi - T0; t += step) out.push([t + T0, String(t)]); return out; }
   const steps = [60, 300, 900, 3600, 10800, 21600, 43200, 86400, 172800, 604800, 2592000];
   const step = steps.find(s => (hi - lo) / s <= n) || steps[steps.length - 1], out = [];
@@ -547,7 +556,7 @@ function draw() {
   if (!M) return;
   const rows = M.rows, n = rows.length, W = Math.max(280, chart.clientWidth);
   const LW = W >= 640 ? 190 : 0, rh = n <= 40 ? 18 : n <= 100 ? 12 : Math.max(3, 900 / n);
-  const top = 10, H = top + n * rh + 34, x0 = LW + 10, x1 = W - 18;
+  const top = 10, yb = top + n * rh, H = yb + (SEQ ? 48 : 34), x0 = LW + 10, x1 = W - 18;
   const ts = []; rows.forEach(r => r.t != null && ts.push(r.t)); M.hops.forEach(h => h.st != null && ts.push(h.st));
   let lo = Math.min(...ts), hi = Math.max(...ts); if (!(hi > lo)) { lo -= 60; hi += 60; }
   const X = t => x0 + (t - lo) / (hi - lo) * (x1 - x0), Y = k => top + (k + 0.5) * rh;
@@ -556,10 +565,12 @@ function draw() {
   const g = sv("g");
   svg.append(sv("rect", {x: 0, y: 0, width: W, height: H, fill: css("--surface")}));
   for (const [t, lab] of ticks(lo, hi, Math.max(2, Math.floor((x1 - x0) / 110)))) {
-    svg.append(sv("line", {x1: X(t), x2: X(t), y1: top, y2: top + n * rh, stroke: css("--line"), "stroke-width": 1}));
-    const tx = sv("text", {x: X(t), y: H - 12, "text-anchor": "middle", "font-size": 11, fill: css("--muted")}); tx.textContent = lab; svg.append(tx);
+    svg.append(sv("line", {x1: X(t), x2: X(t), y1: top, y2: yb, stroke: css("--line"), "stroke-width": 1}));
+    const tx = sv("text", {x: X(t), y: yb + 22, "text-anchor": "middle", "font-size": 11, fill: css("--muted")}); tx.textContent = lab; svg.append(tx);
   }
-  svg.append(sv("line", {x1: x0, x2: x1, y1: top + n * rh, y2: top + n * rh, stroke: css("--axis"), "stroke-width": 1}));
+  if (SEQ) { const tx = sv("text", {x: (x0 + x1) / 2, y: yb + 40, "text-anchor": "middle", "font-size": 11, fill: css("--ink-2")});
+    tx.textContent = "message position"; svg.append(tx); }
+  svg.append(sv("line", {x1: x0, x2: x1, y1: yb, y2: yb, stroke: css("--axis"), "stroke-width": 1}));
   const band = sv("rect", {x: 0, width: W, height: Math.max(rh, 2), fill: css("--wash"), visibility: "hidden"});
   svg.append(band);
   const dense = rh < 8, r0 = dense ? Math.max(1.6, rh / 2.4) : 4, labelled = LW && rh >= 12;
