@@ -29,6 +29,7 @@ import pandas as pd
 from .claims import PRIVATE_KINDS
 from .exposure import credited, match_key
 from .identity import cohort_token
+from .textutil import clean
 
 # two 1 s clocks: a hop shorter than this cannot be ordered reliably
 CLOCK_RES_S = 2.0
@@ -205,6 +206,18 @@ def to_networkx(edges: pd.DataFrame, kinds=KINDS, events: pd.DataFrame | None = 
         known = attrs.to_dict("index")
         nx.set_node_attributes(G, {n: known.get(n, blank) for n in G})
     return G
+
+
+def xml_safe(G: nx.DiGraph) -> nx.DiGraph:
+    """``G`` with node ids and string attributes GraphML can hold (``textutil.clean``: ids lose control characters,
+    attributes, fixed in place, their XML-illegal ones); ingest cleans the strings first, so on a run it read this
+    changes nothing."""
+    for d in (G.graph, *(d for _, d in G.nodes(data=True)), *(d for *_, d in G.edges(data=True))):
+        for k, v in d.items():
+            if isinstance(v, str) and clean(v, "text") != v:
+                d[k] = clean(v, "text")
+    bad = {n: clean(n) for n in G if isinstance(n, str) and clean(n) != n}
+    return nx.relabel_nodes(G, bad) if bad else G
 
 
 def gini(x) -> float:

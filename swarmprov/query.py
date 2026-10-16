@@ -17,7 +17,7 @@ import pandas as pd
 from .analysis.agents import AGENT_COLS, match_agents
 from .claims import PRIVATE_KINDS, public, value_key
 from .exposure import match_key
-from .fmt import dumps
+from .fmt import dumps, say
 from .graph import CLOCK_RES_S, KINDS, RELAY_KINDS
 from .rules import norm_value
 from .schema import RunDir, empty
@@ -580,13 +580,13 @@ def _open(run_path: str, mapping: str, need: tuple[str, ...]) -> tuple[RunDir | 
     run = RunDir.open(run_path)
     missing = [n for n in need if not run.has(n)]
     if missing:
-        print(f"{run_path}: not a finished run, it has no {', '.join(missing)} (run `swarmprov run`, or every stage "
+        say(f"{run_path}: not a finished run, it has no {', '.join(missing)} (run `swarmprov run`, or every stage "
               "up to `swarmprov graph`)")
         return None, False
-    print(f"mapping: {mapping} ({MAPPING_NOTE[mapping]})")
+    say(f"mapping: {mapping} ({MAPPING_NOTE[mapping]})")
     seq = run.profile().get("clock") == "sequence"
     if seq:
-        print("clock: message order, no wall clock (a post's time is its position, 2000-01-01 + i s; gaps are in messages)")
+        say("clock: message order, no wall clock (a post's time is its position, 2000-01-01 + i s; gaps are in messages)")
     return run, seq
 
 
@@ -598,7 +598,7 @@ def _write_json(path, obj) -> None:
 
 def _one_agent(cands: list[str], name: str) -> str | None:
     if len(cands) != 1:
-        print(f"no agent matches {name!r}" if not cands else
+        say(f"no agent matches {name!r}" if not cands else
               f"{len(cands)} agents match {name!r}; pass one of:\n  " + "\n  ".join(cands[:50]))
         return None
     return cands[0]
@@ -623,17 +623,17 @@ def trace(run_path: str, agent=None, item=None, family=None, answer=None, fact=N
         res = answer_lineage(run, claim_id=answer, agent=agent, item=item, family=family, mapping=mapping)[:limit]
         note = claim_note(run, answer, res, mapping) if answer is not None else None
         if note:
-            print(note)
+            say(note)
             if not res:
                 return 1
         if not res and agent is not None:
-            print(f"no answer by {agent} matches; its answers: {', '.join(sorted(ex.loc[ex['agent'] == agent, 'item'])) or 'none'}")
+            say(f"no answer by {agent} matches; its answers: {', '.join(sorted(ex.loc[ex['agent'] == agent, 'item'])) or 'none'}")
             return 1
         mode, lines = "answer", text_answers(res, seq)
     elif fact is not None:
         parts = [p.strip() for p in fact.split("|", 2)]
         if len(parts) < 2:
-            print("--fact takes 'family|item' or 'family|item|value'")
+            say("--fact takes 'family|item' or 'family|item|value'")
             return 1
         res = fact_lineage(run, parts[0], parts[1], parts[2] if len(parts) == 3 else None, mapping)
         mode, lines = "fact", text_facts(res, limit, seq)
@@ -644,9 +644,9 @@ def trace(run_path: str, agent=None, item=None, family=None, answer=None, fact=N
         res = list_facts(run, mapping, family, limit or 25)
         mode, lines = "list", text_list(res, family)
     if not res or (mode == "list" and not res["facts"]):
-        print("nothing matches")
+        say("nothing matches")
         return 1
-    print("\n".join(lines))
+    say("\n".join(lines))
     if json_path:
         _write_json(json_path, {"mapping": mapping, "clock": "sequence" if seq else "wall", "mode": mode, "result": res})
     if png_path:
@@ -655,10 +655,10 @@ def trace(run_path: str, agent=None, item=None, family=None, answer=None, fact=N
             a = res[0]
             facts, highlight = fact_lineage(run, a["family"], a["item"], a["matched_value"], mapping), a["agent"]
         if len(facts) != 1:
-            print("--png draws one fact: pass --fact with a value, or pick a single answer")
+            say("--png draws one fact: pass --fact with a value, or pick a single answer")
             return 1
         Path(png_path).parent.mkdir(parents=True, exist_ok=True)
-        print(f"timeline: {timeline(facts[0], png_path, highlight, seq)}")
+        say(f"timeline: {timeline(facts[0], png_path, highlight, seq)}")
     return 0
 
 
@@ -672,7 +672,7 @@ def agent(run_path: str, name: str, mapping: str = "merged", json_path=None) -> 
     if label is None:
         return 1
     v = agent_view(run, label, mapping)
-    print("\n".join(text_agent(v, seq)))
+    say("\n".join(text_agent(v, seq)))
     if json_path:
         _write_json(json_path, {"mapping": mapping, "clock": "sequence" if seq else "wall", "mode": "agent", "result": v})
     return 0

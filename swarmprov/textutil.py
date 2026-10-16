@@ -35,6 +35,20 @@ def norm_key(s: str) -> str:
     return re.sub(r"\s+", " ", s).strip().lower()
 
 
+# lone surrogates (a truncated emoji's JSON escape) cannot be stored as UTF-8; XML (GraphML) forbids the C0 controls
+# but tab, newline and return, and U+FFFE/U+FFFF; names and ids also lose DEL and the C1 controls, which drive terminals
+SURROGATE_RE = re.compile(r"[\ud800-\udfff]")
+XML_ILLEGAL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]")
+CONTROL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\ufffe\uffff]")
+
+
+def clean(s: str, kind: str = "id") -> str:
+    """``s`` with lone surrogates as U+FFFD; a name or id (``kind="id"``) loses every control character, ``"text"``
+    gets a space for each XML-illegal one and keeps C1 (how a mis-decoded "–" reads); any other kind keeps them."""
+    s = SURROGATE_RE.sub("\ufffd", s)
+    return CONTROL_RE.sub("", s) if kind == "id" else XML_ILLEGAL_RE.sub(" ", s) if kind == "text" else s
+
+
 def stable_id(*parts: object) -> str:
     h = hashlib.sha1("\x1f".join(str(p) for p in parts).encode()).hexdigest()
     return h[:16]

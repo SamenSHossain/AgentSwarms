@@ -2,6 +2,7 @@
 
 import json
 
+import pandas as pd
 import pytest
 
 from swarmprov import cli
@@ -66,3 +67,18 @@ def test_json_and_png_outputs_create_their_directory(synth_run, tmp_path):
     assert (tmp_path / "b" / "fact.png").exists()
     assert cli.main(["agent", str(run.path), r.agent, "--json", str(tmp_path / "c" / "agent.json")]) == 0
     assert json.loads((tmp_path / "c" / "agent.json").read_text())["result"]["label"] == r.agent
+
+
+def test_export_and_crosssite_refuse_to_write_into_the_run_they_read(tmp_path, capsys):
+    run = tmp_path / "run"
+    run.mkdir()
+    (run / "profile.json").write_text("{}")
+    table = pd.DataFrame({"claim_id": ["c1"], "D": [1]})
+    table.to_parquet(run / "exposures_merged.parquet")
+    before = (run / "exposures_merged.parquet").read_bytes()
+    assert cli.main(["export", str(run), "-o", str(tmp_path / "." / "run"), "--format", "parquet"]) == 2
+    assert "is the run it reads, whose stage tables the files would overwrite" in _error(capsys)
+    assert cli.main(["crosssite", str(run), str(tmp_path), "-o", str(run) + "/"]) == 2
+    assert "is the wiki run it reads" in _error(capsys)
+    assert (run / "exposures_merged.parquet").read_bytes() == before and sorted(p.name for p in run.iterdir()) == [
+        "exposures_merged.parquet", "profile.json"]

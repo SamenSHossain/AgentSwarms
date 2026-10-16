@@ -10,6 +10,7 @@ import json
 import re
 import time
 import warnings
+from collections import Counter
 from pathlib import Path
 
 import pandas as pd
@@ -19,6 +20,7 @@ from .adapters.base import check_fields, read_capabilities
 from .analysis import agents as agents_mod, errors
 from .analysis.agents import AGENT_COLS
 from .schema import MINED_FILE, RunDir, conform, empty
+from .textutil import clean
 
 LLM_WARNING = re.compile(r"[\d,]+ of [\d,]+ LLM calls failed: ")
 
@@ -62,6 +64,16 @@ def mined_techniques(run: RunDir) -> list[adapters.Technique]:
             for t in json.loads(p.read_text())] if p.exists() else []
 
 
+def _load(a, path: Path):
+    """``a.load(path)``.  A lone surrogate (a truncated emoji's JSON escape) cannot become a pandas string, so a source
+    holding one is read again with its text as Python objects, for ``_clean`` to repair before anything is written."""
+    try:
+        return a.load(path)
+    except UnicodeEncodeError:
+        with pd.option_context("future.infer_string", False):
+            return a.load(path)
+
+
 def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | None = None,
            roster: str | Path | None = None, fields: dict | None = None) -> dict:
     """``fields`` (canonical field -> source key) overrides the config file's ``fields``; both reach the chat adapter,
@@ -83,7 +95,7 @@ def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | N
                      f"`{a.name}` adapter reads its own schema and ignores them.")
     _log(f"ingest {path} with adapter '{a.name}'" + (f", fields {fields}" if fields else ""))
     try:
-        b = a.load(Path(path))
+        b = _load(a, Path(path))
     except KeyError as e:   # a column or key the adapter's format needs
         raise ValueError(f"the `{a.name}` adapter needs a {e} field that {source} lacks: is it a {a.name} source? "
                          f"(`swarmprov inspect {source}` shows what each adapter makes of it)") from None
@@ -93,15 +105,16 @@ def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | N
         b.events = village.digest_to_events(b.digest)
         b.capabilities.derived_text = True
         b.capabilities.has_explicit_author = True
-    ev = b.events.sort_values("ts").reset_index(drop=True)
+    fixed = Counter()
+    ev = _clean(b.events.sort_values("ts").reset_index(drop=True), fixed)
     if cfg.ignore_authors:
         ev = ev[~ev["author_raw"].isin(cfg.ignore_authors)].reset_index(drop=True)
     run.clear()  # stage outputs of an earlier run in this directory would otherwise survive a re-ingest
     run.write("events", conform(ev, "events"))
     if b.lifecycle is not None:
-        run.write("lifecycle", b.lifecycle)
+        run.write("lifecycle", _clean(b.lifecycle, fixed))
     if b.reads is not None:
-        run.write("reads", b.reads)
+        run.write("reads", _clean(b.reads, fixed))
     ros, roster_notes = b.roster, b.notes if b.roster is not None else {}
     if roster is not None:  # a roster attached to a transcript
         rpath = remote.resolve(roster)
@@ -109,10 +122,16 @@ def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | N
         rb = adapters.get("roster").load(Path(rpath))
         ros, roster_notes = rb.roster, rb.notes
     if ros is not None:
-        run.write("roster", ros)
+        run.write("roster", _clean(ros, fixed))
     for name in ("directory", "channels", "activity", "probes", "eras", "summaries", "digest"):
         if getattr(b, name) is not None:
-            run.write(name, getattr(b, name))
+            run.write(name, _clean(getattr(b, name), fixed))
+    if fixed:
+        n = sum(fixed.values())
+        warns.append(f"{n:,} string{'s' * (n != 1)} held lone surrogates or control characters and {'were' if n != 1 else 'was'} "
+                     f"cleaned at ingest ({', '.join(f'{c} {k:,}' for c, k in fixed.most_common())}): surrogates became "
+                     "U+FFFD, control characters were removed from names and ids, and those XML forbids became a space "
+                     "in text.")
     # wall: real timestamps; sequence: message positions (no real times to print); none: only timed posts are ordered
     clock = b.notes.get("clock") or ("wall" if b.capabilities.has_wall_clock else "none")
     has_ts = clock != "sequence" and len(ev) and ev["ts"].notna().any()
@@ -136,6 +155,27 @@ def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | N
     for w in warns:
         _log(f"  warning: {w}")
     return profile
+
+
+# names and ids lose their control characters, the text its XML-illegal ones (``textutil.clean``)
+ID_COLS = ("author_raw", "author_alt", "channel", "event_id", "parent_id")
+
+
+def _clean(df: pd.DataFrame, fixed: Counter) -> pd.DataFrame:
+    """``df`` with lone surrogates as U+FFFD in every string (Parquet cannot store them), control characters (illegal
+    in GraphML, live on a terminal) removed from ``ID_COLS`` and the XML-illegal ones replaced by a space in ``text``;
+    ``fixed`` counts the cells changed per column."""
+    out = df
+    for c in df.columns:
+        if not pd.api.types.is_string_dtype(df[c].dtype):
+            continue
+        kind = "id" if c in ID_COLS else c
+        hit = df[c].map(lambda v: isinstance(v, str) and clean(v, kind) != v)
+        if hit.any():
+            out = out.copy() if out is df else out
+            out.loc[hit, c] = df.loc[hit, c].map(lambda v: clean(v, kind))
+            fixed[c] += int(hit.sum())
+    return out
 
 
 def extract(run: RunDir, llm: str | None = None) -> None:
@@ -326,7 +366,7 @@ def build_graph(run: RunDir) -> None:
             if seq:
                 G.graph["clock_note"] = ("message order, no wall clock: a time is the message's position "
                                          "(2000-01-01 + i s) and median_dt_s a gap in messages")
-            nx.write_graphml(G, run.path / f"provenance_{name}.graphml")
+            nx.write_graphml(graph.xml_safe(G), run.path / f"provenance_{name}.graphml")
             (run.path / f"provenance_{name}.json").write_text(json.dumps(nx.node_link_data(G)))
         _log(f"  [{name}] {len(edges)} edges{note}, {len(chains)} fact chains, {len(profiles)} agent profiles")
 

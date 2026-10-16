@@ -406,6 +406,7 @@ def _agent(a, p) -> int:
     return query.agent(a.run, a.name, mapping=a.mapping, json_path=a.json)
 
 
+@_stage
 def _export(a, p) -> int:
     from . import export
     return export.export(a.run, a.out, a.tables or export.DEFAULT, a.format, a.mapping, a.all_columns)

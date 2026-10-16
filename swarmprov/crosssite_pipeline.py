@@ -43,6 +43,9 @@ def _wiki_events(run: RunDir) -> pd.DataFrame:
 def run_crosssite(wiki_run: str | Path, corpus_path: str | Path, out: str | Path,
                   markers=DEFAULT_MARKERS) -> RunDir:
     wiki = RunDir.open(wiki_run)
+    if Path(out).resolve() == wiki.path.resolve():
+        raise ValueError(f"crosssite: -o {out} is the wiki run it reads, whose events, report and summary it would "
+                         "overwrite; write the cross-site view to another directory (e.g. runs/crosssite)")
     run = RunDir(out)
     ev_w = _wiki_events(wiki)
     corpus_path = remote.resolve(corpus_path)
