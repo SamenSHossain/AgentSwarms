@@ -231,8 +231,9 @@ def build_graph(run: RunDir) -> None:
         if threading:
             rep, unresolved = graph.reply_edges(events, agents, col)
             parts.append(rep)
-            note = f", {len(rep)} replies" + (f" ({unresolved} name a parent that is not an agent's post here)"
-                                              if unresolved else "")
+            note = f", {len(rep)} repl{'y' if len(rep) == 1 else 'ies'}" + (
+                f" ({unresolved} name{'s' if unresolved == 1 else ''} a parent that is not an agent's post here)"
+                if unresolved else "")
         edges = conform(pd.concat([p for p in parts if len(p)], ignore_index=True), "edges") \
             if any(len(p) for p in parts) else empty("edges")
         chains = chains if len(chains) else empty("chains")
@@ -242,6 +243,10 @@ def build_graph(run: RunDir) -> None:
         run.write(f"agent_profiles_{name}", profiles)
         if len(edges):
             G = graph.to_networkx(edges, events=events, nodes=profiles.set_index("label", drop=False))
+            G.graph["clock"] = "sequence" if seq else "wall"
+            if seq:
+                G.graph["clock_note"] = ("message order, no wall clock: a time is the message's position "
+                                         "(2000-01-01 + i s) and median_dt_s a gap in messages")
             nx.write_graphml(G, run.path / f"provenance_{name}.graphml")
             (run.path / f"provenance_{name}.json").write_text(json.dumps(nx.node_link_data(G)))
         _log(f"  [{name}] {len(edges)} edges{note}, {len(chains)} fact chains, {len(profiles)} agent profiles")

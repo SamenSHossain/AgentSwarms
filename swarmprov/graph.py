@@ -31,6 +31,8 @@ from .identity import cohort_token
 # two 1 s clocks: a hop shorter than this cannot be ordered reliably
 CLOCK_RES_S = 2.0
 KINDS = ("relay", "relay_xchannel", "exposure", "citation", "reply")
+# what an edge's weight counts: a cross-page hop's source is unknown, and a reply is an interaction
+TRANSFER_KINDS = ("relay", "exposure", "citation")
 SHORT = {"relay": "n_relay", "relay_xchannel": "n_xchannel", "exposure": "n_exposure", "citation": "n_citation",
          "reply": "n_reply"}
 
@@ -174,14 +176,14 @@ def scalar_frame(df: pd.DataFrame) -> pd.DataFrame:
 
 def to_networkx(edges: pd.DataFrame, kinds=KINDS, events: pd.DataFrame | None = None,
                 nodes: pd.DataFrame | None = None) -> nx.DiGraph:
-    """One edge per (src, dst) over ``kinds``.  ``weight`` counts its edges except ``relay_xchannel`` hops, whose
-    source is unknown (with ``events`` they are counted apart, as ``n_xchannel``); ``kinds`` lists the kinds.
+    """One edge per (src, dst) over ``kinds``.  ``weight`` counts its ``TRANSFER_KINDS`` edges (with ``events``
+    every kind is counted apart, ``relay_xchannel`` as ``n_xchannel``); ``kinds`` lists the kinds.
     ``events`` adds ``edge_table``'s attributes, ``nodes`` (indexed by agent label, e.g. ``agents.profile``) node
     attributes, both through ``scalar_frame``; a node missing from ``nodes`` gets -1 and ''."""
     G = nx.DiGraph()
     e = edges[edges["kind"].isin(kinds)]
     for (s, d), g in e.groupby(["src", "dst"]):
-        G.add_edge(s, d, weight=int((g["kind"] != "relay_xchannel").sum()), kinds=",".join(sorted(set(g["kind"]))))
+        G.add_edge(s, d, weight=int(g["kind"].isin(TRANSFER_KINDS).sum()), kinds=",".join(sorted(set(g["kind"]))))
     if events is not None and len(e):
         for (s, d), row in scalar_frame(edge_table(e, events)).to_dict("index").items():
             G.edges[s, d].update(row)

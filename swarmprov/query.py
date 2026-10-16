@@ -26,8 +26,7 @@ from .schema import RunDir, empty
 MAPPING_NOTE = {"merged": "one agent per cohort date and task family; --mapping strict for one per author string",
                 "strict": "one agent per case-folded author string; --mapping merged joins a cohort's handles"}
 RELAY_KINDS = ("relay", "relay_xchannel")
-KIND_NOTE = {"relay_xchannel": "; cross-page hops: source unknown, attributed to the originator",
-             "reply": "; interactions, not knowledge transfers"}
+KIND_NOTE = {"relay_xchannel": "; cross-page hops: source unknown, attributed to the originator"}
 EXCERPT = 160
 
 
@@ -284,7 +283,8 @@ def list_facts(run: RunDir, mapping: str = "merged", family: str | None = None, 
 def agent_view(run: RunDir, label: str, mapping: str = "merged") -> dict:
     """One agent: its profile (``agent_profiles_*``, None for an author with no public post), its author strings,
     its answers with their first public source, and the agents its edges link it to, by kind: ``learned_from``
-    (edges into it) and ``supplied`` (edges out of it)."""
+    (edges into it) and ``supplied`` (edges out of it), with replies apart (``replied_to``, ``replied_by``):
+    a reply is an interaction, not a knowledge transfer."""
     prof, ag = run.read(f"agent_profiles_{mapping}"), run.read("agents")
     p = prof[prof["label"] == label]
     ex, edges = _table(run, f"exposures_{mapping}"), run.read(f"edges_{mapping}")
@@ -300,11 +300,14 @@ def agent_view(run: RunDir, label: str, mapping: str = "merged") -> dict:
         return {k: [{"agent": a, "edges": int(n)} for a, n in sorted(g[other].value_counts().items(),
                                                                        key=lambda x: (-x[1], x[0]))]
                 for k in KINDS if len(g := e[e["kind"] == k])}
+    into, out = edges[edges["dst"] == label], edges[edges["src"] == label]
     return {"label": label, "author_strings": sorted(ag.loc[ag[AGENT_COLS[mapping]] == label, "author_raw"]),
             "profile": {k: None if pd.isna(x) else x for k, x in p.iloc[0].items()} if len(p) else None,
             "answers": answers,
-            "learned_from": by_kind(edges[edges["dst"] == label], "src"),
-            "supplied": by_kind(edges[edges["src"] == label], "dst")}
+            "learned_from": by_kind(into[into["kind"] != "reply"], "src"),
+            "supplied": by_kind(out[out["kind"] != "reply"], "dst"),
+            "replied_to": by_kind(into[into["kind"] == "reply"], "src").get("reply", []),
+            "replied_by": by_kind(out[out["kind"] == "reply"], "dst").get("reply", [])}
 
 
 # --- text and figure ---------------------------------------------------------------------------
@@ -460,6 +463,11 @@ def text_event(v: dict) -> list[str]:
 
 def text_agent(v: dict, seq: bool = False, limit: int = 10) -> list[str]:
     """``limit`` agents per edge kind (JSON keeps all)."""
+    def line(k: str, rows: list[dict]) -> str:
+        more = len(rows) - limit
+        return (f"  {k} ({_n(sum(r['edges'] for r in rows), 'edge')}, {_n(len(rows), 'agent')}{KIND_NOTE.get(k, '')}): "
+                + ", ".join(f"{r['agent']} {r['edges']}" for r in rows[:limit]) + (f", ... {more} more" if more > 0 else ""))
+
     p, a = v["profile"], v["author_strings"]
     head = f"agent {v['label']}: {_n(len(a), 'author string')} ({', '.join(a[:5])}{', ...' if len(a) > 5 else ''})"
     if p is None:
@@ -477,7 +485,8 @@ def text_agent(v: dict, seq: bool = False, limit: int = 10) -> list[str]:
         L.append(f"  first public source for {_n(p['answers_supplied'], 'answer')} on {_n(p['items_first_sourced'], 'item')}"
                  + (f" (origin of those answers: {p['origin']})" if p["origin"] else ""))
     L.append(f"  same-page relays: {p['relay_in']} in, {p['relay_out']} out; task values posted first: "
-             f"{p['facts_originated']}, carried by {p['reach_of_originated']} other agents in all; "
+             f"{p['facts_originated']}, carried by {_n(p['agents_reached'], 'other agent')} "
+             f"({p['reach_of_originated']} summed over the values); "
              f"betweenness {p['betweenness']:.4f}" + (f"; techniques: {p['techniques_used']}" if p["techniques_used"] else ""))
     L.append("  exposure is a floor (only captured posts are searched): an answer with no earlier public copy is not "
              "proof of computation")
@@ -491,10 +500,10 @@ def text_agent(v: dict, seq: bool = False, limit: int = 10) -> list[str]:
     for key, what in (("learned_from", "learned from (edges into this agent)"),
                       ("supplied", "supplied (edges out of this agent)")):
         L.append(f"{what}:" + ("" if v[key] else " none"))
-        for k, rows in v[key].items():
-            more = len(rows) - limit
-            L.append(f"  {k} ({_n(sum(r['edges'] for r in rows), 'edge')}, {_n(len(rows), 'agent')}{KIND_NOTE.get(k, '')}): "
-                     + ", ".join(f"{r['agent']} {r['edges']}" for r in rows[:limit]) + (f", ... {more} more" if more > 0 else ""))
+        L += [line(k, rows) for k, rows in v[key].items()]
+    if v["replied_to"] or v["replied_by"]:
+        L.append("replies (interactions, not knowledge transfers):")
+        L += [line(k.replace("_", " "), v[k]) for k in ("replied_to", "replied_by") if v[k]]
     return L
 
 

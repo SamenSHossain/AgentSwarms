@@ -733,10 +733,11 @@ def _agents_block(p: pd.DataFrame, mapping: str, summary: dict) -> list[str]:
          f"{s['n_all_exposed']:,} every answer had one. {len(src):,} agent{'s were' if len(src) != 1 else ' was'} the first "
          f"public source for someone's answer: {s['n_sources_answering']:,} of them gave answers of their own, and "
          f"{s['n_sources_with_no_prior_copy']:,} had at least one with no earlier public copy. Exposure is a floor (only "
-         "captured posts are searched), so an answer with no earlier public copy is not proof of computation and its "
-         "count is a ceiling on independent answers. One or two answers say little about an agent, so the tables give "
-         f"an agent's exposed answers as k/n only from {k3} answers on. *Author strings* = how many author strings the "
-         f"{mapping} label joins (`agent_aliases.csv`). "
+         "captured posts are searched), so a count of answers with no earlier public copy is a ceiling on answers with no "
+         "earlier copy anywhere. It is no bound on computed answers: an exposed answer may still have been computed, "
+         "and one with no earlier public copy may copy a post this transcript lacks. One or two answers say little about "
+         f"an agent, so the tables give an agent's exposed answers as k/n only from {k3} answers on. *Author strings* = "
+         f"how many author strings the {mapping} label joins (`agent_aliases.csv`). "
          f"`agent_profiles_{mapping}.parquet` holds every agent's profile, and `swarmprov agent RUN NAME` prints one.\n",
          "Agents with the most answers that had no earlier public copy:\n",
          md_table(first.rename(columns={"label": "agent", "n_author_strings": "author strings", "n_answers": "answers",
