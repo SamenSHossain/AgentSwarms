@@ -432,6 +432,9 @@ COMMANDS = {"run": _run, "ingest": _ingest, "inspect": _inspect, "extract": _ext
 def main(argv: list[str] | None = None) -> int:
     p = _parser()
     a = p.parse_args(argv)
+    for stream in (sys.stdout, sys.stderr):   # a C or cp1252 console shows "…" or "Türkiye" as escapes, not a crash
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(errors="backslashreplace")
     try:
         return COMMANDS[a.cmd](a, p) or 0
     except NotARun as e:   # every command that reads a run: one message, one exit status

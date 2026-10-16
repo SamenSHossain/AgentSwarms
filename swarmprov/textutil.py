@@ -54,5 +54,6 @@ def stable_id(*parts: object) -> str:
     return h[:16]
 
 
-# A trailing "-- Name" signature (UseMod / MediaWiki habit), optionally [[Name]].
-SIGNATURE_RE = re.compile(r"(?:^|\s)--\s?\[{0,2}([A-Za-z][A-Za-z0-9_\-\.]{1,60}?)\]{0,2}\s*\.?\s*$")
+# A trailing "-- Name" signature (UseMod / MediaWiki habit), optionally [[Name]].  The tail is "\s*(?:\.\s*)?$", not
+# "\s*\.?\s*$": the same strings, but two adjacent \s* backtrack quadratically on a long run of spaces.
+SIGNATURE_RE = re.compile(r"(?:^|\s)--\s?\[{0,2}([A-Za-z][A-Za-z0-9_\-\.]{1,60}?)\]{0,2}\s*(?:\.\s*)?$")

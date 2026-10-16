@@ -184,7 +184,7 @@ def score(run: RunDir, truth_dir: str | Path, mapping: str = "merged") -> dict:
     col = AGENT_COLS[mapping]
     wall = run.profile().get("clock") != "sequence"
     ex, edges, events, agents = (run.read(t) for t in (f"exposures_{mapping}", f"edges_{mapping}", "events", "agents"))
-    refs = json.loads((truth_dir / "config.json").read_text()).get("reference_values", {})
+    refs = json.loads((truth_dir / "config.json").read_text(encoding="utf-8")).get("reference_values", {})
     author = events.drop_duplicates("event_id").set_index("event_id")["author_raw"]
     ex = ex.assign(relay_parent=structure.relay_parents(ex, edges, events),
                    src_visible_agent=ex["src_visible_event_id"].map(author).map(agents.set_index("author_raw")[col]))
@@ -215,7 +215,7 @@ def score(run: RunDir, truth_dir: str | Path, mapping: str = "merged") -> dict:
         "identity": _identity(agents, handle),
     }
     out = json_safe(out)
-    (run.path / "truth_validation.json").write_text(dumps(out, indent=2))
+    (run.path / "truth_validation.json").write_text(dumps(out, indent=2), encoding="utf-8")
     return out
 
 
@@ -259,6 +259,6 @@ def main(run: RunDir, truth_dir: str | Path, mapping: str = "merged") -> int:
     for m in ("merged", "strict"):   # each report rebuilt as it was built: its mapping and bootstrap resamples
         if (run.path / f"summary{suffix(m)}.json").exists():
             from . import report
-            built = json.loads((run.path / f"summary{suffix(m)}.json").read_text())
+            built = json.loads((run.path / f"summary{suffix(m)}.json").read_text(encoding="utf-8"))
             report.build(run, mapping=m, boot=((built.get("A1") or {}).get("bootstrap") or {}).get("reps", 0))
     return 0

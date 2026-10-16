@@ -224,7 +224,7 @@ def suggest(run: RunDir) -> tuple[dict, dict]:
                 own |= {f: list(dict.fromkeys(own.get(f, []) + pooled)) for f in families}
             stale = _naming(cfg, catch)
     else:
-        learned = json.loads((run.path / "items.json").read_text()) if (run.path / "items.json").exists() else {}
+        learned = json.loads((run.path / "items.json").read_text(encoding="utf-8")) if (run.path / "items.json").exists() else {}
     known = {f: set(learned.get(f, [])) | set(own.get(f, [])) for f in set(learned) | set(own)}
     items = suggest_items(events.assign(family=fam), known, cfg.cohort_regex)
     extra = {f: list(own.get(f, [])) + items.get(f, []) for f in sorted(set(own) | set(items))}
@@ -294,7 +294,7 @@ def main(run_path: str, out: str = "suggested_config.json") -> int:
         print(f"note: {', '.join(ev['stale'])} name the catch-all family `{ev['catch']}`, which the suggested families "
               f"replace; file them under {', '.join(fams)}")
     Path(out).parent.mkdir(parents=True, exist_ok=True)
-    Path(out).write_text(config_snippet(**settings) + "\n")
+    Path(out).write_text(config_snippet(**settings) + "\n", encoding="utf-8")
     roster = f" --roster {prof['roster']}" if prof.get("roster") and prof["roster"] != prof["source"] else ""
     print(f"\nwrote {out}: a starting point to review, not applied. It replaces the run's config: "
           f"`swarmprov run {prof['source']} --adapter {prof['adapter']}{roster} --config {out}`; only URL-wrapping "

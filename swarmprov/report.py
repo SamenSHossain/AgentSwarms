@@ -238,8 +238,8 @@ def _write(run: RunDir, L: list[str], summary: dict, mapping: str) -> str:
     """``report.md``, ``summary.json`` and ``report.html``, or ``report_strict.md``, ``summary_strict.json`` and
     ``report_strict.html`` beside them."""
     text, sfx = "\n".join(L), suffix(mapping)
-    (run.path / f"report{sfx}.md").write_text(text)
-    (run.path / f"summary{sfx}.json").write_text(dumps(summary, indent=2))
+    (run.path / f"report{sfx}.md").write_text(text, encoding="utf-8")
+    (run.path / f"summary{sfx}.json").write_text(dumps(summary, indent=2), encoding="utf-8")
     print(f"[swarmprov] wrote {run.path / f'report{sfx}.md'}")
     from .html import build_html
     build_html(run, mapping)
@@ -890,7 +890,7 @@ def _validation(c: _Ctx) -> list[str]:
     if vfiles:
         summary["validation"] = {}
         for vpath in vfiles:
-            v = json.loads(vpath.read_text())
+            v = json.loads(vpath.read_text(encoding="utf-8"))
             summary["validation"][vpath.stem] = v
             cov = v.get("coverage")   # absent from scores written before coverage was recorded
             part = f" of {cov['labelled']} (the others are not posts of this run)" \
@@ -904,7 +904,7 @@ def _validation(c: _Ctx) -> list[str]:
                  "`swarmprov validate RUN gold.jsonl` scores the extractor against it, and `swarmprov run ... --gold "
                  "DIR` scores every label file in DIR before the report.\n")
     if (run.path / "truth_validation.json").exists():
-        L += _truth_block(json.loads((run.path / "truth_validation.json").read_text()), summary)
+        L += _truth_block(json.loads((run.path / "truth_validation.json").read_text(encoding="utf-8")), summary)
     return L
 
 
@@ -955,7 +955,7 @@ def _headline(run: RunDir, summary: dict, mapping: str) -> list[str]:
     block = key_findings(json_safe(summary))
     if block:
         summary["headline"] = [b[2:] for b in block if b.startswith("- ")]
-        (run.path / f"headline{suffix(mapping)}.md").write_text("\n".join(block))
+        (run.path / f"headline{suffix(mapping)}.md").write_text("\n".join(block), encoding="utf-8")
     return block
 
 

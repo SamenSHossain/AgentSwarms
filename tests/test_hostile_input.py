@@ -2,7 +2,11 @@
 (ingest cleans them, GraphML writing is guarded), and escape or bidi sequences in printed names and keys."""
 
 import json
+import os
+import subprocess
+import sys
 from collections import Counter
+from pathlib import Path
 
 import networkx as nx
 import pandas as pd
@@ -11,6 +15,7 @@ import pytest
 from swarmprov import cli, graph, pipeline, synth
 from swarmprov.fmt import console
 
+ROOT = Path(__file__).resolve().parents[1]
 ESC = "X\x1b]0;T\x07\x1b[31mY"   # an OSC title-set and a colour change inside the handle: strict_handle keeps them
 BIDI = "‮RLO"
 
@@ -90,3 +95,14 @@ def test_trace_agent_and_inspect_print_no_raw_controls(hostile, tmp_path, capsys
     assert cli.main(["inspect", str(tmp_path / "keys.jsonl")]) == 0
     out = capsys.readouterr().out
     assert "who\\x1b[31m, body\\x1b[2J" in out and "\x1b" not in out
+
+
+def test_a_console_without_utf8_gets_escapes_not_a_crash(hostile, tmp_path):
+    """Under the C locale (no coercion, no UTF-8 mode) a name's U+FFFD prints as an escape."""
+    run, (_, b, _) = hostile
+    label = run.read("agents").set_index("author_raw").loc[b + "\ufffd", "agent_strict"]
+    env = os.environ | {"LC_ALL": "C", "LANG": "C", "PYTHONUTF8": "0", "PYTHONCOERCECLOCALE": "0", "PYTHONPATH": str(ROOT)}
+    out = subprocess.run([sys.executable, "-m", "swarmprov", "agent", str(run.path), label, "--mapping", "strict"],
+                         env=env, cwd=tmp_path, capture_output=True, text=True, errors="replace")
+    assert out.returncode == 0, out.stderr
+    assert f"{b}\\ufffd" in out.stdout

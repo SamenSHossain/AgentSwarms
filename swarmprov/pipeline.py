@@ -61,7 +61,7 @@ def mined_techniques(run: RunDir) -> list[adapters.Technique]:
     """The URL techniques ``auto_techniques`` mined at extract (``MINED_FILE``), or none."""
     p = run.path / MINED_FILE
     return [adapters.Technique(t["name"], t["pattern"], tuple(t.get("families", ())), t.get("description", ""))
-            for t in json.loads(p.read_text())] if p.exists() else []
+            for t in json.loads(p.read_text(encoding="utf-8"))] if p.exists() else []
 
 
 def _load(a, path: Path):
@@ -215,12 +215,12 @@ def extract(run: RunDir, llm: str | None = None) -> None:
     learned = rules.learn_items(ev, fam, cfg)
     for f, items in cfg.extra_items.items():
         learned.setdefault(f, set()).update(items)
-    (run.path / "items.json").write_text(json.dumps({k: sorted(v) for k, v in learned.items()}, indent=1))
+    (run.path / "items.json").write_text(json.dumps({k: sorted(v) for k, v in learned.items()}, indent=1), encoding="utf-8")
     im = _matcher(learned)
     if cfg.auto_techniques and not cfg.techniques:   # tagged like configured ones, so A3 runs on them
         from . import suggest
         cfg.techniques = suggest.mine_url_techniques(suggest.url_mentions(ev, agents))
-        (run.path / MINED_FILE).write_text(json.dumps([dataclasses.asdict(t) for t in cfg.techniques], indent=1))
+        (run.path / MINED_FILE).write_text(json.dumps([dataclasses.asdict(t) for t in cfg.techniques], indent=1), encoding="utf-8")
         _log(f"  auto_techniques: {len(cfg.techniques)} URL technique{'s' * (len(cfg.techniques) != 1)} mined"
              + (f" ({', '.join(t.name for t in cfg.techniques)})" if cfg.techniques else ""))
     _log("rule extraction")
@@ -278,7 +278,7 @@ def expose(run: RunDir) -> None:
     if not run.has("claims"):
         return
     ev, agents, cl = run.read("events"), run.read("agents"), run.read("claims")
-    learned = json.loads((run.path / "items.json").read_text())
+    learned = json.loads((run.path / "items.json").read_text(encoding="utf-8"))
     im = _matcher(learned)
     targets = set(zip(cl["family"], cl["item"])) if len(cl) else set()
     _log("index item-value mentions")
@@ -367,7 +367,7 @@ def build_graph(run: RunDir) -> None:
                 G.graph["clock_note"] = ("message order, no wall clock: a time is the message's position "
                                          "(2000-01-01 + i s) and median_dt_s a gap in messages")
             nx.write_graphml(graph.xml_safe(G), run.path / f"provenance_{name}.graphml")
-            (run.path / f"provenance_{name}.json").write_text(json.dumps(nx.node_link_data(G)))
+            (run.path / f"provenance_{name}.json").write_text(json.dumps(nx.node_link_data(G)), encoding="utf-8")
         _log(f"  [{name}] {len(edges)} edges{note}, {len(chains)} fact chains, {len(profiles)} agent profiles")
 
 

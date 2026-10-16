@@ -98,12 +98,12 @@ def run_crosssite(wiki_run: str | Path, corpus_path: str | Path, out: str | Path
     if cov:
         L.append("\n## Coverage bounds (from the collectors' site inventory)\n")
         L.append(crosssite.coverage_markdown(cov))
-    (run.path / "report.md").write_text("\n".join(L))
+    (run.path / "report.md").write_text("\n".join(L), encoding="utf-8")
     (run.path / "summary.json").write_text(dumps({
         "n_events": int(len(ev)), "n_sites": int(ev["site"].nunique()), "corpus_notes": bundle.notes,
         "technique_site_summary": summary.to_dict("records"),
         "coverage": {k: v for k, v in (cov or {}).items() if not isinstance(v, pd.DataFrame)},
-    }, indent=2))
+    }, indent=2), encoding="utf-8")
     print(f"[swarmprov] wrote {run.path / 'report.md'}")
     from .html import build_html
     build_html(run)

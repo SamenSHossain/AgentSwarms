@@ -257,7 +257,7 @@ def check_run(run: RunDir, summary: dict | None = None, mapping: str | None = No
     mapping = mapping or (summary or {}).get("mapping", "merged")
     sfx = suffix(mapping)
     if summary is None and (run.path / f"summary{sfx}.json").exists():
-        summary = json.loads((run.path / f"summary{sfx}.json").read_text())
+        summary = json.loads((run.path / f"summary{sfx}.json").read_text(encoding="utf-8"))
     rows = []
     if run.has("agents"):
         bug, kept = _split(run.read("agents"))
@@ -291,7 +291,7 @@ def check_run(run: RunDir, summary: dict | None = None, mapping: str | None = No
     (run.path / f"checks{sfx}.json").write_text(dumps({
         "n_checks": len(out), "n_pass": int((out["n_violations"] == 0).sum()),
         "n_errors": int((fail["severity"] == "error").sum()), "n_warnings": int((fail["severity"] == "warning").sum()),
-        "checks": out.to_dict("records")}, indent=2))
+        "checks": out.to_dict("records")}, indent=2), encoding="utf-8")
     return out
 
 

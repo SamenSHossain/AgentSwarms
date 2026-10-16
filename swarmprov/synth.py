@@ -236,7 +236,7 @@ def write(out: str | Path, n_agents: int = 60, copy_rate: float = 0.7, seed: int
                             trace=fmt == "autogen", copy_ramp_h=copy_ramp_h, **scenario)
     out = Path(out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    with open(out, "w") as fh:
+    with open(out, "w", encoding="utf-8") as fh:
         for p in posts:
             fh.write(json.dumps(_autogen(p) if fmt == "autogen" else p) + "\n")
     truth.to_csv(out.with_name("truth.csv"), index=False)
@@ -250,7 +250,7 @@ def write(out: str | Path, n_agents: int = 60, copy_rate: float = 0.7, seed: int
                                              "family once they have read a post carrying it"}]
         technique_truth(truth, tech).to_csv(out.with_name("truth_techniques.csv"), index=False)
         also = ", truth_techniques.csv"
-    (out.with_name("config.json")).write_text(json.dumps(cfg, indent=1))
+    (out.with_name("config.json")).write_text(json.dumps(cfg, indent=1), encoding="utf-8")
     n_calls = sum(p.get("type") == "ToolCallExecutionEvent" for p in posts)
     what = f"messages ({n_calls} tool calls, each with its result)" if fmt == "autogen" else "posts"
     print(f"wrote {len(posts)} {what} to {out}; truth.csv{also} and config.json (true values as reference_values) "

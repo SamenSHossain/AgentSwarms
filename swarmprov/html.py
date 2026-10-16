@@ -296,8 +296,8 @@ def build_html(run: RunDir, mapping: str = "merged") -> Path | None:
     if not md.exists():
         return None
     sp = run.path / f"summary{sfx}.json"
-    summary = json.loads(sp.read_text()) if sp.exists() else {}
-    text = md.read_text()   # a title line, then the source line, then the sections
+    summary = json.loads(sp.read_text(encoding="utf-8")) if sp.exists() else {}
+    text = md.read_text(encoding="utf-8")   # a title line, then the source line, then the sections
     title, _, text = text.partition("\n\n") if text.startswith("# ") else ("# swarmprov report", "", text)
     lede, _, text = ("", "", text) if text.startswith("#") else text.partition("\n\n")
     title, body = title[2:].strip(), md_to_html(text, run.path)
@@ -322,7 +322,7 @@ def build_html(run: RunDir, mapping: str = "merged") -> Path | None:
             + (f'<script type="application/json" id="fx-data">{_script_json(data)}</script>' if data else "")
             + f"<script>{JS}</script></body></html>\n")
     out = run.path / f"report{sfx}.html"
-    out.write_text(page)
+    out.write_text(page, encoding="utf-8")
     print(f"[swarmprov] wrote {out} ({len(page.encode()) / 1e6:.1f} MB, {time.perf_counter() - t0:.1f} s)")
     return out
 

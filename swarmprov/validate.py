@@ -40,7 +40,7 @@ def sample(run: RunDir, n: int = 120, seed: int = 0, exclude: list[str | Path] =
     ev, tags, cl = run.read("events"), run.read("tags"), run.read("claims")
     t = tags.set_index("event_id")
     task = ev[ev["family"].fillna("") != ""].copy()
-    seen = {json.loads(l)["event_id"] for f in exclude for l in open(f) if l.strip()}
+    seen = {json.loads(l)["event_id"] for f in exclude for l in open(f, encoding="utf-8") if l.strip()}
     task = task[~task["event_id"].isin(seen)]
     task["is_answer"] = task["event_id"].map(t["is_answer"]).fillna(False)
     task["arrival_kw"] = task["event_id"].map(t["is_arrival"]).fillna(False)
@@ -50,7 +50,7 @@ def sample(run: RunDir, n: int = 120, seed: int = 0, exclude: list[str | Path] =
     quota = [n // 2, n // 4, n - n // 2 - n // 4]
     pick = pd.concat([p.sample(min(q, len(p)), random_state=seed) for p, q in zip(parts, quota)])
     out = run.path / name
-    with open(out, "w") as fh:
+    with open(out, "w", encoding="utf-8") as fh:
         for _, r in pick.iterrows():
             pred = _answers_for(cl, r["event_id"])
             fh.write(json.dumps({
@@ -82,7 +82,7 @@ def read_labels(path: str | Path) -> list[dict] | None:
     """A label file's rows, or None when it is not one: empty, or a row that is not JSON or lacks an ``event_id`` or
     a ``gold`` block (a transcript beside the labels, say)."""
     try:
-        rows = [json.loads(l) for l in open(path) if l.strip()]
+        rows = [json.loads(l) for l in open(path, encoding="utf-8") if l.strip()]
     except (json.JSONDecodeError, UnicodeDecodeError):
         return None
     ok = rows and all(isinstance(r, dict) and "event_id" in r and isinstance(r.get("gold"), dict) for r in rows)
@@ -139,5 +139,5 @@ def score(run: RunDir, gold_path: str | Path, out_name: str = "validation.json")
     res["split"] = rows[0].get("split")
     res["labels_file"] = str(gold_path)
     res["coverage"] = {"labelled": n_labelled, "in_run": len(rows), "share": len(rows) / n_labelled}
-    (run.path / out_name).write_text(dumps(res, indent=2))
+    (run.path / out_name).write_text(dumps(res, indent=2), encoding="utf-8")
     return res

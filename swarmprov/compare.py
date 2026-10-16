@@ -289,7 +289,7 @@ def _agents(aa: pd.DataFrame, ab: pd.DataFrame, mapping_a: str, mapping_b: str, 
 
 def _summary(run: RunDir, mapping: str):
     p = run.path / f"summary{suffix(mapping)}.json"
-    return json.loads(p.read_text()) if p.exists() else None
+    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
 
 
 def compare(run_a, run_b, mapping_a: str = "merged", mapping_b: str = "merged", tol: float = TOL,
@@ -465,8 +465,8 @@ def main(run_a: str, run_b: str, mapping_a: str = "merged", mapping_b: str = "me
     res = compare(run_a, run_b, mapping_a, mapping_b, tol, limit)
     d = Path(out)
     d.mkdir(parents=True, exist_ok=True)
-    (d / "compare.json").write_text(dumps(res, indent=2))
-    (d / "compare.md").write_text(to_markdown(res, limit))
+    (d / "compare.json").write_text(dumps(res, indent=2), encoding="utf-8")
+    (d / "compare.md").write_text(to_markdown(res, limit), encoding="utf-8")
     print("\n".join(headline(res)))
     print(f"wrote {d / 'compare.md'} and {d / 'compare.json'}")
     return 0

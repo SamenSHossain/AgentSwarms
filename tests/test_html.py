@@ -7,6 +7,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -180,6 +181,22 @@ def test_html_command_renders_a_report_again(synth_run, tmp_path):
     assert cli.main(["html", str(d)]) == 0 and (d / "report.html").exists()
     assert cli.main(["html", str(d), "--mapping", "strict"]) == 1   # no strict report to render
     assert cli.main(["html", str(tmp_path / "missing")]) == 2 and not (tmp_path / "missing").exists()
+
+
+def _c_locale() -> dict:
+    """A console with no UTF-8: the C locale, its coercion to UTF-8 and Python's UTF-8 mode both off."""
+    return os.environ | {"LC_ALL": "C", "LANG": "C", "PYTHONUTF8": "0", "PYTHONCOERCECLOCALE": "0", "PYTHONPATH": str(ROOT)}
+
+
+def test_html_under_a_c_locale(synth_run, tmp_path):
+    """Every text file is read and written as UTF-8 whatever the locale: the report's title holds an em dash."""
+    d = tmp_path / "run"
+    shutil.copytree(synth_run[0].path, d)
+    (d / "report.html").unlink()
+    out = subprocess.run([sys.executable, "-m", "swarmprov", "html", str(d)], env=_c_locale(), cwd=tmp_path,
+                         capture_output=True, text=True)
+    assert out.returncode == 0, out.stderr
+    assert "<title>Copied or computed? — provenance report</title>" in (d / "report.html").read_text(encoding="utf-8")
 
 
 def test_a_page_without_graph_tables(tmp_path):
