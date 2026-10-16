@@ -46,8 +46,13 @@ def run_crosssite(wiki_run: str | Path, corpus_path: str | Path, out: str | Path
     if Path(out).resolve() == wiki.path.resolve():
         raise ValueError(f"crosssite: -o {out} is the wiki run it reads, whose events, report and summary it would "
                          "overwrite; write the cross-site view to another directory (e.g. runs/crosssite)")
-    run = RunDir(out)
     ev_w = _wiki_events(wiki)
+    if "family" not in ev_w:
+        raise ValueError(f"crosssite: {wiki_run}'s posts have no families yet; run `swarmprov extract` on it (or "
+                         "`swarmprov run`) first")
+    if not remote.is_remote(corpus_path) and not Path(corpus_path).exists():
+        raise FileNotFoundError(f"crosssite: corpus {corpus_path}: no such file or directory")
+    run = RunDir(out)
     corpus_path = remote.resolve(corpus_path)
     a = adapters.get("corpus")
     bundle = a.load(Path(corpus_path))

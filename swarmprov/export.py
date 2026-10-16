@@ -44,8 +44,9 @@ def export(run_path, out, tables=DEFAULT, fmt: str = "csv", mapping: str = "merg
     is named and skipped.  Returns 0, or 1 when none could be written."""
     run, out = RunDir.open(run_path), Path(out)
     if out.resolve() == run.path.resolve():
-        raise ValueError(f"export: -o {out} is the run it reads, whose stage tables the files would overwrite "
-                         "(exposures_merged.parquet, ...); write them to another directory")
+        raise ValueError(f"export: -o {out} is the run it reads; exports written there would mix with its stage "
+                         "tables" + (" and overwrite them (exposures_merged.parquet, ...)" if fmt == "parquet" else "")
+                         + "; write them to another directory")
     out.mkdir(parents=True, exist_ok=True)
     written = 0
     for name in tables:

@@ -21,7 +21,7 @@
   "catch_all_family": "all"
  },
  "skipped": {
-  "A1": "needs agent-rounds (an agent's answer to an item in a task family); no answer claims were extracted: no post reports an answer in the wording the rules read, \"answered\", \"submitted\", \"replied\" or \"responded\" followed by the value with the item named in the sentence (a built-in state or country, a phrase learned after round markers, or `extra_items`), or `Answer: ITEM = value` (see \"What the rule extractor recognises\" in the README; for other wording use `--llm`)",
+  "A1": "needs agent-rounds (an agent's answer to an item in a task family); no answer claims were extracted: no post reports an answer in the wording the rules read, \"answered\", \"submitted\", \"replied\" or \"responded\" followed by the value with the item named in the sentence (a built-in state or country, a phrase learned after round markers, or `extra_items`), or `Answer: ITEM = value` (or `CONFIRMED: ITEM = value`), whose item is any capitalised phrase before the \"=\" (see \"What the rule extractor recognises\" in the README; for other wording use `--llm`)",
   "A2": "needs more than 20 agent-rounds; this run has 0",
   "A3": "needs configured techniques (config `techniques`: a name and a regex each; `swarmprov suggest RUN` proposes URL ones from the posts, and `auto_techniques` mines them at extract)",
   "agents": "needs agent-rounds (see A1)"

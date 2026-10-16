@@ -383,7 +383,8 @@ def _header(c: _Ctx) -> list[str]:
     L = ["# Copied or computed? — provenance report\n",
          f"Source: `{prof['source']}` (adapter `{prof['adapter']}`"
          + (f"; LLM extraction with `{llm['model']}` on {llm['candidates']:,} candidate posts: {llm['calls']:,} calls, "
-            f"{llm['failed']:,} failed, {llm['cached']:,} from the cache" if llm else "")
+            f"{llm['failed']:,} failed, {llm['cached']:,} from the cache"
+            + (f", {llm['repeats']:,} repeating an earlier post" if llm.get("repeats") else "") if llm else "")
          + f"), {prof['n_events']:,} posts from "
          f"{prof['n_authors'] - len(c.pseudo):,} author strings" + (f" plus {' and '.join(f'`{a}`' for a in c.pseudo)}"
                                                                       if c.pseudo else "") + ", " + _when(prof, notes)
@@ -1527,7 +1528,8 @@ def _a1_gap(claims: pd.DataFrame, rounds: pd.DataFrame, family_hint: str, llm: b
         return ("no answer claims were extracted: no post reports an answer in the wording the rules read, "
                 '"answered", "submitted", "replied" or "responded" followed by the value with the item named in the '
                 "sentence (a built-in state or country, a phrase learned after round markers, or `extra_items`), or "
-                "`Answer: ITEM = value` (see \"What the rule extractor recognises\" in the README"
+                "`Answer: ITEM = value` (or `CONFIRMED: ITEM = value`), whose item is any capitalised phrase before "
+                "the \"=\" (see \"What the rule extractor recognises\" in the README"
                 + ("" if llm else "; for other wording use `--llm`") + ")")
     if not len(rounds):
         has_fam, has_item = a["family"].fillna("").astype(bool), a["item"].notna()

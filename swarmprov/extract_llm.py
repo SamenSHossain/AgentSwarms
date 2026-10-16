@@ -2,11 +2,12 @@
 
 One call per candidate post returns the same fields the rule extractor
 produces; results are cached on disk under a hash of the model, the prompt and
-the post (family, author, channel, text), so re-runs are free and an edited
-post or prompt is asked again.  Rule and LLM rows are then merged: the LLM wins
-on semantic fields (item, event type, wrong/correct), the rules fill anything
-the LLM left empty.  The post text is agent-written, so it is sent as quoted
-data and the prompt says never to follow instructions inside it.
+the post (family, author, channel, text), so re-runs are free, an edited post
+or prompt is asked again, and identical posts share one call.  Rule and LLM
+rows are then merged: the LLM wins on semantic fields (item, event type,
+wrong/correct), the rules fill anything the LLM left empty.  The post text is
+agent-written, so it is sent as quoted data and the prompt says never to follow
+instructions inside it.
 
 Requires ``pip install -e '.[llm]'`` (anthropic, pydantic) and an API key.
 Default model is the small, cheap ``claude-haiku-4-5``; pass ``--llm <model-id>``
@@ -16,6 +17,7 @@ to change it.
 from __future__ import annotations
 
 import json
+import os
 import re
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -99,9 +101,10 @@ def _call(client, model: str, msg: str) -> dict:
 
 def run(events: pd.DataFrame, families: pd.Series, agents: pd.DataFrame, model: str = DEFAULT_MODEL,
         cache_dir: Path | None = None, workers: int = 8, client=None, limit: int | None = None) -> tuple[pd.DataFrame, dict]:
-    """The LLM's claims on the candidate posts, and the counts behind them (``candidates``, ``cached``, ``calls`` made,
-    ``failed``, ``first_error``).  A post whose call fails keeps its rule claims.  ``LLMFailed`` when the first call
-    fails with an authentication, permission or unknown-model error, or when every call fails."""
+    """The LLM's claims on the candidate posts, and the counts behind them (``candidates``; per distinct post
+    ``cached`` and ``calls`` made, of which ``failed``, with the ``first_error``; ``repeats``, posts identical to an
+    earlier one, which share its result).  A post whose call fails keeps its rule claims.  ``LLMFailed`` when the
+    first call fails with an authentication, permission or unknown-model error, or when every call fails."""
     if client is None:
         try:
             import anthropic
@@ -114,43 +117,52 @@ def run(events: pd.DataFrame, families: pd.Series, agents: pd.DataFrame, model: 
     if limit:
         cand = cand.head(limit)
     jobs = list(zip(cand.itertuples(index=False), families.loc[cand.index]))
+    texts = [_message(*job) for job in jobs]
+    keys = [stable_id(model, SYSTEM, m) for m in texts]
+    msgs = dict(zip(keys, texts))   # one call per distinct message
     amap = agents.set_index("author_raw")
 
-    def work(job) -> tuple[dict | Exception, bool]:
+    def work(key: str) -> tuple[dict | Exception, bool]:
         """The post's extraction (or the exception its call raised), and whether the cache served it."""
-        msg = _message(*job)
-        p = cache_dir / f"{stable_id(model, SYSTEM, msg)}.json"
-        if p.exists():
-            return json.loads(p.read_text(encoding="utf-8")), True
+        p = cache_dir / f"{key}.json"
         try:
-            out = _call(client, model, msg)
+            out = json.loads(p.read_text(encoding="utf-8"))
+            if isinstance(out["claims"], list):
+                return out, True
+        except (OSError, ValueError, LookupError, TypeError):   # no entry, or one a killed run left unreadable
+            pass
+        try:
+            out = _call(client, model, msgs[key])
         except Exception as e:  # this post falls back to the rule output
             return e, False
-        try:
-            p.write_text(json.dumps(out), encoding="utf-8")
+        tmp = p.with_name(f"{key}.{os.getpid()}.tmp")
+        try:   # written aside and moved into place, so no reader sees half an entry
+            tmp.write_text(json.dumps(out), encoding="utf-8")
+            os.replace(tmp, p)
         except OSError:   # an unwritable cache costs a call next time, not this result
-            pass
+            tmp.unlink(missing_ok=True)
         return out, False
 
-    done = []
-    for job in jobs:   # up to the first real call alone: an error every call would hit stops the run here
-        done.append(work(job))
-        if not done[-1][1]:
+    done: dict[str, tuple] = {}
+    for key in msgs:   # up to the first real call alone: an error every call would hit stops the run here
+        out, cached = done[key] = work(key)
+        if isinstance(out, Exception) and _fatal(out):
+            raise LLMFailed(f"--llm {model}: the first call failed ({type(out).__name__}: {str(out)[:200]}); check "
+                            "ANTHROPIC_API_KEY and the model id")
+        if not cached:
             break
-    if done and isinstance(done[-1][0], Exception) and _fatal(done[-1][0]):
-        e = done[-1][0]
-        raise LLMFailed(f"--llm {model}: the first call failed ({type(e).__name__}: {str(e)[:200]}); check "
-                        "ANTHROPIC_API_KEY and the model id")
+    rest = [k for k in msgs if k not in done]
     with ThreadPoolExecutor(workers) as pool:
-        done += pool.map(work, jobs[len(done):])
-    errors = [out for out, cached in done if isinstance(out, Exception)]
-    n_calls = sum(not cached for _, cached in done)
-    stats = {"model": model, "candidates": len(jobs), "cached": len(jobs) - n_calls, "calls": n_calls,
-             "failed": len(errors), "first_error": f"{type(errors[0]).__name__}: {str(errors[0])[:200]}" if errors else None}
+        done.update(zip(rest, pool.map(work, rest)))
+    errors = [out for out, cached in done.values() if isinstance(out, Exception)]
+    n_calls = sum(not cached for _, cached in done.values())
+    stats = {"model": model, "candidates": len(jobs), "cached": len(done) - n_calls, "calls": n_calls,
+             "failed": len(errors), "first_error": f"{type(errors[0]).__name__}: {str(errors[0])[:200]}" if errors else None,
+             "repeats": len(jobs) - len(done)}
     if n_calls and len(errors) == n_calls:
         raise LLMFailed(f"--llm {model}: all {n_calls:,} calls failed (the first: {stats['first_error']})")
     rows = []
-    for (ev, f), (out, _) in zip(jobs, done):
+    for (ev, f), (out, _) in zip(jobs, map(done.get, keys)):
         if isinstance(out, Exception):
             continue
         a = amap.loc[ev.author_raw] if ev.author_raw in amap.index else None

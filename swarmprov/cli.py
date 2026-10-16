@@ -197,7 +197,7 @@ def _parser() -> argparse.ArgumentParser:
     s.add_argument("--limit", type=_positive, default=None, help="at most N examples per change (default 10)")
     s.add_argument("--tol", type=_tolerance, default=TOL,
                    help=f"relative tolerance within which summary numbers count as equal (default {TOL:g}, above the "
-                        "solver noise in fixed-effects estimates; 0: exact)")
+                        "solver noise in fixed-effects estimates; 0: exact); counts always compare exactly")
 
     s = sub.add_parser("suggest", help="a starter config mined from a run (URL techniques, channel families, items), "
                                        "with its evidence; written for review, not applied")
@@ -281,17 +281,19 @@ def _stage(handler):
     def run(a, p):
         try:
             return handler(a, p)
-        except (ValueError, FileNotFoundError) as e:   # json.JSONDecodeError is a ValueError
+        except (ValueError, OSError) as e:   # json.JSONDecodeError is a ValueError, a missing file an OSError
             return _fail(e)
     return run
 
 
 def _need_inputs(a) -> None:
-    """Stop before any stage when the input, ``--config`` or ``--roster`` names nothing (an hf:// URI is fetched
-    later)."""
+    """Stop before any stage when the input names nothing, or ``--config`` or ``--roster`` names no file (an hf:// URI
+    is fetched later)."""
     for flag, path in (("", a.input), ("--config", a.config), ("--roster", getattr(a, "roster", None))):
-        if path is None or remote.is_remote(path) or Path(path).exists():
+        if path is None or remote.is_remote(path) or Path(path).is_file() or not flag and Path(path).exists():
             continue
+        if Path(path).exists():
+            raise ValueError(f"{flag}: {path} is a directory, not a file")
         where = (" (the datasets under data/ are not in git: README's 'Where the data comes from' says where to get "
                  "them)" if Path(path).parts[:1] == ("data",) else "")
         raise FileNotFoundError(f"{flag + ': ' if flag else ''}{path}: no such file or directory{where}")
@@ -350,6 +352,7 @@ def _html(a, p) -> int:
     return html.main(a.run, a.mapping)
 
 
+@_stage
 def _sample_gold(a, p) -> None:
     from . import validate
     validate.sample(RunDir.open(a.run), a.n, a.seed, a.exclude, a.name)

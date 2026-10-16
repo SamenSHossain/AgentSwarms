@@ -159,10 +159,11 @@ def conform(df: pd.DataFrame, table: str) -> pd.DataFrame:
 
 
 class NotARun(Exception):
-    """A path that holds no run: ``RunDir.open`` finds no ``profile.json`` (or the file it was asked for) there."""
+    """A path that holds no run: ``RunDir.open`` finds no ``profile.json`` (or the file it was asked for) there, or
+    ``RunDir.profile`` cannot read it."""
 
-    def __init__(self, path: Path, need: str = "profile.json"):
-        super().__init__(f"{path}: not a run directory (no {need}); run `swarmprov run` first")
+    def __init__(self, path: Path, need: str = "profile.json", why: str | None = None):
+        super().__init__(f"{path}: not a run directory ({why or f'no {need}'}); run `swarmprov run` first")
 
 
 class RunDir:
@@ -183,8 +184,15 @@ class RunDir:
         return run
 
     def profile(self) -> dict:
-        """``profile.json``: what ingest found and the settings each stage ran with."""
-        return json.loads((self.path / "profile.json").read_text(encoding="utf-8"))
+        """``profile.json``: what ingest found and the settings each stage ran with; ``NotARun`` when it is not a JSON
+        object (a write cut short)."""
+        try:
+            prof = json.loads((self.path / "profile.json").read_text(encoding="utf-8"))
+        except ValueError as e:   # json.JSONDecodeError, or bytes that are not UTF-8
+            raise NotARun(self.path, why=f"profile.json is unreadable: {e}") from None
+        if not isinstance(prof, dict):
+            raise NotARun(self.path, why="profile.json is not a JSON object")
+        return prof
 
     def write_profile(self, prof: dict) -> None:
         (self.path / "profile.json").write_text(json.dumps(prof, indent=2, default=str), encoding="utf-8")

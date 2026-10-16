@@ -7,8 +7,8 @@ Three layers, each keyed by meaning rather than position:
   capabilities, posts, roster, mapping;
 * ``summary.json`` (``summary_strict.json`` under the strict mapping), flattened to one value per path, with the
   report's list rows keyed by what they describe (A3 by technique, A4 by slot, A5 attribution by rule, top
-  sources by agent, ...).  Numbers match within a relative tolerance and missing (null) equals missing; the
-  largest difference the tolerance hides is reported, so a small genuine shift stays visible;
+  sources by agent, ...).  Counts match exactly, other numbers within a relative tolerance, and missing (null)
+  equals missing; the largest difference the tolerance hides is reported, so a small genuine shift stays visible;
 * the rows behind them, on the stable ids: posts by ``event_id``, claims by ``claim_id``, agent-rounds by
   ``claim_id`` (flag flips, source changes), author strings by ``author_raw``, facts by (family, item, value_key).
 
@@ -72,6 +72,11 @@ def _flatten(obj, labels: dict | None = None, path: str = "", pattern: str = "",
         yield path, None if isinstance(obj, float) and math.isnan(obj) else obj, row
 
 
+def _integral(v) -> bool:
+    """A count: an int, or a float with no fractional part (a count JSON wrote as ``3.0``)."""
+    return isinstance(v, int) or isinstance(v, float) and v.is_integer()
+
+
 def _delta(a, b) -> float | None:
     """The relative difference of two numbers (0 when equal), or None when either is not a number."""
     num = (int, float)
@@ -95,9 +100,9 @@ def _ts(v):
 
 
 def summary_diff(sa: dict, sb: dict, tol: float = TOL, labels_a: dict | None = None, labels_b: dict | None = None) -> dict:
-    """Sections only in one summary, keyed rows only in one, and every shared value that differs (numbers beyond
-    ``tol`` relative); ``largest_within_tol`` is the biggest difference the tolerance hid.  ``labels_*`` rename
-    one side's agents in the top-sources rows (see ``_flatten``)."""
+    """Sections only in one summary, keyed rows only in one, and every shared value that differs (counts exactly,
+    other numbers beyond ``tol`` relative); ``largest_within_tol`` is the biggest difference the tolerance hid.
+    ``labels_*`` rename one side's agents in the top-sources rows (see ``_flatten``)."""
     out = {"sections_only_a": sorted(set(sa) - set(sb) - SKIP), "sections_only_b": sorted(set(sb) - set(sa) - SKIP),
            "rows_only_a": [], "rows_only_b": [], "changed": [], "n_compared": 0, "largest_within_tol": None}
     shared = sorted(set(sa) & set(sb) - SKIP)
@@ -112,7 +117,8 @@ def summary_diff(sa: dict, sb: dict, tol: float = TOL, labels_a: dict | None = N
             continue   # the whole row is only on one side
         out["n_compared"] += 1
         d = _delta(va, vb)
-        if d is None and _ts(va) == _ts(vb) or d is not None and d <= tol:
+        within = 0 if _integral(va) and _integral(vb) else tol
+        if d is None and _ts(va) == _ts(vb) or d is not None and d <= within:
             if d and d > hidden[0]:
                 hidden = (d, p)
             continue
@@ -384,9 +390,10 @@ def to_markdown(res: dict, limit: int = LIMIT) -> str:
                  + " (`swarmprov report RUN [--mapping strict]` writes it).\n")
     else:
         L.append(f"{s['n_compared']:,} values compared in the sections both summaries hold; {len(s['changed']):,} differ. "
-                 f"Numbers count as equal within a relative tolerance of {res['tolerance']:g}, and a missing value equals "
-                 "a missing one; " + (f"the largest difference the tolerance hid is {hid['rel_delta']:.1e} "
-                                      f"({_code(hid['path'])})." if hid else "it hid no difference.")
+                 "Counts must match exactly; other numbers count as equal within a relative tolerance of "
+                 f"{res['tolerance']:g}, and a missing value equals a missing one; "
+                 + (f"the largest difference the tolerance hid is {hid['rel_delta']:.1e} ({_code(hid['path'])})."
+                    if hid else "it hid no difference.")
                  + (" Top-source rows are keyed by merged labels on both sides." if a["mapping"] != b["mapping"] else "")
                  + "\n")
         for side, k in (("A", "sections_only_a"), ("B", "sections_only_b"), ("A", "rows_only_a"), ("B", "rows_only_b")):
@@ -441,8 +448,8 @@ def headline(res: dict) -> list[str]:
         out.append("  summary: not compared (no " + ", ".join(s["missing"]) + ")")
     else:
         hid = s["largest_within_tol"]
-        out.append(f"  summary: {s['n_compared']:,} values compared, {len(s['changed']):,} differ beyond a relative "
-                   f"{res['tolerance']:g}" + (f" (largest within it {hid['rel_delta']:.1e} at {hid['path']})" if hid else "")
+        out.append(f"  summary: {s['n_compared']:,} values compared, {len(s['changed']):,} differ (counts exactly, "
+                   f"other numbers beyond a relative {res['tolerance']:g})" + (f" (largest within it {hid['rel_delta']:.1e} at {hid['path']})" if hid else "")
                    + (f"; {len(s['rows_only_a'])} rows only in A, {len(s['rows_only_b'])} only in B"
                       if s["rows_only_a"] or s["rows_only_b"] else ""))
     out.append("  rows: " + ("; ".join(f"{TABLE_NAMES[t][0]} +{r['added']:,} -{r['dropped']:,}"

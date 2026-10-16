@@ -101,6 +101,27 @@ def test_llm_cache_is_keyed_on_the_content_not_the_post_id(tmp_path, monkeypatch
     assert out["item"].tolist() == ["Chile"] and stats["failed"] == 0
 
 
+def test_an_unreadable_cache_entry_is_asked_again_and_identical_posts_share_a_call(tmp_path):
+    """An entry a killed run left truncated (or with no claims) is a miss, not an error on every rerun; identical posts
+    under two ids make one call and both get its claims; no temporary file is left behind."""
+    texts = ["R1 CONFIRMED: Poland arrived; answered 2.9", "R2 CONFIRMED: Chile arrived; answered 3.5"]
+    client = _FakeClient()
+    extract_llm.run(*_posts(texts), cache_dir=tmp_path, client=client, workers=1)
+    a, b = sorted(tmp_path.glob("*.json"))
+    a.write_text('{"claims": [{"event_t')
+    b.write_text('{"answer": 1}')
+    out, stats = extract_llm.run(*_posts(texts), cache_dir=tmp_path, client=client, workers=1)
+    assert client.calls == 4 and (stats["calls"], stats["cached"], stats["failed"]) == (2, 0, 0)
+    assert sorted(out["item"]) == ["Chile", "Poland"] and json.loads(a.read_text())["claims"]
+    client = _FakeClient()
+    out, stats = extract_llm.run(*_posts([texts[0], "R4 CONFIRMED: Peru arrived; answered 7", texts[0]]),
+                                 cache_dir=tmp_path / "new", client=client, workers=4)
+    assert client.calls == 2 and (stats["calls"], stats["repeats"]) == (2, 1)
+    assert out.sort_values("event_id")[["event_id", "item"]].values.tolist() == [
+        ["e0", "Poland"], ["e1", "Peru"], ["e2", "Poland"]]
+    assert not list(tmp_path.rglob("*.tmp"))
+
+
 def test_llm_stops_on_an_error_every_call_would_hit(tmp_path):
     posts = _posts([f"R{i} CONFIRMED: Poland arrived; answered {i}" for i in range(1, 6)])
     client = _FakeClient(fail=lambda msg: AuthenticationError("invalid x-api-key"))
@@ -132,7 +153,7 @@ def test_llm_failures_reach_the_profile_and_the_report(tmp_path, monkeypatch, ca
     run = _chat_run(tmp_path, "llm", PLAIN, {"bootstrap_reps": 0}, llm="fake-model")
     prof = run.profile()
     assert prof["llm"] == {"model": "fake-model", "candidates": 5, "cached": 0, "calls": 5, "failed": 1,
-                           "first_error": "RuntimeError: overloaded"}
+                           "first_error": "RuntimeError: overloaded", "repeats": 0}
     assert prof["warnings"] == ["1 of 5 LLM calls failed: RuntimeError: overloaded"]
     text = _text(run)
     assert "(adapter `chat`; LLM extraction with `fake-model` on 5 candidate posts: 5 calls, 1 failed, 0 from the " \
@@ -269,7 +290,8 @@ def test_a1_skip_names_what_kept_claims_from_agent_rounds():
     assert report._a1_gap(pred, none, hint) == (
         'no answer claims were extracted: no post reports an answer in the wording the rules read, "answered", '
         '"submitted", "replied" or "responded" followed by the value with the item named in the sentence (a built-in '
-        "state or country, a phrase learned after round markers, or `extra_items`), or `Answer: ITEM = value` (see "
+        "state or country, a phrase learned after round markers, or `extra_items`), or `Answer: ITEM = value` (or "
+        "`CONFIRMED: ITEM = value`), whose item is any capitalised phrase before the \"=\" (see "
         "\"What the rule extractor recognises\" in the README; for other wording use `--llm`)")
     assert "families" not in report._a1_gap(pred, none, hint) and "--llm" not in report._a1_gap(pred, none, hint, True)
     assert report._a1_gap(answers(("", "Poland")), none, hint) == f"1 answer claim extracted, 0 agent-rounds: {hint}"

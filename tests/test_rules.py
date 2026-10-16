@@ -87,3 +87,16 @@ def test_identity_cohort_merge():
     assert ag.loc["OpenAIOECDNov27", "agent_merged"] == ag.loc["Nov27Scout", "agent_merged"] == "Nov27|f"
     assert ag.loc["MayTwoObserverFreshX", "cohort"] == "May02"   # from the post's leading token
     assert ag.loc["OpenAIOECDNov27", "agent_strict"] != ag.loc["Nov27Scout", "agent_strict"]
+
+
+def test_the_equals_form_takes_any_capitalised_phrase_as_its_item():
+    """README's 'What the rule extractor recognises': Answer or CONFIRMED, then ITEM = value, with no item list; a
+    known item inside the phrase is used instead; a post with a verb-form answer ("Answered: ..." included) is not
+    read for it."""
+    claims, _, _ = _extract(["Answer: Widget Count = 5", "CONFIRMED: Gadget Total = 7", "Answered: Gizmo Index = 1.5",
+                             "confirmed Top Hungary = 9.90%", "answer: Widget Count = 4",
+                             "R1 CONFIRMED: Poland arrived; answered 2.9. Answer: Widget Count = 8"])
+    a = claims[claims["event_type"] == "answer"].sort_values("event_id").fillna({"item": "(none)"})
+    assert a[["event_id", "item", "value_norm"]].values.tolist() == [
+        ["e0", "Widget Count", "5"], ["e1", "Gadget Total", "7"], ["e2", "(none)", "1.5"], ["e3", "Hungary", "9.9"],
+        ["e5", "Poland", "2.9"]]

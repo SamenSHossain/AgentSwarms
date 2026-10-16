@@ -101,6 +101,11 @@ def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | N
         b.events = village.digest_to_events(b.digest)
         b.capabilities.derived_text = True
         b.capabilities.has_explicit_author = True
+    ros, roster_notes = b.roster, b.notes if b.roster is not None else {}
+    if roster is not None:  # a roster attached to a transcript, read before the run directory is cleared
+        _log(f"roster {roster}")
+        rb = _load(adapters.get("roster"), Path(remote.resolve(roster)))
+        ros, roster_notes = rb.roster, rb.notes
     fixed = Counter()
     ev = _clean(b.events.sort_values("ts").reset_index(drop=True), fixed)
     if cfg.ignore_authors:
@@ -111,12 +116,6 @@ def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | N
         run.write("lifecycle", _clean(b.lifecycle, fixed))
     if b.reads is not None:
         run.write("reads", _clean(b.reads, fixed))
-    ros, roster_notes = b.roster, b.notes if b.roster is not None else {}
-    if roster is not None:  # a roster attached to a transcript
-        rpath = remote.resolve(roster)
-        _log(f"roster {roster}")
-        rb = adapters.get("roster").load(Path(rpath))
-        ros, roster_notes = rb.roster, rb.notes
     if ros is not None:
         run.write("roster", _clean(ros, fixed))
     for name in ("directory", "channels", "activity", "probes", "eras", "summaries", "digest"):
@@ -126,8 +125,8 @@ def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | N
         n = sum(fixed.values())
         warns.append(f"{n:,} string{'s' * (n != 1)} held lone surrogates or control characters and {'were' if n != 1 else 'was'} "
                      f"cleaned at ingest ({', '.join(f'{c} {k:,}' for c, k in fixed.most_common())}): surrogates became "
-                     "U+FFFD, control characters were removed from names and ids, and those XML forbids became a space "
-                     "in text.")
+                     "U+FFFD, control characters were removed from names and ids (a tab or line break became a space), "
+                     "and those XML forbids became a space in text.")
     # wall: real timestamps; sequence: message positions (no real times to print); none: only timed posts are ordered
     clock = b.notes.get("clock") or ("wall" if b.capabilities.has_wall_clock else "none")
     has_ts = clock != "sequence" and len(ev) and ev["ts"].notna().any()
@@ -153,14 +152,15 @@ def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | N
     return profile
 
 
-# names and ids lose their control characters, the text its XML-illegal ones (``textutil.clean``)
-ID_COLS = ("author_raw", "author_alt", "channel", "event_id", "parent_id")
+# names and ids lose their control characters, the text its XML-illegal ones (``textutil.clean``); a roster's role and
+# a directory's names become agent labels
+ID_COLS = ("author_raw", "author_alt", "channel", "event_id", "parent_id", "role", "agent_name", "name")
 
 
 def _clean(df: pd.DataFrame, fixed: Counter) -> pd.DataFrame:
     """``df`` with lone surrogates as U+FFFD in every string (Parquet cannot store them), control characters (illegal
-    in GraphML, live on a terminal) removed from ``ID_COLS`` and the XML-illegal ones replaced by a space in ``text``;
-    ``fixed`` counts the cells changed per column."""
+    in GraphML, live on a terminal) removed from ``ID_COLS`` (a tab or line break becomes a space) and the XML-illegal
+    ones replaced by a space in ``text``; ``fixed`` counts the cells changed per column."""
     out = df
     for c in df.columns:
         if not pd.api.types.is_string_dtype(df[c].dtype):
@@ -231,7 +231,7 @@ def extract(run: RunDir, llm: str | None = None) -> None:
         _log(f"LLM extraction with {llm}")
         llm_cl, stats = extract_llm.run(ev[own], fam[own], agents, model=llm, cache_dir=run.path / "llm_cache")
         _log(f"  {stats['candidates']:,} candidate posts: {stats['cached']:,} from the cache, {stats['calls']:,} calls, "
-             f"{stats['failed']:,} failed")
+             f"{stats['failed']:,} failed, {stats['repeats']:,} repeating an earlier post (sharing its result)")
         cl = extract_llm.merge(cl, llm_cl)
     _record_llm(run, stats)
     seqs = rules.learn_sequences(ev, fam, im)
@@ -272,6 +272,7 @@ def expose(run: RunDir) -> None:
     """Mentions, then one exposure table per identity mapping; when the two mappings group the authors identically
     (``identity.one_to_one``) the strict table is the merged one relabelled."""
     if not run.has("claims"):
+        _log("no claims table: nothing to expose (`swarmprov extract` writes it, for a run with posts)")
         return
     ev, agents, cl = run.read("events"), run.read("agents"), run.read("claims")
     learned = json.loads((run.path / "items.json").read_text(encoding="utf-8"))
@@ -319,6 +320,7 @@ def build_graph(run: RunDir) -> None:
     edges only when the source has threading: elsewhere ``parent_id`` is a revision or summary id.  When the two
     mappings group the authors identically, the strict relay edges and chains are the merged ones relabelled."""
     if not run.has("mentions"):
+        _log("no mentions table: nothing to graph (`swarmprov expose` writes it, for a run with claims)")
         return
     import networkx as nx
     cfg = load_config(run, stage="graph")

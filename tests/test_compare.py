@@ -92,6 +92,16 @@ def test_the_default_tolerance_hides_solver_noise():
     assert compare.summary_diff(sa, sb)["changed"] == [] and len(compare.summary_diff(sa, sb, tol=0)["changed"]) == 1
 
 
+def test_counts_compare_exactly():
+    """A count of 22,317 against 22,318 is within 1e-4 relative but is a change; a count JSON wrote as a float is one
+    too, and a fraction next to it still gets the tolerance."""
+    sa = {"n_edges": 22317, "A1": {"n_rounds": 15987.0, "share": 0.925, "n_same": 4}}
+    sb = {"n_edges": 22318, "A1": {"n_rounds": 15988, "share": 0.92505, "n_same": 4.0}}
+    d = compare.summary_diff(sa, sb)
+    assert [c["path"] for c in d["changed"]] == ["A1.n_rounds", "n_edges"]
+    assert d["largest_within_tol"]["path"] == "A1.share"
+
+
 def test_two_configs_on_a_moved_transcript(synth_run, slow):
     """Moving the file changes every chat event id, so posts are aligned on (time, author, text hash); the only row
     change left is y_instant, and its flips are exactly those a join on the agent-round finds."""
