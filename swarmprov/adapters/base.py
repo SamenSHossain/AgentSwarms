@@ -15,6 +15,7 @@ class Capabilities:
     """What the source can support; analyses that need a missing one are skipped."""
 
     has_wall_clock: bool = True
+    has_order: bool = True      # posts can be ordered: by the wall clock, or by message position when there is none
     has_explicit_author: bool = False
     has_reads: bool = False
     has_lifecycle: bool = False
@@ -79,6 +80,9 @@ class AdapterConfig:
     ignore_authors: tuple[str, ...] = ()
     # use the channel name as the task family when nothing else matches
     family_from_channel: bool = False
+    # catch-all family for every post when no families are configured and no roster or channel names one
+    # (the chat adapter's "all"), so a transcript without a config still reaches A1
+    default_family: str | None = None
     # when a roster is attached, an agent's current goal (its ``role``) is its task family
     family_from_roster: bool = True
     # author strings -> roster agent ids, for transcripts that carry names but no agent id

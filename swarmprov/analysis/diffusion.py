@@ -1,9 +1,11 @@
 """A3 - technique diffusion: time from first share to each agent's adoption.
 
 At-risk set: agents active (posting) in the technique's families after its
-first appearance (any task family for techniques without a family).  Adoption = the agent's first post mentioning/using it.
+first appearance (any task family for techniques without a family; every agent
+when no post has a family at all).  Adoption = the agent's first post mentioning/using it.
 Agents who never adopt are censored at their last post.  Survival is a
-plain Kaplan-Meier estimator (no lifelines dependency).
+plain Kaplan-Meier estimator (no lifelines dependency).  Posts without a
+timestamp take no part.
 """
 
 from __future__ import annotations
@@ -28,8 +30,14 @@ def kaplan_meier(durations: np.ndarray, events: np.ndarray) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=["t", "survival"])
 
 
+def familyless(tags: pd.DataFrame) -> bool:
+    """No post has a task family, so the at-risk set cannot be restricted to one."""
+    return not tags["family"].fillna("").astype(bool).any()
+
+
 def analyze(tags: pd.DataFrame, techniques, agent_col: str) -> dict:
-    tags = tags.sort_values("ts")
+    tags = tags[tags["ts"].notna()].sort_values("ts")
+    pooled = familyless(tags)
     out = {}
     for tech in techniques:
         hit = tags[tags["techniques"].fillna("").str.split(",").map(lambda l: tech.name in l)]
@@ -37,8 +45,9 @@ def analyze(tags: pd.DataFrame, techniques, agent_col: str) -> dict:
             continue
         t0 = hit["ts"].iloc[0]
         origin = hit[agent_col].iloc[0]
-        # at-risk: agents working the technique's families, or any task family for global ones
-        pool = tags[tags["family"].isin(tech.families)] if tech.families else tags[tags["family"].fillna("") != ""]
+        # at-risk: agents working the technique's families, or any task family for global ones (everyone if no post has one)
+        pool = tags if pooled else (tags[tags["family"].isin(tech.families)] if tech.families
+                                    else tags[tags["family"].fillna("") != ""])
         active = pool[pool["ts"] >= t0].groupby(agent_col)["ts"].max()
         active = active.drop(index=origin, errors="ignore")
         first_use = hit.groupby(agent_col)["ts"].min()

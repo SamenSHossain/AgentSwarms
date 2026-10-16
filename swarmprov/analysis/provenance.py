@@ -8,7 +8,9 @@ from .. import plotting
 from ..plotting import plt
 
 
-def summarize(ex: pd.DataFrame, min_n: int = 10) -> dict:
+def summarize(ex: pd.DataFrame, min_n: int = 10, wall_clock: bool = True) -> dict:
+    """Without a wall clock (posts ordered by message position) the 10 min / 1 h shares and the head start
+    in hours are None and the tables drop ``exposed_60m``: positions are not minutes."""
     n = len(ex)
     out = {
         "n_answers": n,
@@ -28,12 +30,15 @@ def summarize(ex: pd.DataFrame, min_n: int = 10) -> dict:
     by_ep = (ex.dropna(subset=["episode"]).assign(episode=lambda d: d["episode"].astype(int))
                .groupby("episode").agg(n=("D", "size"), exposed=("D", "mean"),
                                        exposed_60m=("D_w60m", "mean"), instant=("y_instant", "mean")))
+    if not wall_clock:
+        out.update(share_exposed_10m=None, share_exposed_60m=None, median_gap_h=None)
+        by_fam, by_ep = by_fam.drop(columns="exposed_60m"), by_ep.drop(columns="exposed_60m")
     out["by_family"] = by_fam
     out["by_episode"] = by_ep
     return out
 
 
-def figure(ex: pd.DataFrame, res: dict, path) -> str:
+def figure(ex: pd.DataFrame, res: dict, path, wall_clock: bool = True) -> str:
     plotting.setup()
     fam = res["by_family"].head(14).iloc[::-1]
     fig, (ax, ax2) = plt.subplots(1, 2, figsize=(11, 0.32 * len(fam) + 2.2),
@@ -43,6 +48,9 @@ def figure(ex: pd.DataFrame, res: dict, path) -> str:
         "Independent (nothing public yet)": sub["D"].eq(0),
         "Public < 1 h before": sub["D"].eq(1) & sub["D_w60m"].eq(0),
         "Public >= 1 h before": sub["D_w60m"].eq(1),
+    } if wall_clock else {
+        "Independent (nothing public yet)": sub["D"].eq(0),
+        "Public before the report": sub["D"].eq(1),
     }).groupby(sub["family"]).mean().reindex(fam.index)
     left = pd.Series(0.0, index=parts.index)
     for i, col in enumerate(parts.columns):
@@ -60,7 +68,8 @@ def figure(ex: pd.DataFrame, res: dict, path) -> str:
     ep = res["by_episode"]
     if len(ep):
         ax2.plot(ep.index, ep["exposed"], marker="o", color=plotting.SERIES[0], label="public before report")
-        ax2.plot(ep.index, ep["exposed_60m"], marker="o", color=plotting.SERIES[1], label="public >= 1 h before")
+        if wall_clock:
+            ax2.plot(ep.index, ep["exposed_60m"], marker="o", color=plotting.SERIES[1], label="public >= 1 h before")
         ax2.set_ylim(0, 1.02)
         ax2.set_xticks(ep.index)
         ax2.set_xticklabels([f"R{e}" for e in ep.index])

@@ -34,15 +34,19 @@ def _within_variation(df: pd.DataFrame, d: str) -> int:
 MIN_SWITCHERS = 10  # agents whose exposure status varies across their rounds
 
 
-def estimate(ex: pd.DataFrame, min_switchers: int = MIN_SWITCHERS) -> pd.DataFrame:
+def estimate(ex: pd.DataFrame, min_switchers: int = MIN_SWITCHERS, wall_clock: bool = True) -> pd.DataFrame:
+    """Without a wall clock only the consensus outcome under ``D_cons`` is estimated: the latency outcomes
+    and the >= 1 h treatment need one."""
     try:
         import pyfixest as pf
     except ImportError:  # pragma: no cover
         pf = None
     rows = []
-    for key, (ylab, subset) in OUTCOMES.items():
+    outcomes = OUTCOMES if wall_clock else {"y_consensus": OUTCOMES["y_consensus"]}
+    treatments = TREATMENTS if wall_clock else {"D_cons": TREATMENTS["D_cons"]}
+    for key, (ylab, subset) in outcomes.items():
         y = key.split("|")[0]
-        for d, dlab in TREATMENTS.items():
+        for d, dlab in treatments.items():
             df = ex.dropna(subset=[y]).copy()
             if subset:
                 df = df[df[subset] == 1]

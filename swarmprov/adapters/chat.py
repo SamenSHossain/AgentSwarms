@@ -4,12 +4,22 @@ Accepts JSON (a list of messages, ``{"messages": [...]}``, or ``{room: [...]}``)
 or JSONL.  Field names are guessed from common aliases; override any of them
 with ``ChatAdapter(mapping={"ts": "created", "author": "agent_name", ...})``.
 Each message is one post visible to everyone in its channel from its timestamp.
+
+Framework logs (OpenAI message lists, AutoGen, LangGraph state) often carry no
+timestamps.  When fewer than 90% of the messages have one and the file is a
+single message list, the whole file switches to a *sequence clock*: message i is
+posted at ``SEQUENCE_EPOCH + i`` seconds, and the real timestamps are discarded
+rather than mixed in.  A ``{room: [...]}`` file concatenates lists whose relative
+order is unknown, so it keeps its missing timestamps and the time-based analyses
+skip those posts.
 """
 
 from __future__ import annotations
 
 import gzip
 import json
+import re
+from decimal import Decimal
 from pathlib import Path
 
 import pandas as pd
@@ -29,6 +39,9 @@ ALIASES = {
 
 
 WRAPPER_KEYS = ("messages", "events", "transcript", "items", "data")
+EPOCH_RE = re.compile(r"^\d{9,13}(\.\d+)?$")   # Slack's "1777885200.000100"; shorter digit runs are ids, not times
+SEQUENCE_EPOCH = pd.Timestamp("2000-01-01", tz="UTC")
+MIN_TIMED = 0.9   # share of messages that must carry a timestamp for the file to have a wall clock
 
 
 def _read_any(path: Path):
@@ -59,7 +72,8 @@ def _read_any(path: Path):
 
 
 def _is_document(obj) -> bool:
-    """A whole transcript on one line: an array, or a wrapper object around one."""
+    """One message list: an array, or a wrapper object around one (a whole transcript on one JSONL line,
+    and the only shape whose file position is an order)."""
     return isinstance(obj, list) or (isinstance(obj, dict) and any(isinstance(obj.get(k), list) for k in WRAPPER_KEYS))
 
 
@@ -100,9 +114,12 @@ def _pick(m: dict, field: str, mapping: dict) -> object:
 def _to_ts(v) -> pd.Timestamp:
     if v is None:
         return pd.NaT
+    if isinstance(v, str) and EPOCH_RE.match(v.strip()):
+        d = Decimal(v.strip())   # exact: a float would turn Slack's .000100 into .000099897
+        return pd.to_datetime(int(d * (10**3 if d > 10**11 else 10**6)), unit="us", utc=True, errors="coerce")
     if isinstance(v, (int, float)):
         unit = "ms" if v > 1e11 else "s"
-        return pd.to_datetime(v, unit=unit, utc=True)
+        return pd.to_datetime(v, unit=unit, utc=True, errors="coerce")
     return pd.to_datetime(v, utc=True, errors="coerce")
 
 
@@ -133,19 +150,22 @@ class ChatAdapter(Adapter):
         return bool(msgs) and all(_pick(m, "text", self.mapping) is not None for m in msgs[:5])
 
     def load(self, path: Path) -> Bundle:
-        msgs = _flatten(_read_any(Path(path)))
-        rows = []
+        doc = _read_any(Path(path))
+        msgs = _flatten(doc)
+        rows, pos, n_no_author = [], [], 0
         for i, m in enumerate(msgs):
             text = _text(_pick(m, "text", self.mapping))
             if not text.strip():
                 continue
             mid = _pick(m, "id", self.mapping) or stable_id(path, i)
             alt = str(_pick(m, "author_alt", self.mapping) or "")
+            author = _pick(m, "author", self.mapping) or alt
+            n_no_author += not author
             rows.append({
                 "event_id": str(mid),
                 "ts": _to_ts(_pick(m, "ts", self.mapping)),
                 "channel": str(_pick(m, "channel", self.mapping) or "main"),
-                "author_raw": str(_pick(m, "author", self.mapping) or alt or "unknown"),  # an id beats "unknown"
+                "author_raw": str(author or "unknown"),  # an id beats "unknown"
                 "author_alt": alt,
                 "text": text,
                 "parent_id": _pick(m, "parent", self.mapping),
@@ -155,15 +175,23 @@ class ChatAdapter(Adapter):
                 "site": _site(Path(path)),
                 "source_kind": "message",
             })
+            pos.append(i)
         if not rows:
             raise ValueError(f"{path}: no messages with text found (pass mapping={{'text': <field>}} ?)")
         ev = pd.DataFrame(rows)
-        has_ts = ev["ts"].notna().mean() > 0.9
-        caps = Capabilities(has_wall_clock=bool(has_ts), has_explicit_author=True, has_reads=False,
-                            has_lifecycle=False, has_threading=bool(ev["parent_id"].notna().any()))
+        n_timed = int(ev["ts"].notna().sum())
+        has_ts = n_timed >= MIN_TIMED * len(ev)
+        clock = "wall" if has_ts else ("sequence" if _is_document(doc) else "none")
+        if clock == "sequence":
+            ev["ts"] = SEQUENCE_EPOCH + pd.to_timedelta(pos, unit="s")
+        caps = Capabilities(has_wall_clock=bool(has_ts), has_order=clock != "none", has_explicit_author=True,
+                            has_reads=False, has_lifecycle=False, has_threading=bool(ev["parent_id"].notna().any()))
         notes = {"n_messages": len(ev), "n_channels": int(ev["channel"].nunique()),
-                 "n_authors": int(ev["author_raw"].nunique())}
+                 "n_authors": int(ev["author_raw"].nunique()), "clock": clock, "n_timestamps": n_timed,
+                 "n_no_author": n_no_author}
+        if clock == "sequence":
+            notes["timestamps_discarded"] = n_timed
         return Bundle(events=ev, capabilities=caps, notes=notes)
 
     def config(self) -> AdapterConfig:
-        return AdapterConfig(name="chat")
+        return AdapterConfig(name="chat", default_family="all")

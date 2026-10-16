@@ -226,7 +226,7 @@ class SwarmTracesAdapter(Adapter):
                 },
             }
         }
-        caps = Capabilities(has_wall_clock=False, has_explicit_author=False, has_reads=False,
+        caps = Capabilities(has_wall_clock=False, has_order=False, has_explicit_author=False, has_reads=False,
                             has_lifecycle=False, has_threading=True)  # parent_id is a reconstruction link, not a timeline
         from ..schema import empty
         return Bundle(events=empty("events"), capabilities=caps, notes=notes)

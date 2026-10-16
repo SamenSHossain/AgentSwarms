@@ -81,13 +81,20 @@ def alias_table(agents: pd.DataFrame) -> pd.DataFrame:
             [[c for c in cols if c in a]])
 
 
-def post_families(events: pd.DataFrame, cfg: AdapterConfig) -> pd.Series:
-    """Channel family when the channel belongs to one task, else classify the text."""
+def catch_all_family(cfg: AdapterConfig, roster: bool = False) -> str | None:
+    """The config's ``default_family``, if it applies: only with no families configured and no roster (a
+    configured swarm's unmatched posts stay family-less rather than pooled into one task)."""
+    return cfg.default_family if not cfg.families and not roster else None
+
+
+def post_families(events: pd.DataFrame, cfg: AdapterConfig, roster: bool = False) -> pd.Series:
+    """Channel family when the channel belongs to one task, else classify the text, else the catch-all family."""
+    default = catch_all_family(cfg, roster) or ""
     out = []
     for ch_fam, ch, text in zip(events["channel_family"].fillna(""), events["channel"], events["text"]):
         if ch_fam:
             out.append(ch_fam)
         else:
             f = cfg.family_of_text(text[:600]) or cfg.family_of_text(str(ch))
-            out.append(f or (str(ch) if cfg.family_from_channel else ""))
+            out.append(f or (str(ch) if cfg.family_from_channel else default))
     return pd.Series(out, index=events.index)

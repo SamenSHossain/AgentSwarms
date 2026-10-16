@@ -28,15 +28,18 @@ from .identity import cohort_token
 CLOCK_RES_S = 2.0
 
 
-def relay_edges(mentions: pd.DataFrame, agent_col: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+def relay_edges(mentions: pd.DataFrame, agent_col: str,
+                clock_res_s: float | None = CLOCK_RES_S) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Relay trees per fact.  A new carrier's parent is the latest earlier
     carrier *on the same channel* (agents copy from the page they then write
     on); if nobody carried it there before, the parent is the originator and
-    the hop is marked cross-channel."""
+    the hop is marked cross-channel.  Mentions without a timestamp have no place
+    in the order and are left out; ``clock_res_s=None`` (a sequence clock, where
+    there is no clock error) leaves ``within_clock_res`` empty."""
     edges, chains = [], []
     has_channel = "channel" in mentions.columns
     by = ["ts", "event_id"] if "event_id" in mentions.columns else ["ts"]
-    mentions = mentions.sort_values(by, kind="stable")   # same-second mentions: deterministic parent choice
+    mentions = mentions[mentions["ts"].notna()].sort_values(by, kind="stable")   # same-second mentions: deterministic parent
     keys = ["family", "item", "value_key"]
     n_ag = mentions.groupby(keys)[agent_col].transform("nunique")
     # facts only one agent ever carried: no edges, a single chain row each
@@ -64,7 +67,8 @@ def relay_edges(mentions: pd.DataFrame, agent_col: str) -> tuple[pd.DataFrame, p
                 dt = (r.ts - src_ts).total_seconds()
                 edges.append({"src": src, "dst": a, "family": fam, "item": item, "value_norm": vk,
                               "kind": kind, "dt_s": dt, "event_id": r.event_id, "src_event_id": src_ev,
-                              "within_clock_res": dt <= CLOCK_RES_S})  # direction not reliable inside the clock resolution
+                              # direction not reliable inside the clock resolution
+                              "within_clock_res": None if clock_res_s is None else dt <= clock_res_s})
             latest_on[ch] = (a, r.ts, r.event_id)
         multi_rows.append({"family": fam, "item": item, "value_key": vk, "originator": origin,
                            "t0": t_origin, "n_agents": len(depth), "max_depth": max(depth.values()),

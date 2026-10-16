@@ -52,7 +52,8 @@ def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: s
           audience: dict[str, set[str]] | None = None) -> pd.DataFrame:
     """``audience`` maps a restricted channel to the agent labels that could read it;
     a mention there counts as public only for those agents (channels absent from
-    the map are public to all)."""
+    the map are public to all).  A round whose report has no timestamp is dropped:
+    nothing can be ordered against it (the report counts these)."""
     m = mentions[mentions["family"] != "url"]
     groups = {k: g.sort_values(["ts", "event_id"], kind="stable") for k, g in m.groupby(["family", "item", "value_key"])}
     audience = audience or {}
@@ -63,6 +64,7 @@ def build(rounds: pd.DataFrame, mentions: pd.DataFrame, cons: dict, agent_col: s
         ok = np.array([c not in audience or agent in audience[c] for c in g["channel"]], dtype=bool)
         return g.loc[ok]
     rows = []
+    rounds = rounds[rounds["t_report"].notna()]
     rounds = rounds.astype(object).where(rounds.notna(), None)
     for r in rounds.itertuples(index=False):
         cv = cons.get((r.family, r.item))

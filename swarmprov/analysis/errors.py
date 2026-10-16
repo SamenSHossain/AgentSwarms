@@ -13,6 +13,9 @@ won and kept that majority on enough late carriers) or *contested*.  Two
 variants first seen at the same moment leave no first variant: contested.
 
 Analyst reference values never change the status; they only label the outcome.
+Posts without a timestamp take no part.  With ``bin_h=None`` (a sequence clock,
+which has no hours) the whole run is one bin, so a later winner must hold the
+majority of all the slot's carriers.
 """
 
 from __future__ import annotations
@@ -43,7 +46,7 @@ def _status(first, winner, t50, n_tail: int, min_tail: int) -> str:
     return "contested (small n)" if n_tail < min_tail else "overturned"
 
 
-def _slot_stats(carriers: pd.DataFrame, slot: str, bin_h: float = BIN_H, tail_share: float = TAIL_SHARE,
+def _slot_stats(carriers: pd.DataFrame, slot: str, bin_h: float | None = BIN_H, tail_share: float = TAIL_SHARE,
                 min_tail: int = MIN_TAIL) -> dict:
     """carriers: one row per (agent, variant) with first ts."""
     c = carriers.sort_values("ts")
@@ -58,7 +61,7 @@ def _slot_stats(carriers: pd.DataFrame, slot: str, bin_h: float = BIN_H, tail_sh
     first = None if first_tie else firsts.index[0]
     t0 = c["ts"].min()
     c = c.assign(h=(c["ts"] - t0).dt.total_seconds() / 3600)
-    bins = np.arange(0, c["h"].max() + bin_h, bin_h)
+    bins = np.arange(0, c["h"].max() + bin_h, bin_h) if bin_h else np.array([0.0, c["h"].max() + 1.0])
     share = (c.assign(b=pd.cut(c["h"], bins=bins, include_lowest=True, labels=bins[:-1]))
               .groupby(["b", "variant"], observed=False).size().unstack(fill_value=0))
     frac = share.div(share.sum(axis=1).replace(0, np.nan), axis=0)
@@ -154,7 +157,7 @@ def outcome(s: dict, ref) -> str:
 def value_slots(mentions: pd.DataFrame, agent_col: str, min_agents: int = 3,
                 min_share: float = 0.1, **rule) -> list[dict]:
     """``rule``: bin_h / tail_share / min_tail, as in ``_slot_stats`` (also for the other slot finders)."""
-    m = mentions[mentions["family"] != "url"]
+    m = mentions[(mentions["family"] != "url") & mentions["ts"].notna()]
     out = []
     for (fam, item), g in m.groupby(["family", "item"]):
         first = g.sort_values("ts").drop_duplicates([agent_col, "value_key"])
@@ -182,7 +185,7 @@ def sequence_slots(claims: pd.DataFrame, agent_col: str, min_agents: int = 2,
     with disjoint carriers are just different task versions, not a dispute."""
     # strict "round marker -> item" reports only: rounds inferred for free-text predictions are too loose
     c = claims[(claims["event_type"] == "sequence") & claims["episode"].notna()
-               & claims["item"].notna() & (claims["family"] != "")]
+               & claims["item"].notna() & (claims["family"] != "") & claims["ts"].notna()]
     out = []
     for (fam, ep), g in c.groupby(["family", "episode"]):
         first = g.sort_values("ts").drop_duplicates([agent_col, "item"])
@@ -208,7 +211,7 @@ def regex_slots(events: pd.DataFrame, agents: pd.DataFrame, disputes: list[dict]
     amap = agents.set_index("author_raw")[agent_col]
     out = []
     for d in disputes:
-        ev = events[events["family"].fillna("") == d["family"]]
+        ev = events[(events["family"].fillna("") == d["family"]) & events["ts"].notna()]
         ev = ev[ev["text"].str.contains(d.get("context", "."), regex=True)]
         rows = []
         for name, rx in d["variants"].items():

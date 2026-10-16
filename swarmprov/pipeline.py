@@ -67,13 +67,16 @@ def ingest(path: str | Path, run: RunDir, adapter: str = "auto", config: str | N
     for name in ("directory", "channels", "activity", "probes", "eras", "summaries", "digest"):
         if getattr(b, name) is not None:
             run.write(name, getattr(b, name))
-    has_ts = len(ev) and ev["ts"].notna().any()
+    # wall: real timestamps; sequence: message positions (no real times to print); none: only timed posts are ordered
+    clock = b.notes.get("clock") or ("wall" if b.capabilities.has_wall_clock else "none")
+    has_ts = clock != "sequence" and len(ev) and ev["ts"].notna().any()
     profile = {
         "adapter": a.name, "config": cfg.name, "source": source,
         "roster": str(roster) if roster is not None else (source if b.roster is not None else None),
         "roster_notes": roster_notes,
         "config_path": str(Path(config).resolve()) if config else None,
         "capabilities": b.capabilities.as_dict(),
+        "clock": clock, "n_untimed": int(ev["ts"].isna().sum()),
         "n_events": len(ev), "n_authors": int(ev["author_raw"].nunique()),
         "first_ts": str(ev["ts"].min()) if has_ts else None, "last_ts": str(ev["ts"].max()) if has_ts else None,
         "events_per_day": ev["ts"].dt.strftime("%Y-%m-%d").value_counts().sort_index().to_dict() if has_ts else {},
@@ -93,7 +96,7 @@ def extract(run: RunDir, llm: str | None = None) -> None:
         _log("no posts: nothing to extract (a roster alone gives a roster report; add a transcript for provenance)")
         return
     _log("resolve identities + families")
-    fam = identity.post_families(ev, cfg)
+    fam = identity.post_families(ev, cfg, roster=run.has("roster") or run.has("eras"))
     ann = None
     # family precedence: the agent's own goal while it was in force > text/channel families > the shared goal (era)
     if run.has("roster"):
@@ -180,6 +183,8 @@ def expose(run: RunDir) -> None:
         if aud:
             _log(f"  [{name}] {len(aud)} restricted channels limit who could read a mention")
         ex = exposure.build(rounds, mn, cons, col, audience=aud) if len(rounds) else pd.DataFrame()
+        if len(rounds) and rounds["t_report"].isna().any():
+            _log(f"  [{name}] {int(rounds['t_report'].isna().sum())} agent-rounds have no timestamp: left out of exposure")
         run.write(f"exposures_{name}", ex if len(ex) else empty("exposures"))
         if len(ex):
             _log(f"  [{name}] {len(ex)} agent-rounds, exposed {ex['D'].mean():.1%}")
@@ -190,9 +195,11 @@ def build_graph(run: RunDir) -> None:
         return
     cfg = load_config(run)
     mn, agents, tags = run.read("mentions"), run.read("agents"), run.read("tags")
+    # message positions are 1 s apart, so the 2 s clock resolution would flag every adjacent hop
+    res = None if json.loads((run.path / "profile.json").read_text()).get("clock") == "sequence" else graph.CLOCK_RES_S
     for name, col in AGENT_COLS.items():
         ex = run.read(f"exposures_{name}")
-        rel, chains = graph.relay_edges(mn, col) if len(mn) else (pd.DataFrame(), pd.DataFrame())
+        rel, chains = graph.relay_edges(mn, col, res) if len(mn) else (pd.DataFrame(), pd.DataFrame())
         parts = [rel, graph.exposure_edges(ex) if len(ex) else pd.DataFrame(),
                  graph.citation_edges(tags, agents, col, cfg.cohort_regex)]
         edges = conform(pd.concat([p for p in parts if len(p)], ignore_index=True), "edges") \

@@ -17,7 +17,7 @@ ROW = re.compile(r"^\| (\w+) \| (yes|no) \| (.*) \|$", re.M)
 
 
 def _chat(d, timed: bool):
-    """timed: a threaded chat (replies point at the round's first message); untimed: no clock, no threads."""
+    """timed: a threaded chat (replies point at the round's first message); untimed: no clock, no threads, no families."""
     t0 = pd.Timestamp("2026-07-07T10:00:00Z")
     msgs = [{"id": f"m{r}{k}", "author": a, "text": f"R{r} CONFIRMED: {item} arrived; answered {val} at +{3 + k}s."}
             | ({"timestamp": (t0 + pd.Timedelta(minutes=30 * r + 5 * k)).isoformat()} if timed else {})
@@ -25,7 +25,7 @@ def _chat(d, timed: bool):
             for r, (item, val) in enumerate([("Utah", "73.74"), ("Idaho", "41.20")], start=1)
             for k, a in enumerate(["Planner", "Coder", "Critic"])]
     (d / "chat.jsonl").write_text("\n".join(json.dumps(m) for m in msgs))
-    # untimed: no task family, so no rounds reach exposure (which needs a clock); the report must still build
+    # untimed: ordered by message position (a sequence clock) and carried to A1 by the chat's catch-all family
     (d / "cfg.json").write_text(json.dumps({"families": {"states": "CONFIRMED"}} if timed else {}))
     return pipeline.run_all(d / "chat.jsonl", d / "run", adapter="chat", config=str(d / "cfg.json"))
 
@@ -87,8 +87,8 @@ def test_untimed_transcript_reports_without_a_clock(runs):
     caps = json.loads((run.path / "profile.json").read_text())["capabilities"]
     assert all(isinstance(v, bool) for v in caps.values()) and caps["has_wall_clock"] is False
     text = (run.path / "report.md").read_text()
-    assert "6 posts from 3 author strings, no timestamps." in text
-    assert "| has_wall_clock | no | no reliable wall clock" in text
+    assert "6 posts from 3 author strings, ordered by message position (no wall clock)." in text
+    assert "| has_wall_clock | no | no reliable wall clock" in text and "| has_order | yes |" in text
 
 
 def test_report_reads_string_capabilities_of_older_runs(runs, tmp_path):
